@@ -3,6 +3,8 @@
  */
 
 export { collectServerAddresses } from "./addresses.ts";
+export { buildDnsSettings } from "./dnssettings.ts";
+export { buildOnDemandRules } from "./ondemand.ts";
 export {
   extractPlistXml,
   parseProfile,

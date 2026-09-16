@@ -130,6 +130,42 @@ describe("DNS payload", () => {
     expect(settings["ServerURL"]).toBeUndefined();
   });
 
+  it("omits AllowFailover unless it is switched on", () => {
+    expect(dnsSettingsOf(onlyPayload(build()))["AllowFailover"])
+      .toBeUndefined();
+    expect(
+      dnsSettingsOf(onlyPayload(build([config({ allowFailover: false })])))[
+        "AllowFailover"
+      ],
+    ).toBeUndefined();
+    expect(
+      dnsSettingsOf(onlyPayload(build([config({ allowFailover: true })])))[
+        "AllowFailover"
+      ],
+    ).toBe(true);
+  });
+
+  it("omits SupplementalMatchDomains unless domains are given", () => {
+    expect(dnsSettingsOf(onlyPayload(build()))["SupplementalMatchDomains"])
+      .toBeUndefined();
+    expect(
+      dnsSettingsOf(
+        onlyPayload(build([config({ supplementalMatchDomains: [] })])),
+      )["SupplementalMatchDomains"],
+    ).toBeUndefined();
+    expect(
+      dnsSettingsOf(
+        onlyPayload(
+          build([
+            config({
+              supplementalMatchDomains: ["*.example.com", "internal.lan"],
+            }),
+          ]),
+        ),
+      )["SupplementalMatchDomains"],
+    ).toEqual(["*.example.com", "internal.lan"]);
+  });
+
   it("emits ServerAddresses in the order given", () => {
     const payload = onlyPayload(build());
     expect(dnsSettingsOf(payload)["ServerAddresses"]).toEqual([

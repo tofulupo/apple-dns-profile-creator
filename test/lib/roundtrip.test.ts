@@ -67,6 +67,26 @@ describe("fields that survive today", () => {
     ).toBe(false);
   });
 
+  it("preserves AllowFailover, and leaves it absent when unset", () => {
+    expect(roundTrip(config({ allowFailover: true })).allowFailover).toBe(true);
+    expect(roundTrip(config({ allowFailover: false })).allowFailover)
+      .toBeUndefined();
+    expect(roundTrip(config()).allowFailover).toBeUndefined();
+  });
+
+  it("preserves SupplementalMatchDomains, and leaves it absent when empty", () => {
+    const domains = ["*.example.com", "internal.lan"];
+    expect(
+      roundTrip(config({ supplementalMatchDomains: domains }))
+        .supplementalMatchDomains,
+    ).toEqual(domains);
+    expect(
+      roundTrip(config({ supplementalMatchDomains: [] }))
+        .supplementalMatchDomains,
+    ).toBeUndefined();
+    expect(roundTrip(config()).supplementalMatchDomains).toBeUndefined();
+  });
+
   it("preserves enabled interfaces", () => {
     const output = roundTrip(
       config({ useWifi: true, useCellular: true, useEthernet: true }),
@@ -116,6 +136,8 @@ describe("previously broken round-trips", () => {
       useCellular: false,
       useEthernet: true,
       prohibitDisablement: true,
+      allowFailover: true,
+      supplementalMatchDomains: ["*.example.com"],
     });
     expect(roundTrip(input)).toEqual(input);
   });

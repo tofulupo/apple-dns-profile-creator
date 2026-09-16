@@ -11,7 +11,6 @@
 
     <link rel="icon" type="image/png" sizes="96x96"
       href="icons/favicon-96x96.png">
-    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
     <link rel="shortcut icon" href="icons/favicon.ico">
     <link rel="apple-touch-icon" sizes="180x180"
       href="icons/apple-touch-icon.png">
@@ -118,6 +117,16 @@
                   class="hint">Comma-separated domains on which encrypted DNS will be disabled.</span>
               </div>
 
+              <div class="field">
+                <label for="matchDomains"
+                  class="optional">Limit to domains</label>
+                <input type="text" id="matchDomains"
+                  placeholder="*.example.com, internal.lan">
+                <span class="hint">The inverse of the field above: leave empty
+                  to use encrypted DNS everywhere, or list domains to use it
+                  <em>only</em> there. One leading <code>*</code> allowed.</span>
+              </div>
+
               <fieldset class="field">
                 <legend>Interfaces to use encrypted DNS on</legend>
                 <div class="choice-row">
@@ -137,6 +146,16 @@
                 <span
                   class="hint">Untick to disable encrypted DNS on that interface.</span>
               </fieldset>
+
+              <div class="field">
+                <span class="choice">
+                  <input type="checkbox" id="allowFailover">
+                  <label for="allowFailover">Allow failover</label>
+                </span>
+                <span class="hint">Falls back to the network's own resolver when
+                  the encrypted server cannot be reached. Needs iOS 26, macOS 26
+                  or visionOS 26; older systems ignore it.</span>
+              </div>
 
               <div class="field">
                 <span class="choice">

@@ -170,6 +170,8 @@ if (plutilAvailable()) {
         useCellular: true,
         useEthernet: false,
         prohibitDisablement: true,
+        allowFailover: true,
+        supplementalMatchDomains: ["*.corp.example"],
       };
 
       const xml = buildPlist(

@@ -17,6 +17,7 @@ const submit = input("btn_addToProfile");
 let editIndex: number | undefined;
 
 function readForm(): DnsConfig {
+  const supplementalMatchDomains = parseList(input("matchDomains").value);
   return {
     name: input("provName").value.trim(),
     protocol: input("doh").checked ? "HTTPS" : "TLS",
@@ -28,6 +29,8 @@ function readForm(): DnsConfig {
     useCellular: input("useCell").checked,
     useEthernet: input("useEthernet").checked,
     prohibitDisablement: input("lockProfile").checked,
+    ...(input("allowFailover").checked && { allowFailover: true }),
+    ...(supplementalMatchDomains.length > 0 && { supplementalMatchDomains }),
   };
 }
 
@@ -42,9 +45,12 @@ function writeForm(config: DnsConfig): void {
   }
   input("exclWifi").value = config.excludedWifi.join(", ");
   input("exclDomains").value = config.excludedDomains.join(", ");
+  input("matchDomains").value = (config.supplementalMatchDomains ?? [])
+    .join(", ");
   input("useWifi").checked = config.useWifi;
   input("useCell").checked = config.useCellular;
   input("useEthernet").checked = config.useEthernet;
+  input("allowFailover").checked = config.allowFailover === true;
   input("lockProfile").checked = config.prohibitDisablement;
   applyProtocol();
 }

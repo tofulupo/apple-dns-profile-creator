@@ -25,6 +25,17 @@ function isProtocol(value: unknown): value is DnsProtocol {
   return value === "HTTPS" || value === "TLS";
 }
 
+function isOptional<T>(
+  value: unknown,
+  guard: (v: unknown) => v is T,
+): value is T | undefined {
+  return value === undefined || guard(value);
+}
+
+function isBoolean(value: unknown): value is boolean {
+  return typeof value === "boolean";
+}
+
 function isDnsConfig(value: unknown): value is DnsConfig {
   if (typeof value !== "object" || value === null) return false;
   const c = value as Record<string, unknown>;
@@ -38,7 +49,11 @@ function isDnsConfig(value: unknown): value is DnsConfig {
     typeof c["useWifi"] === "boolean" &&
     typeof c["useCellular"] === "boolean" &&
     typeof c["useEthernet"] === "boolean" &&
-    typeof c["prohibitDisablement"] === "boolean"
+    typeof c["prohibitDisablement"] === "boolean" &&
+    // Added after v1 shipped. Absent in stored entries, so optional here; the
+    // shape stays a superset and needs no migration.
+    isOptional(c["allowFailover"], isBoolean) &&
+    isOptional(c["supplementalMatchDomains"], isStringArray)
   );
 }
 

@@ -20,6 +20,26 @@ works fully offline, which makes it suitable for hosting on a home network.
 | `index.html`    | The tool: upload an existing profile, or enter settings by hand |
 | `finalize.html` | Profile view: review the collected configurations and download  |
 
+## Excluded domains vs. limited domains
+
+Two fields under **Advanced** both take a list of domains, and they are
+opposites rather than duplicates.
+
+| Field                | Effect                                                                |
+| -------------------- | --------------------------------------------------------------------- |
+| **Excluded domains** | A deny list. Encrypted DNS is used everywhere _except_ these domains. |
+| **Limit to domains** | An allow list. Encrypted DNS is used _only_ for these domains.        |
+
+Leaving both empty - the default - sends every query through the encrypted
+resolver, which is usually what you want. "Limit to domains" is for split DNS,
+where an internal resolver should answer for one zone and the network's own
+resolver for everything else. A single leading `*` is allowed, so
+`*.example.com` and `example.com` both match `mail.example.com`.
+
+Under the hood they are different mechanisms: exclusions become `OnDemandRules`
+that switch the resolver off, while the limit becomes `SupplementalMatchDomains`
+inside `DNSSettings`. Setting both is legal but rarely useful.
+
 ## Which way to run it
 
 | You want to                           | Use                   | Notes                              |
@@ -124,30 +144,36 @@ in the `desktop` block of [`deno.json`](deno.json).
 ## Architecture
 
 ```sh
-src/lib/     pure core - no dependencies, no DOM
-  xml.ts       minimal XML reader for the plist subset
-  plist.ts     Apple property list build + parse
-  profile.ts   DnsConfig[] -> configuration profile
-  import.ts    .mobileconfig -> DnsConfig[]
-  addresses.ts resolver address filtering
-  validate.ts  IP validation, list parsing
-  types.ts     domain types
-  mod.ts       public surface
+src/lib/       pure core - no dependencies, no DOM
+  xml.ts         minimal XML reader for the plist subset
+  plist.ts       Apple property list build + parse
+  dnssettings.ts DnsConfig -> DNSSettings dictionary
+  ondemand.ts    DnsConfig -> OnDemandRules array
+  profile.ts     DnsConfig[] -> configuration profile
+  import.ts      .mobileconfig -> DnsConfig[]
+  addresses.ts   resolver address filtering
+  validate.ts    IP validation, list parsing
+  types.ts       domain types
+  mod.ts         public surface
 
-src/ui/      browser layer - DOM wiring only, no profile semantics
-  tool.ts      entry point for index.html
-  profile.ts   entry point for finalize.html
-  storage.ts   localStorage-backed configuration store
-  download.ts  Blob download, or the desktop binding when present
-  dom.ts       typed DOM helpers
+src/ui/        browser layer - DOM wiring only, no profile semantics
+  tool.ts        entry point for index.html
+  profile.ts     entry point for finalize.html
+  storage.ts     localStorage-backed configuration store
+  download.ts    Blob download, or the desktop binding when present
+  dom.ts         typed DOM helpers
 
-scripts/     build and dev server
-  build.ts     deno bundle -> dist/
-  serve.ts     static file server, --watch rebuilds
+scripts/       build and dev server
+  build.ts       deno bundle -> dist/
+  serve.ts       static file server, --watch rebuilds
 
-desktop.ts   deno desktop entry point: serves dist/, saves via a binding
-public/      copied verbatim into the build, names unchanged
+desktop.ts     deno desktop entry point: serves dist/, saves via a binding
+public/        copied verbatim into the build, names unchanged
 ```
+
+`dnssettings.ts` and `ondemand.ts` are split out because Apple defines both
+structures identically for the `.mobileconfig` payload and for the iOS 27
+`com.apple.configuration.network.dns-settings` declaration.
 
 ## Tests
 
@@ -164,6 +190,11 @@ Test fixtures are genuine profiles from upstream projects. The paulmillr
 profiles are public domain and committed here; the Mullvad profiles carry no
 license, so they are fetched on demand and the cases that use them contribute
 nothing until you run `deno task fixtures:fetch`.
+
+`test/golden/` holds the exact profiles the builder produced for every committed
+fixture. A failure there means generated profiles changed, which is a change to
+what users install: review the diff and update the files deliberately, rather
+than regenerating them to make the suite pass.
 
 On macOS the suite additionally pipes generated profiles through Apple's own
 `plutil`. The `check` workflow runs on both Ubuntu and macOS for every push and

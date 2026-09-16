@@ -15,6 +15,12 @@ export interface DnsConfig {
   readonly useCellular: boolean;
   readonly useEthernet: boolean;
   readonly prohibitDisablement: boolean;
+
+  /** Falls back to the system resolver. Needs iOS 26, macOS 26 or visionOS 26. */
+  readonly allowFailover?: boolean;
+
+  /** Limits the resolver to these domains. A single leading `*` is allowed. */
+  readonly supplementalMatchDomains?: readonly string[];
 }
 
 export interface ProfileOptions {

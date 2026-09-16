@@ -99,12 +99,17 @@ function card(config: DnsConfig, index: number): HTMLElement {
   if (config.excludedDomains.length > 0) {
     body.append(row("Excluded domains", config.excludedDomains.join(", ")));
   }
+  const matchDomains = config.supplementalMatchDomains ?? [];
+  if (matchDomains.length > 0) {
+    body.append(row("Limited to domains", matchDomains.join(", ")));
+  }
 
   const flags = document.createElement("p");
   flags.className = "profile-card__flags";
   if (config.useWifi) flags.append(badge("Wi-Fi"));
   if (config.useCellular) flags.append(badge("Cellular"));
   if (config.useEthernet) flags.append(badge("Ethernet"));
+  if (config.allowFailover === true) flags.append(badge("Failover allowed"));
   if (config.prohibitDisablement) flags.append(badge("Disablement prohibited"));
 
   article.append(header, body);

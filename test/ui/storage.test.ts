@@ -168,6 +168,37 @@ describe("corrupt stored data", () => {
   });
 });
 
+describe("fields added after v1", () => {
+  it("accepts entries written before they existed", () => {
+    const legacy = config();
+    storage.raw(CONFIGS_KEY, JSON.stringify([legacy]));
+    expect(store.list()).toEqual([legacy]);
+  });
+
+  it("round-trips them when present", () => {
+    const stored = config({
+      allowFailover: true,
+      supplementalMatchDomains: ["*.example.com"],
+    });
+    store.add(stored);
+    expect(store.list()).toEqual([stored]);
+  });
+
+  it("rejects entries where they have the wrong type", () => {
+    storage.raw(
+      CONFIGS_KEY,
+      JSON.stringify([{ ...config(), allowFailover: "yes" }]),
+    );
+    expect(store.list()).toEqual([]);
+
+    storage.raw(
+      CONFIGS_KEY,
+      JSON.stringify([{ ...config(), supplementalMatchDomains: "a,b" }]),
+    );
+    expect(store.list()).toEqual([]);
+  });
+});
+
 describe("edit index", () => {
   it("is undefined when unset", () => {
     expect(store.takeEditIndex()).toBeUndefined();

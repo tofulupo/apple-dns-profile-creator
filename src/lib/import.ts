@@ -140,6 +140,8 @@ export function parseProfile(plist: PlistValue): DnsConfig[] {
     const protocol = readProtocol(dnsSettings);
     const serverKey = protocol === "HTTPS" ? "ServerURL" : "ServerName";
     const rules = readOnDemandRules(payload);
+    const matchDomains =
+      asStringArray(dnsSettings?.["SupplementalMatchDomains"]) ?? [];
 
     configs.push({
       name: asString(payload["PayloadDisplayName"]) ?? "",
@@ -154,6 +156,11 @@ export function parseProfile(plist: PlistValue): DnsConfig[] {
       useCellular: rules.useCellular,
       useEthernet: rules.useEthernet,
       prohibitDisablement: payload["ProhibitDisablement"] === true,
+      // Mirrors the builder: absent rather than falsy, so an import/export
+      // cycle reproduces the source profile.
+      ...(dnsSettings?.["AllowFailover"] === true && { allowFailover: true }),
+      ...(matchDomains.length > 0 &&
+        { supplementalMatchDomains: matchDomains }),
     });
   }
 
