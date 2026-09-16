@@ -1,0 +1,11 @@
+dist/
+build/
+.DS_Store
+.zed
+
+# Packaged builds, e.g. dist/ tarred up to copy onto a device or server.
+*.tar.gz
+
+# Mullvad ships these profiles without a license, so they are fetched on
+# demand rather than redistributed here. See test/fixtures/README.md.
+test/fixtures/upstream/mullvad/

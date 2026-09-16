@@ -1,0 +1,32 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: denoland/setup-deno@v2
+        with:
+          # Pinned to a minor: deno bundle and deno desktop are both
+          # experimental.
+          deno-version: ~2.9
+
+      # Unlicensed upstream profiles, so they are not committed.
+      - name: Fetch upstream fixtures
+        continue-on-error: true
+        run: deno task fixtures:fetch
+
+      - run: deno task check
+
+      - run: deno task build

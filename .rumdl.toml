@@ -1,0 +1,6 @@
+[global]
+# Exclude files/directories
+exclude = ["dist", ".git", "build"]
+
+# Set line length limit
+line-length = 120

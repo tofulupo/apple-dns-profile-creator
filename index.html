@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DNS Profile Creator</title>
+    <meta name="description"
+      content="Build encrypted DNS (DoH and DoT) configuration profiles for iOS and macOS, entirely in your browser.">
+    <link rel="stylesheet" href="css/app.css">
+    <script type="module" src="src/ui/tool.ts"></script>
+
+    <link rel="apple-touch-icon" sizes="180x180"
+      href="icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32"
+      href="icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16"
+      href="icons/favicon-16x16.png">
+    <link rel="manifest" href="site.webmanifest">
+    <link rel="mask-icon" href="icons/safari-pinned-tab.svg" color="#2f6feb">
+    <link rel="shortcut icon" href="icons/favicon.ico">
+    <meta name="theme-color" content="#f4f6f9"
+      media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#14171c"
+      media="(prefers-color-scheme: dark)">
+  </head>
+
+  <body>
+    <div class="page">
+      <header class="site-header">
+        <h1>DNS profile creator <span id="appVersion" class="version"></span></h1>
+        <h2>Encrypted DNS profiles for iOS 14+ and macOS 11+</h2>
+      </header>
+
+      <nav class="tabs">
+        <a href="index.html" class="tab" aria-current="page">Tool</a>
+        <a href="finalize.html" class="tab">Profile</a>
+      </nav>
+
+      <main>
+        <section class="panel">
+          <h3>Start from an existing profile</h3>
+          <div class="field" id="field-fileupload">
+            <label for="fileupload"
+              class="optional">Upload a .mobileconfig</label>
+            <input type="file" id="fileupload"
+              accept=".mobileconfig,application/x-apple-aspen-config">
+            <span
+              class="hint">Signed profiles work too &mdash; the embedded settings are read directly.</span>
+            <p class="field__error" hidden></p>
+          </div>
+        </section>
+
+        <form id="mainForm" novalidate>
+          <section class="panel">
+            <h3>Provider</h3>
+
+            <div class="field" id="field-provName">
+              <label for="provName">Name of DNS provider</label>
+              <input type="text" id="provName"
+                placeholder="MyCoolSecureProvider">
+              <p class="field__error" hidden></p>
+            </div>
+
+            <fieldset class="field">
+              <legend class="visually-hidden">Encryption protocol</legend>
+              <span class="choice">
+                <input type="radio" id="doh" name="encryption" value="HTTPS"
+                  checked>
+                <label for="doh">DNS-over-HTTPS (DoH)</label>
+              </span>
+              <span class="choice">
+                <input type="radio" id="dot" name="encryption" value="TLS">
+                <label for="dot">DNS-over-TLS (DoT)</label>
+              </span>
+            </fieldset>
+
+            <div class="field" id="field-serverUrl">
+              <label for="serverUrl"
+                id="dohdotServerLabel">DoH server URL</label>
+              <input type="text" id="serverUrl"
+                placeholder="https://example.com/dns-query">
+              <p class="field__error" hidden></p>
+            </div>
+          </section>
+
+          <section class="panel">
+            <h3>Resolver addresses</h3>
+            <div class="field" id="field-serverAddresses">
+              <label for="serverAddresses" class="optional">IP addresses</label>
+              <textarea id="serverAddresses" rows="4"
+                placeholder="2001:db8::1&#10;2001:db8::2&#10;192.0.2.1"></textarea>
+              <span
+                class="hint">One per line, or comma separated. Any number of IPv4 and IPv6
+                        addresses. They are tried in the order given, so list IPv6 first if you prefer it.</span>
+              <p class="field__error" hidden></p>
+            </div>
+          </section>
+
+          <details class="disclosure">
+            <summary>Advanced</summary>
+            <div class="disclosure__body">
+              <div class="field">
+                <label for="exclWifi"
+                  class="optional">Excluded Wi-Fi networks</label>
+                <input type="text" id="exclWifi"
+                  placeholder="MyHomeNetwork, Silence of the LANs">
+                <span
+                  class="hint">Comma-separated SSIDs on which encrypted DNS will be disabled.</span>
+              </div>
+
+              <div class="field">
+                <label for="exclDomains"
+                  class="optional">Excluded domains</label>
+                <input type="text" id="exclDomains"
+                  placeholder="example.com, internal.lan">
+                <span
+                  class="hint">Comma-separated domains on which encrypted DNS will be disabled.</span>
+              </div>
+
+              <fieldset class="field">
+                <legend>Interfaces to use encrypted DNS on</legend>
+                <div class="choice-row">
+                  <span class="choice">
+                    <input type="checkbox" id="useWifi" checked>
+                    <label for="useWifi">Wi-Fi</label>
+                  </span>
+                  <span class="choice">
+                    <input type="checkbox" id="useCell" checked>
+                    <label for="useCell">Cellular</label>
+                  </span>
+                  <span class="choice">
+                    <input type="checkbox" id="useEthernet" checked>
+                    <label for="useEthernet">Ethernet</label>
+                  </span>
+                </div>
+                <span
+                  class="hint">Untick to disable encrypted DNS on that interface.</span>
+              </fieldset>
+
+              <div class="field">
+                <span class="choice">
+                  <input type="checkbox" id="lockProfile">
+                  <label for="lockProfile">Prohibit disablement</label>
+                </span>
+                <span
+                  class="hint">Stops users removing the profile. Only effective on supervised
+                            devices.</span>
+              </div>
+            </div>
+          </details>
+
+          <input id="btn_addToProfile" type="submit"
+            class="btn btn--primary btn--block" value="Add to profile">
+        </form>
+      </main>
+
+      <footer class="site-footer">
+        <a href="https://adguard-dns.io/kb/general/dns-providers/"
+          target="_blank"
+          rel="noopener">Find a DNS provider</a>
+        <a href="https://github.com/tofulupo/apple-dns-profile-creator"
+          target="_blank"
+          rel="noopener">Source Code</a>
+      </footer>
+    </div>
+  </body>
+</html>

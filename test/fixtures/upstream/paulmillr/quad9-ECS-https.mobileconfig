@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>DNSSettings</key>
+			<dict>
+				<key>DNSProtocol</key>
+				<string>HTTPS</string>
+				<key>ServerAddresses</key>
+				<array>
+					<string>2620:fe::fe:11</string>
+					<string>2620:fe::11</string>
+					<string>9.9.9.11</string>
+					<string>149.112.112.11</string>
+				</array>
+				<key>ServerURL</key>
+				<string>https://dns11.quad9.net/dns-query</string>
+			</dict>
+			<key>PayloadDescription</key>
+			<string>Configures device to use Quad9 w/ ECS Encrypted DNS over HTTPS</string>
+			<key>PayloadDisplayName</key>
+			<string>Quad9 w/ ECS Encrypted DNS over HTTPS</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.dnsSettings.managed.be15a83d-45e7-56c2-af36-23c6c8c72198</string>
+			<key>PayloadType</key>
+			<string>com.apple.dnsSettings.managed</string>
+			<key>PayloadUUID</key>
+			<string>BE15A83D-45E7-56C2-AF36-23C6C8C72198</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+			<key>ProhibitDisablement</key>
+			<false/>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>Configures device to use Quad9 w/ ECS over HTTPS
+Operated by Quad9 Foundation. Supports ECS. Blocks malware.
+Server location: 🇨🇭.
+Filtering: yes</string>
+	<key>PayloadDisplayName</key>
+	<string>Quad9 w/ ECS Encrypted DNS over HTTPS</string>
+	<key>PayloadIdentifier</key>
+	<string>com.paulmillr.apple-dns</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadScope</key>
+	<string>System</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>C4627D69-4CBC-5EB3-A239-4BCE486AF2D9</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

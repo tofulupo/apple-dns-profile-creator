@@ -1,0 +1,38 @@
+{
+  // This is a Deno project with no package.json or tsconfig.json, so Zed's
+  // default TypeScript language server has no idea what to make of it: JSR
+  // specifiers like "@std/expect" look like missing modules, and the `Deno`
+  // global looks undefined. Both are false positives - `deno check` passes.
+  //
+  // Point the editor at the Deno language server instead, which resolves
+  // imports through deno.json and knows the Deno globals.
+  "languages": {
+    "TypeScript": {
+      "language_servers": [
+        "deno",
+        "!typescript-language-server",
+        "!vtsls",
+        "!eslint"
+      ],
+      "formatter": "language_server"
+    },
+    "TSX": {
+      "language_servers": [
+        "deno",
+        "!typescript-language-server",
+        "!vtsls",
+        "!eslint"
+      ],
+      "formatter": "language_server"
+    },
+    "JavaScript": {
+      "language_servers": [
+        "deno",
+        "!typescript-language-server",
+        "!vtsls",
+        "!eslint"
+      ],
+      "formatter": "language_server"
+    }
+  }
+}

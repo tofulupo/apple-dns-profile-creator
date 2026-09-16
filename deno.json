@@ -1,0 +1,63 @@
+{
+  "version": "3.1.0",
+  "license": "MIT",
+  "tasks": {
+    "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
+    "build": "deno run --allow-read --allow-write --allow-run scripts/build.ts",
+    "preview": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts",
+    "desktop": "deno task build && deno desktop --include dist --allow-read --allow-write --allow-env --allow-net --allow-run=open desktop.ts",
+    "test": "deno test --allow-read --allow-write --allow-run",
+    "check": "deno check src test scripts desktop.ts && deno lint && deno fmt --check && deno task test",
+    "fixtures:fetch": "deno run --allow-net --allow-read --allow-write --allow-run scripts/fetch_fixtures.ts",
+    "fixtures:lint": "deno run --allow-read --allow-run scripts/lint_fixtures.ts"
+  },
+  "imports": {
+    "@std/expect": "jsr:@std/expect@^1",
+    "@std/fs": "jsr:@std/fs@^1",
+    "@std/http": "jsr:@std/http@^1",
+    "@std/path": "jsr:@std/path@^1",
+    "@std/testing": "jsr:@std/testing@^1"
+  },
+  "compilerOptions": {
+    "lib": ["deno.ns", "dom", "dom.iterable", "esnext"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true
+  },
+  "desktop": {
+    "app": {
+      "name": "DNS Profile Creator",
+      "identifier": "local.encrypted-dns.tool",
+      "icons": {
+        "macos": [
+          { "path": "./public/icons/favicon-16x16.png", "size": 16 },
+          { "path": "./public/icons/favicon-32x32.png", "size": 32 },
+          { "path": "./public/icons/android-chrome-512x512.png", "size": 512 }
+        ],
+        "windows": "./public/icons/favicon.ico",
+        "linux": "./public/icons/android-chrome-512x512.png"
+      }
+    },
+    "backend": "webview",
+    "output": {
+      "macos": "./build/DNS Profile Creator",
+      "windows": "./build/dns-profile-creator",
+      "linux": "./build/dns-profile-creator"
+    }
+  },
+  "fmt": {
+    "lineWidth": 80,
+    "exclude": ["dist/", "build/", "test/fixtures/"]
+  },
+  "lint": {
+    "exclude": ["dist/", "build/", "test/fixtures/"]
+  },
+  "exclude": [
+    "dist/",
+    "build/",
+    "test/fixtures/"
+  ]
+}
