@@ -3,6 +3,9 @@
 A small website that generates encrypted-DNS (DoH and DoT) configuration
 profiles for iOS and macOS.
 
+**[Use it now](https://tofulupo.github.io/apple-dns-profile-creator/)** - no
+install, no sign-up, nothing leaves your device.
+
 Apple has supported DNS-over-HTTPS and DNS-over-TLS since iOS 14 and macOS 11,
 but exposes no way to use them without an app or a configuration profile. This
 tool builds those profiles.
@@ -189,7 +192,6 @@ removed.
   test suite uses as fixtures
 - [Mullvad](https://github.com/mullvad/encrypted-dns-profiles) for their
   published profiles
-- nitrohorse for [encrypted-dns.party](https://encrypted-dns.party)
 
 [upstream]: https://code.diluvian.cc/fyr77/dns-mobileconfig
 

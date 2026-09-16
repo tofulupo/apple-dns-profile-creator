@@ -1,7 +1,6 @@
 dist/
 build/
 .DS_Store
-.zed
 
 # Packaged builds, e.g. dist/ tarred up to copy onto a device or server.
 *.tar.gz

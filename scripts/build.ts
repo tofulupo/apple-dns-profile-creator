@@ -63,6 +63,8 @@ export async function build(): Promise<void> {
   }
 
   for await (const entry of Deno.readDir(join(ROOT, "public"))) {
+    // Dotfiles are skipped so stray .DS_Store files do not get published.
+    if (entry.name.startsWith(".")) continue;
     await copy(join(ROOT, "public", entry.name), join(DIST, entry.name), {
       overwrite: true,
     });

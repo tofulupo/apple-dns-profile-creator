@@ -1,5 +1,5 @@
 {
-  "version": "3.1.0",
+  "version": "3.1.1",
   "license": "MIT",
   "tasks": {
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
@@ -32,13 +32,9 @@
       "name": "DNS Profile Creator",
       "identifier": "local.encrypted-dns.tool",
       "icons": {
-        "macos": [
-          { "path": "./public/icons/favicon-16x16.png", "size": 16 },
-          { "path": "./public/icons/favicon-32x32.png", "size": 32 },
-          { "path": "./public/icons/android-chrome-512x512.png", "size": 512 }
-        ],
+        "macos": "./public/icons/web-app-manifest-512x512.png",
         "windows": "./public/icons/favicon.ico",
-        "linux": "./public/icons/android-chrome-512x512.png"
+        "linux": "./public/icons/web-app-manifest-512x512.png"
       }
     },
     "backend": "webview",
