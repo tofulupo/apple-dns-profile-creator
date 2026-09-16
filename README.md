@@ -30,11 +30,14 @@ opposites rather than duplicates.
 | **Excluded domains** | A deny list. Encrypted DNS is used everywhere _except_ these domains. |
 | **Limit to domains** | An allow list. Encrypted DNS is used _only_ for these domains.        |
 
-Leaving both empty - the default - sends every query through the encrypted
-resolver, which is usually what you want. "Limit to domains" is for split DNS,
-where an internal resolver should answer for one zone and the network's own
-resolver for everything else. A single leading `*` is allowed, so
-`*.example.com` and `example.com` both match `mail.example.com`.
+Leaving both empty - **the default** - sends every query through the encrypted
+resolver, which is usually what you want.
+
+> [!NOTE]
+> "Limit to domains" is for split DNS, where an internal resolver should answer
+> for one zone and the network's own resolver for everything else. A single
+> leading `*` is allowed, so `*.example.com` and `example.com` both match
+> `mail.example.com`.
 
 Under the hood they are different mechanisms: exclusions become `OnDemandRules`
 that switch the resolver off, while the limit becomes `SupplementalMatchDomains`
@@ -49,7 +52,8 @@ inside `DNSSettings`. Setting both is legal but rarely useful.
 | Host it for your household            | `dist/` on any server | Static files, no runtime needed    |
 | Work on the code                      | `deno task dev`       | Rebuilds on save                   |
 
-Requires [Deno](https://deno.com) 2.9 or newer.
+> [!NOTE]
+> Requires [Deno](https://deno.com) 2.9 or newer.
 
 ## Tasks
 
@@ -83,9 +87,9 @@ DNS_TOOL_PORT=8080 deno task dev   # different port
 deno task preview
 ```
 
-Then browse to `http://<your-machine-ip>:5173`, configure the profile, and
-download it. iOS (safari) recognises the media type and offers to install; if it
-saves the file instead, opening it from Files should start the same flow.
+Browse to `http://<your-machine-ip>:5173`, configure the profile, and download
+it. iOS (Safari) recognises the media type and offers to install; if it saves
+the file instead, opening it from Files should start the same flow.
 
 For a permanent install, `deno task build` produces a static `dist/` that any
 web server can host, over HTTP or HTTPS. Nothing server-side is required.
@@ -94,9 +98,12 @@ web server can host, over HTTP or HTTPS. Nothing server-side is required.
 
 The `pages` workflow publishes `dist/` on every push to `main`.
 
-A hosted instance stays entirely client-side - nothing is uploaded. The profiles
-it produces are **unsigned**, so iOS and macOS label them "Not Signed" during
-installation and ask for confirmation. The download page states this.
+A hosted instance stays entirely client-side - nothing is uploaded.
+
+> [!NOTE]
+> The profiles it produces are **unsigned**, so iOS and macOS label them "Not
+> Signed" during installation and ask for confirmation. The download page states
+> this.
 
 ## Desktop app
 
@@ -125,8 +132,9 @@ To serve the dev or preview server over TLS, set both variables:
 DNS_TOOL_TLS_CERT=/path/cert.pem DNS_TOOL_TLS_KEY=/path/key.pem deno task dev
 ```
 
-Setting only one is an error rather than a silent fallback to HTTP. For a real
-deployment, terminating TLS at a reverse proxy
+> [!NOTE]
+> Setting only one is an error rather than a silent fallback to HTTP. For a real
+> deployment, terminating TLS at a reverse proxy
 
 ## Configuration
 
@@ -171,9 +179,10 @@ desktop.ts     deno desktop entry point: serves dist/, saves via a binding
 public/        copied verbatim into the build, names unchanged
 ```
 
-`dnssettings.ts` and `ondemand.ts` are split out because Apple defines both
-structures identically for the `.mobileconfig` payload and for the iOS 27
-`com.apple.configuration.network.dns-settings` declaration.
+> [!NOTE]
+> `dnssettings.ts` and `ondemand.ts` are split out because Apple defines both
+> structures identically for the `.mobileconfig` payload and for the **iOS 27**
+> `com.apple.configuration.network.dns-settings` declaration.
 
 ## Tests
 
