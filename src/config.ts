@@ -26,7 +26,7 @@ export interface AppConfig {
 }
 
 export const appConfig: AppConfig = {
-  appVersion: "3.1.1",
+  appVersion: "3.1.2",
   identifierPrefix: "local.encrypted-dns.",
   profileFilename: "encrypted-dns.mobileconfig",
   systemScopeByDefault: true,

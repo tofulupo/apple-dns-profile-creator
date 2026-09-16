@@ -36,6 +36,10 @@ function writeForm(config: DnsConfig): void {
   input(config.protocol === "HTTPS" ? "doh" : "dot").checked = true;
   input("serverUrl").value = config.serverUrl;
   textarea("serverAddresses").value = config.serverAddresses.join("\n");
+  // Reveal imported addresses rather than hiding them in the collapsed section.
+  if (config.serverAddresses.length > 0) {
+    element<HTMLDetailsElement>("disclosure-serverAddresses").open = true;
+  }
   input("exclWifi").value = config.excludedWifi.join(", ");
   input("exclDomains").value = config.excludedDomains.join(", ");
   input("useWifi").checked = config.useWifi;

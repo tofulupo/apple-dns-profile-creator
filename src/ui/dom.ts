@@ -26,4 +26,11 @@ export function setFieldError(
     error.textContent = message ?? "";
     error.hidden = message === null;
   }
+
+  // A field inside a collapsed <details> would report its error invisibly,
+  // leaving the submit button looking inert for no stated reason.
+  if (message !== null) {
+    const disclosure = field.closest("details");
+    if (disclosure instanceof HTMLDetailsElement) disclosure.open = true;
+  }
 }
