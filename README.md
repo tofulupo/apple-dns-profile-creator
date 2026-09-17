@@ -1,7 +1,9 @@
 # Apple DNS Profile Creator
 
 A small website that generates encrypted-DNS (DoH and DoT) configuration
-profiles for iOS and macOS.
+profiles for iOS and macOS. Everything happens in the browser. Nothing is
+uploaded anywhere, and the tool works fully offline, which makes it suitable for
+hosting on a home network.
 
 **[Use it now](https://tofulupo.github.io/apple-dns-profile-creator/)** - no
 install, no sign-up, nothing leaves your device.
@@ -10,52 +12,24 @@ Apple has supported DNS-over-HTTPS and DNS-over-TLS since iOS 14 and macOS 11,
 but exposes no way to use them without an app or a configuration profile. This
 tool builds those profiles.
 
-Everything happens in the browser. Nothing is uploaded anywhere, and the tool
-works fully offline, which makes it suitable for hosting on a home network.
-
-## Pages
-
-| File            | Purpose                                                         |
-| --------------- | --------------------------------------------------------------- |
-| `index.html`    | The tool: upload an existing profile, or enter settings by hand |
-| `finalize.html` | Profile view: review the collected configurations and download  |
-
-## Excluded domains vs. limited domains
-
-Two fields under **Advanced** both take a list of domains, and they are
-opposites rather than duplicates.
-
-| Field                | Effect                                                                |
-| -------------------- | --------------------------------------------------------------------- |
-| **Excluded domains** | A deny list. Encrypted DNS is used everywhere _except_ these domains. |
-| **Limit to domains** | An allow list. Encrypted DNS is used _only_ for these domains.        |
-
-Leaving both empty - **the default** - sends every query through the encrypted
-resolver, which is usually what you want.
-
-> [!NOTE]
-> "Limit to domains" is for split DNS, where an internal resolver should answer
-> for one zone and the network's own resolver for everything else. A single
-> leading `*` is allowed, so `*.example.com` and `example.com` both match
-> `mail.example.com`.
-
-Under the hood they are different mechanisms: exclusions become `OnDemandRules`
-that switch the resolver off, while the limit becomes `SupplementalMatchDomains`
-inside `DNSSettings`. Setting both is legal but rarely useful.
-
 ## Which way to run it
 
-| You want to                           | Use                   | Notes                              |
-| ------------------------------------- | --------------------- | ---------------------------------- |
-| Install a profile on an iPhone / iPad | LAN server            | The device must download it itself |
-| Install a profile on a Mac            | Desktop app           | Saves and opens System Settings    |
-| Host it for your household            | `dist/` on any server | Static files, no runtime needed    |
-| Work on the code                      | `deno task dev`       | Rebuilds on save                   |
+| You want to                           | Use                     | Notes                              |
+| ------------------------------------- | ----------------------- | ---------------------------------- |
+| Install a profile on an iPhone / iPad | LAN server/github pages | The device must download it itself |
+| Install a profile on a Mac            | Desktop app             | Saves and opens System Settings    |
+| Host it for your household/company    | `dist/` on any server   | Static files, no runtime needed    |
+| Work on the code                      | `deno task dev`         | Rebuilds on save                   |
 
-> [!NOTE]
-> Requires [Deno](https://deno.com) 2.9 or newer.
+## first steps
 
-## Tasks
+### check out the code
+
+```sh
+git clone git@github.com:tofulupo/apple-dns-profile-creator.git
+```
+
+### Tasks to run
 
 ```sh
 deno task dev              # build, watch and serve on the LAN
@@ -71,7 +45,7 @@ deno task fixtures:fetch   # (re)download upstream .mobileconfig test fixtures
 deno task fixtures:lint    # validate fixtures with Apple's plutil (macOS only)
 ```
 
-## Development
+### local development
 
 ```sh
 deno task dev                      # http://localhost:5173, also on the LAN
@@ -81,75 +55,32 @@ DNS_TOOL_PORT=8080 deno task dev   # different port
 `dev` builds `dist/`, serves it, and rebuilds whenever anything in `src/`,
 `css/`, or the two HTML files changes. There is no hot reload; refresh the page.
 
-## Running on a LAN
+### Tests
 
 ```sh
-deno task preview
+deno task test             # the suite
+deno task check            # type-check + lint + fmt --check + the suite
+deno task fixtures:fetch   # required once, for the Mullvad-dependent tests
 ```
 
-Browse to `http://<your-machine-ip>:5173`, configure the profile, and download
-it. iOS (Safari) recognises the media type and offers to install; if it saves
-the file instead, opening it from Files should start the same flow.
+Expected behaviour is derived from Apple's payload documentation and from real
+profiles known to install on devices.
 
-For a permanent install, `deno task build` produces a static `dist/` that any
-web server can host, over HTTP or HTTPS. Nothing server-side is required.
+Test fixtures are genuine profiles from upstream projects. The paulmillr
+profiles are public domain and committed here; the Mullvad profiles carry no
+license, so they are fetched on demand and the cases that use them contribute
+nothing until you run `deno task fixtures:fetch`.
 
-### GitHub Pages
+`test/golden/` holds the exact profiles the builder produced for every committed
+fixture. A failure there means generated profiles changed, which is a change to
+what users install: review the diff and update the files deliberately, rather
+than regenerating them to make the suite pass.
 
-The `pages` workflow publishes `dist/` on every push to `main`.
+On macOS the suite additionally pipes generated profiles through Apple's own
+`plutil`. The `check` workflow runs on both Ubuntu and macOS for every push and
+pull request, so that leg is covered in CI.
 
-A hosted instance stays entirely client-side - nothing is uploaded.
-
-> [!NOTE]
-> The profiles it produces are **unsigned**, so iOS and macOS label them "Not
-> Signed" during installation and ask for confirmation. The download page states
-> this.
-
-## Desktop app
-
-```sh
-deno task desktop
-```
-
-Packages `dist/` and a small Deno server into a native application in `build/`
-using [`deno desktop`](https://docs.deno.com/runtime/desktop/) - about 66 MB,
-with the OS's own webview. Add `--all-targets` to cross-compile for macOS,
-Windows and Linux from one machine.
-
-**The bundle is only ad-hoc signed**, which is fine locally but not
-distributable. Set `desktop.macos.codesignIdentity` in `deno.json` to a
-Developer ID to produce something notarizable.
-
-## HTTP or HTTPS
-
-**Plain HTTP is fine.** The one API that would have required https,
-`crypto.randomUUID()`, is wrapped in [`src/lib/uuid.ts`](src/lib/uuid.ts), which
-falls back to `crypto.getRandomValues()`
-
-To serve the dev or preview server over TLS, set both variables:
-
-```sh
-DNS_TOOL_TLS_CERT=/path/cert.pem DNS_TOOL_TLS_KEY=/path/key.pem deno task dev
-```
-
-> [!NOTE]
-> Setting only one is an error rather than a silent fallback to HTTP. For a real
-> deployment, terminating TLS at a reverse proxy
-
-## Configuration
-
-Application settings live in [`src/config.ts`](src/config.ts) as typed constants
-
-| Variable            | Effect                                 |
-| ------------------- | -------------------------------------- |
-| `DNS_TOOL_PORT`     | Dev/preview server port (default 5173) |
-| `DNS_TOOL_TLS_CERT` | PEM certificate path - enables HTTPS   |
-| `DNS_TOOL_TLS_KEY`  | PEM private key path - enables HTTPS   |
-
-Desktop packaging settings (name, icons, identifier, output paths, signing) live
-in the `desktop` block of [`deno.json`](deno.json).
-
-## Architecture
+### Architecture
 
 ```sh
 src/lib/       pure core - no dependencies, no DOM
@@ -184,30 +115,108 @@ public/        copied verbatim into the build, names unchanged
 > structures identically for the `.mobileconfig` payload and for the **iOS 27**
 > `com.apple.configuration.network.dns-settings` declaration.
 
-## Tests
+## the app
+
+### Pages
+
+| File            | Purpose                                                         |
+| --------------- | --------------------------------------------------------------- |
+| `index.html`    | The tool: upload an existing profile, or enter settings by hand |
+| `finalize.html` | Profile view: review the collected configurations and download  |
+
+### Excluded domains vs. limited domains
+
+Two fields under **Advanced** both take a list of domains, and they are
+opposites rather than duplicates.
+
+| Field                | Effect                                                                |
+| -------------------- | --------------------------------------------------------------------- |
+| **Excluded domains** | A deny list. Encrypted DNS is used everywhere _except_ these domains. |
+| **Limit to domains** | An allow list. Encrypted DNS is used _only_ for these domains.        |
+
+Leaving both empty - **the default** - sends every query through the encrypted
+resolver, which is usually what you want.
+
+> [!NOTE]
+> "Limit to domains" is for split DNS, where an internal resolver should answer
+> for one zone and the network's own resolver for everything else. A single
+> leading `*` is allowed, so `*.example.com` and `example.com` both match
+> `mail.example.com`.
+
+Under the hood they are different mechanisms: exclusions become `OnDemandRules`
+that switch the resolver off, while the limit becomes `SupplementalMatchDomains`
+inside `DNSSettings`. Setting both is legal but rarely useful.
+
+> [!NOTE]
+> Requires [Deno](https://deno.com) 2.9 or newer.
+
+### Running on a LAN
 
 ```sh
-deno task test             # the suite
-deno task check            # type-check + lint + fmt --check + the suite
-deno task fixtures:fetch   # required once, for the Mullvad-dependent tests
+deno task preview
 ```
 
-Expected behaviour is derived from Apple's payload documentation and from real
-profiles known to install on devices.
+Browse to `http://<your-machine-ip>:5173`, configure the profile, and download
+it. iOS (Safari) recognises the media type and offers to install; if it saves
+the file instead, opening it from Files should start the same flow.
 
-Test fixtures are genuine profiles from upstream projects. The paulmillr
-profiles are public domain and committed here; the Mullvad profiles carry no
-license, so they are fetched on demand and the cases that use them contribute
-nothing until you run `deno task fixtures:fetch`.
+For a permanent install, `deno task build` produces a static `dist/` that any
+web server can host, over HTTP or HTTPS. Nothing server-side is required.
 
-`test/golden/` holds the exact profiles the builder produced for every committed
-fixture. A failure there means generated profiles changed, which is a change to
-what users install: review the diff and update the files deliberately, rather
-than regenerating them to make the suite pass.
+### GitHub Pages
 
-On macOS the suite additionally pipes generated profiles through Apple's own
-`plutil`. The `check` workflow runs on both Ubuntu and macOS for every push and
-pull request, so that leg is covered in CI.
+The `pages` workflow publishes `dist/` on every push to `main`.
+
+A hosted instance stays entirely client-side - nothing is uploaded.
+
+> [!NOTE]
+> The profiles it produces are **unsigned**, so iOS and macOS label them "Not
+> Signed" during installation and ask for confirmation. The download page states
+> this.
+
+### Desktop app
+
+```sh
+deno task desktop
+```
+
+Packages `dist/` and a small Deno server into a native application in `build/`
+using [`deno desktop`](https://docs.deno.com/runtime/desktop/) - about 66 MB,
+with the OS's own webview. Add `--all-targets` to cross-compile for macOS,
+Windows and Linux from one machine.
+
+**The bundle is only ad-hoc signed**, which is fine locally but not
+distributable. Set `desktop.macos.codesignIdentity` in `deno.json` to a
+Developer ID to produce something notarizable.
+
+### HTTP or HTTPS
+
+**Plain HTTP is fine.** The one API that would have required https,
+`crypto.randomUUID()`, is wrapped in [`src/lib/uuid.ts`](src/lib/uuid.ts), which
+falls back to `crypto.getRandomValues()`
+
+To serve the dev or preview server over TLS, set both variables:
+
+```sh
+DNS_TOOL_TLS_CERT=/path/cert.pem DNS_TOOL_TLS_KEY=/path/key.pem deno task dev
+```
+
+> [!NOTE]
+> Setting only one is an error rather than a silent fallback to HTTP. For a real
+> deployment, terminating TLS at a reverse proxy
+
+### Configuration
+
+Application settings live in [`src/config.ts`](src/config.ts) as typed constants
+
+| Variable            | Effect                                 |
+| ------------------- | -------------------------------------- |
+| `DNS_TOOL_PORT`     | Dev/preview server port (default 5173) |
+| `DNS_TOOL_TLS_CERT` | PEM certificate path - enables HTTPS   |
+| `DNS_TOOL_TLS_KEY`  | PEM private key path - enables HTTPS   |
+
+Desktop packaging settings (name, icons, identifier, output paths, signing) live
+in the `desktop` block of [`deno.json`](deno.json).
 
 ## Profile signing
 
