@@ -25,7 +25,7 @@
     <div class="page">
       <header class="site-header">
         <h1>DNS profile creator <span id="appVersion" class="version"></span></h1>
-        <h2>Encrypted DNS profiles for iOS 14+ and macOS 11+</h2>
+        <h2>Encrypted DNS for iOS and macOS</h2>
       </header>
 
       <nav class="tabs">
@@ -35,24 +35,24 @@
 
       <main>
         <section class="panel">
-          <h3>Start from an existing profile</h3>
+          <h3>Load existing profile</h3>
           <div class="field" id="field-fileupload">
             <label for="fileupload"
               class="optional">Upload a .mobileconfig</label>
             <input type="file" id="fileupload"
               accept=".mobileconfig,application/x-apple-aspen-config">
             <span
-              class="hint">Signed profiles work too &mdash; the embedded settings are read directly.</span>
+              class="hint">Signed profiles work too.</span>
             <p class="field__error" hidden></p>
           </div>
         </section>
 
         <form id="mainForm" novalidate>
           <section class="panel">
-            <h3>Provider</h3>
+            <h3>DNS Provider</h3>
 
             <div class="field" id="field-provName">
-              <label for="provName">Name of DNS provider</label>
+              <label for="provName">Choose a Name</label>
               <input type="text" id="provName"
                 placeholder="MyCoolSecureProvider">
               <p class="field__error" hidden></p>

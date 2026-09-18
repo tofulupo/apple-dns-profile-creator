@@ -1,8 +1,4 @@
-# This is a self-hosted tool, not a public website, so crawlers are turned away
-# wholesale. Change to "Allow: /" if you ever publish it somewhere you want
-# indexed.
-#
-# Lighthouse also flags a *missing* robots.txt: a dev server answers the request
-# with index.html, which then fails to parse as robots syntax.
 User-agent: *
-Disallow: /
+Allow: /
+
+Sitemap: https://tofulupo.github.io/apple-dns-profile-creator/sitemap.xml
