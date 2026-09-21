@@ -522,6 +522,7 @@ input[type="file"] {
   border-radius: var(--radius);
   color: var(--muted);
   text-align: center;
+  margin-bottom: 1.5rem;
 }
 
 .empty-state p {
