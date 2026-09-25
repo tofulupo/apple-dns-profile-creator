@@ -1,8 +1,14 @@
 <div id="dynamicList"></div>
 
-<div id="emptyState" class="empty-state">
-  <p>No configurations added yet.</p>
-  <a href="index.html" class="btn">Add a configuration</a>
+<div class="field" id="emptyState">
+  <a class="zone" id="emptyZone" href="index.html" draggable="false">
+    <span class="zone__icon zone__icon--profile" aria-hidden="true"></span>
+    <span class="zone__text">
+      <span class="zone__title">No config yet</span>
+    </span>
+    <span class="btn">Add .mobileconfig</span>
+  </a>
+  <p class="field__error" hidden></p>
 </div>
 
 <div class="actions">

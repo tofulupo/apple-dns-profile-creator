@@ -101,6 +101,7 @@ src/ui/        browser layer - DOM wiring only, no profile semantics
   profile.ts     entry point for pages/finalize.html
   storage.ts     localStorage-backed configuration store
   download.ts    Blob download, or the desktop binding when present
+  dropzone.ts    drag and drop onto either page's zone, reading the file
   dom.ts         typed DOM helpers
 
 pages/         HTML sources

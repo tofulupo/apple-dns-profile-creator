@@ -6,14 +6,16 @@ import { appConfig } from "../config.ts";
 import { buildProfileXml } from "../lib/profile.ts";
 import type { DnsConfig } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
-import { element, input } from "./dom.ts";
+import { element, input, setFieldError } from "./dom.ts";
 import { downloadProfile } from "./download.ts";
+import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { createConfigStore } from "./storage.ts";
 
 const store = createConfigStore(localStorage);
 
 const list = element("dynamicList");
 const emptyState = element("emptyState");
+const emptyZone = element("emptyZone");
 const downloadButton = element<HTMLButtonElement>("downloadBtn");
 const deleteAllButton = element<HTMLButtonElement>("deleteAllBtn");
 
@@ -126,6 +128,26 @@ function render(): void {
   deleteAllButton.disabled = configs.length === 0;
 }
 
+/**
+ * Adds every configuration in a dropped profile straight to the list. Unlike
+ * the tool page there is no form to review a single one in first.
+ */
+async function importFile(file: File): Promise<void> {
+  let configs: DnsConfig[];
+  try {
+    configs = await readProfileFile(file);
+  } catch (error) {
+    setFieldError(emptyState, uploadError(error));
+    return;
+  }
+
+  setFieldError(emptyState, null);
+  for (const config of configs) {
+    store.add(config);
+  }
+  render();
+}
+
 async function download(): Promise<void> {
   const configs = store.list();
   if (configs.length === 0) return;
@@ -156,6 +178,7 @@ async function download(): Promise<void> {
 function init(): void {
   input("systemChk").checked = appConfig.systemScopeByDefault;
   downloadButton.addEventListener("click", download);
+  enableDrop(emptyZone, (file) => void importFile(file));
   deleteAllButton.addEventListener("click", () => {
     if (!confirm("Delete all configurations on this page?")) return;
     store.clear();

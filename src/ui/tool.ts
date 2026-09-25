@@ -2,16 +2,19 @@
  * Entry point for the tool page (`index.html`).
  */
 
-import { parseProfileXml } from "../lib/import.ts";
 import { isIPv4, isIPv6, parseList } from "../lib/validate.ts";
 import type { DnsConfig } from "../lib/types.ts";
 import { element, input, setFieldError, textarea } from "./dom.ts";
+import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { createConfigStore } from "./storage.ts";
 
 const store = createConfigStore(localStorage);
 
 const form = element<HTMLFormElement>("mainForm");
 const submit = input("btn_addToProfile");
+const dropzone = element("dropzone");
+const uploadStatus = element("uploadStatus");
+const uploadHint = uploadStatus.textContent;
 
 let editIndex: number | undefined;
 
@@ -114,33 +117,47 @@ function validate(config: DnsConfig): boolean {
   return ok;
 }
 
+/**
+ * Confirms which file filled the form, or restores the hint when `name` is
+ * null. `#uploadStatus` is a live region, so the change is also announced.
+ */
+function showLoaded(name: string | null): void {
+  dropzone.classList.toggle("zone--loaded", name !== null);
+  if (name === null) {
+    uploadStatus.textContent = uploadHint;
+    return;
+  }
+  const file = document.createElement("strong");
+  file.textContent = name;
+  file.title = name;
+  // The status row is a flex line spaced by `gap`, which collapses this space
+  // visually; it is kept so assistive tech does not read "Loadedfoo".
+  uploadStatus.replaceChildren("Loaded ", file);
+}
+
 async function handleUpload(file: File): Promise<void> {
   const uploadField = element("field-fileupload");
+  let configs: DnsConfig[];
   try {
-    const configs = parseProfileXml(await file.text());
-
-    if (configs.length === 0) {
-      setFieldError(uploadField, "That profile contains no DNS settings.");
-      return;
-    }
-
-    setFieldError(uploadField, null);
-
-    if (configs.length === 1) {
-      writeForm(configs[0] as DnsConfig);
-      return;
-    }
-
-    for (const config of configs) {
-      store.add(config);
-    }
-    location.href = "finalize.html";
+    configs = await readProfileFile(file);
   } catch (error) {
-    setFieldError(
-      uploadField,
-      error instanceof Error ? error.message : "Could not read that file.",
-    );
+    showLoaded(null);
+    setFieldError(uploadField, uploadError(error));
+    return;
   }
+
+  setFieldError(uploadField, null);
+
+  if (configs.length === 1) {
+    writeForm(configs[0] as DnsConfig);
+    showLoaded(file.name);
+    return;
+  }
+
+  for (const config of configs) {
+    store.add(config);
+  }
+  location.href = "finalize.html";
 }
 
 function init(): void {
@@ -148,13 +165,15 @@ function init(): void {
     input(id).addEventListener("change", applyProtocol);
   }
 
-  element<HTMLInputElement>("fileupload").addEventListener(
-    "change",
-    (event) => {
-      const file = (event.target as HTMLInputElement).files?.[0];
-      if (file !== undefined) void handleUpload(file);
-    },
-  );
+  const fileInput = input("fileupload");
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files?.[0];
+    // Cleared so that choosing the same file again still fires `change`.
+    fileInput.value = "";
+    if (file !== undefined) void handleUpload(file);
+  });
+
+  enableDrop(dropzone, (file) => void handleUpload(file));
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();

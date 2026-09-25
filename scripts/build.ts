@@ -30,7 +30,10 @@ export interface PageAssets {
   readonly version: string;
 }
 
-async function bundle(entrypoints: string[]): Promise<void> {
+async function bundle(
+  entrypoints: string[],
+  flags: string[] = [],
+): Promise<void> {
   const { success } = await new Deno.Command(Deno.execPath(), {
     args: [
       "bundle",
@@ -39,6 +42,7 @@ async function bundle(entrypoints: string[]): Promise<void> {
       "--minify",
       "--outdir",
       "dist",
+      ...flags,
       ...entrypoints,
     ],
     cwd: ROOT,
@@ -170,7 +174,11 @@ export async function build(): Promise<void> {
   }
   await Deno.mkdir(DIST, { recursive: true });
 
-  await bundle([STYLESHEET]);
+  // Icons are copied from public/ unchanged. Marked external, their url()s stay
+  // relative to the stylesheet, which lands next to icons/ in dist/.
+  // The `=` form matters: `--external` takes several values and would
+  // otherwise swallow the entrypoint after it.
+  await bundle([STYLESHEET], ["--external=icons/*"]);
 
   const bundled = join(DIST, "app.css");
   const stylesheet = `app-${await fingerprint(

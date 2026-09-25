@@ -267,9 +267,206 @@ textarea::placeholder {
   border-color: var(--danger);
 }
 
-input[type="file"] {
-  max-width: 100%;
-  font-size: 0.9rem;
+/* --------------------------------------------------------------------------
+   Zone: the dashed box at the top of both pages. The tool page's is a <label>
+   around a visually hidden file input, so a click or tap anywhere opens the
+   picker and keyboard focus stays on the real control; the profile page's
+   empty state is a link back to the tool. Both take dropped files.
+   -------------------------------------------------------------------------- */
+
+.zone {
+  --zone-title: 1.05rem;
+  --zone-status: 0.875rem;
+
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 2rem 1.5rem;
+  background: var(--surface);
+  border: 1.5px dashed
+    color-mix(in srgb, var(--muted) 40%, var(--border-strong));
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 1rem;
+  font-weight: 400;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+@media (hover: hover) {
+  .zone:hover {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border-strong));
+  }
+
+  .zone:hover .btn {
+    background: var(--surface-sunken);
+  }
+
+  .zone:hover .zone__icon {
+    color: var(--accent);
+  }
+}
+
+.zone:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.zone--over {
+  border-style: solid;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.zone--loaded {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.field--invalid .zone {
+  border-color: var(--danger);
+}
+
+.zone__icon {
+  width: 3rem;
+  height: 3rem;
+  background-color: currentColor;
+  -webkit-mask: var(--zone-icon) center / contain no-repeat;
+  mask: var(--zone-icon) center / contain no-repeat;
+  transition:
+    color 0.15s ease,
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zone__icon--upload {
+  --zone-icon: url("icons/icon.svg");
+}
+
+.zone__icon--profile {
+  --zone-icon: url("icons/profile_icon.svg");
+}
+
+.zone--loaded .zone__icon {
+  color: var(--accent);
+}
+
+.zone--over .zone__icon {
+  color: var(--accent);
+  transform: translateY(-3px) scale(1.06);
+}
+
+/* Always as tall as a title plus a status line, so a zone without a status
+   line matches one with it and switching pages does not shift the layout. */
+.zone__text {
+  display: grid;
+  align-content: center;
+  gap: 0.15rem;
+  min-width: 0;
+  min-height: calc(
+    var(--zone-title) * 1.3 + 0.15rem + var(--zone-status) * 1.55
+  );
+}
+
+.zone__title {
+  color: var(--text);
+  font-size: var(--zone-title);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.zone__status {
+  display: flex;
+  justify-content: center;
+  gap: 0.25em;
+  min-width: 0;
+  font-size: var(--zone-status);
+  line-height: 1.55;
+  white-space: nowrap;
+}
+
+/* Profile file names are long and hyphenated; one truncated line beats five
+   wrapped ones, and the full name is in the title attribute. */
+.zone__status strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.zone .btn {
+  pointer-events: none;
+}
+
+/* Dragging a file is a pointer idea; on touch screens the zone only opens the
+   picker, so the heading says that instead. */
+.zone__title-touch {
+  display: none;
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .zone__title-pointer {
+    display: none;
+  }
+
+  .zone__title-touch {
+    display: inline;
+  }
+}
+
+/* On a phone the form is the main job, so the zone collapses to one row. */
+@media (max-width: 40rem) {
+  .zone {
+    --zone-title: 0.95rem;
+    --zone-status: 0.8rem;
+
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    justify-items: start;
+    gap: 0.85rem;
+    padding: 0.9rem 1rem;
+    text-align: start;
+  }
+
+  .zone__icon {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  /* The row leaves the text little width, so the tool's title wraps to two
+     lines on narrow phones. Reserve that for every zone so both pages' zones
+     stay the same height at any width. */
+  .zone__text {
+    min-height: calc(
+      var(--zone-title) * 1.3 * 2 + 0.15rem + var(--zone-status) * 1.55
+    );
+  }
+
+  .zone__status {
+    justify-content: start;
+  }
+
+  .zone .btn {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.875rem;
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zone,
+  .zone__icon {
+    transition: none;
+  }
+
+  .zone--over .zone__icon {
+    transform: none;
+  }
 }
 
 :is(input, button, a, summary, select):focus-visible {
@@ -513,20 +710,6 @@ input[type="file"] {
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 500;
-}
-
-.empty-state {
-  padding: 2.5rem 1.35rem;
-  background: var(--surface);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius);
-  color: var(--muted);
-  text-align: center;
-  margin-bottom: 1.5rem;
-}
-
-.empty-state p {
-  margin: 0 0 0.75rem;
 }
 
 .site-footer {
