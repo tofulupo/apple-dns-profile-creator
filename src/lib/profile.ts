@@ -8,7 +8,7 @@ import { buildPlist, type PlistDict } from "./plist.ts";
 import type { DnsConfig, ProfileOptions, UuidFactory } from "./types.ts";
 
 const PROFILE_DESCRIPTION =
-  "Adds different encrypted DNS configurations to Big Sur (or newer) and iOS 14 (or newer) based systems";
+  ".mobileconfig file provides DNS profile for iOS 26 and macOS 26 or higher. https://github.com/tofulupo/apple-dns-profile-creator";
 const PROFILE_DISPLAY_NAME = "Encrypted DNS (DoH, DoT)";
 
 export const DEFAULT_IDENTIFIER_PREFIX = "local.encrypted-dns.";

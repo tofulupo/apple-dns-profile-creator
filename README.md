@@ -53,7 +53,8 @@ DNS_TOOL_PORT=8080 deno task dev   # different port
 ```
 
 `dev` builds `dist/`, serves it, and rebuilds whenever anything in `src/`,
-`css/`, or the two HTML files changes. There is no hot reload; refresh the page.
+`css/`, `pages/`, `public/` or `deno.json` changes. There is no hot reload;
+refresh the page. Edits to `pages/pages.ts` itself need a restart.
 
 ### Tests
 
@@ -96,14 +97,20 @@ src/lib/       pure core - no dependencies, no DOM
   mod.ts         public surface
 
 src/ui/        browser layer - DOM wiring only, no profile semantics
-  tool.ts        entry point for index.html
-  profile.ts     entry point for finalize.html
+  tool.ts        entry point for pages/index.html
+  profile.ts     entry point for pages/finalize.html
   storage.ts     localStorage-backed configuration store
   download.ts    Blob download, or the desktop binding when present
   dom.ts         typed DOM helpers
 
+pages/         HTML sources
+  pages.ts       page table: nav order, descriptions, entry modules, sitemap
+  _layout.html   shared shell: head, header, tabs, footer
+  index.html     <main> content of the tool page
+  finalize.html  <main> content of the profile page
+
 scripts/       build and dev server
-  build.ts       deno bundle -> dist/
+  build.ts       render pages into the layout, deno bundle -> dist/, sitemap
   serve.ts       static file server, --watch rebuilds
 
 desktop.ts     deno desktop entry point: serves dist/, saves via a binding
@@ -123,6 +130,11 @@ public/        copied verbatim into the build, names unchanged
 | --------------- | --------------------------------------------------------------- |
 | `index.html`    | The tool: upload an existing profile, or enter settings by hand |
 | `finalize.html` | Profile view: review the collected configurations and download  |
+
+Each page is only its `<main>` content in `pages/`. The build renders it into
+`pages/_layout.html`, filling in the description, the tab bar and the version
+from `deno.json`. To add a page, add a fragment to `pages/` and an entry to
+`PAGES` in `pages/pages.ts`. The tabs and `sitemap.xml` follow automatically.
 
 ### Excluded domains vs. limited domains
 
@@ -207,7 +219,9 @@ DNS_TOOL_TLS_CERT=/path/cert.pem DNS_TOOL_TLS_KEY=/path/key.pem deno task dev
 
 ### Configuration
 
-Application settings live in [`src/config.ts`](src/config.ts) as typed constants
+Application settings live in [`src/config.ts`](src/config.ts) as typed
+constants. The version shown in the header is `version` in
+[`deno.json`](deno.json), injected at build time.
 
 | Variable            | Effect                                 |
 | ------------------- | -------------------------------------- |

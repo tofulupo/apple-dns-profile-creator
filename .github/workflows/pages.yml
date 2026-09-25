@@ -19,6 +19,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, so sitemap.xml gets each page's real last-change date
+          # rather than the date of the shallow clone's only commit.
+          fetch-depth: 0
 
       - uses: denoland/setup-deno@v2
         with:

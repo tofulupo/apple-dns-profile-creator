@@ -154,7 +154,6 @@ async function download(): Promise<void> {
 }
 
 function init(): void {
-  element("appVersion").textContent = `version ${appConfig.appVersion}`;
   input("systemChk").checked = appConfig.systemScopeByDefault;
   downloadButton.addEventListener("click", download);
   deleteAllButton.addEventListener("click", () => {

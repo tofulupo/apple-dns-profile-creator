@@ -2,7 +2,6 @@
  * Entry point for the tool page (`index.html`).
  */
 
-import { appConfig } from "../config.ts";
 import { parseProfileXml } from "../lib/import.ts";
 import { isIPv4, isIPv6, parseList } from "../lib/validate.ts";
 import type { DnsConfig } from "../lib/types.ts";
@@ -145,8 +144,6 @@ async function handleUpload(file: File): Promise<void> {
 }
 
 function init(): void {
-  element("appVersion").textContent = `version ${appConfig.appVersion}`;
-
   for (const id of ["doh", "dot"]) {
     input(id).addEventListener("change", applyProtocol);
   }

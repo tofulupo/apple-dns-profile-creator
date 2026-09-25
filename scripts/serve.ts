@@ -7,7 +7,7 @@ import { build } from "./build.ts";
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
 const DEFAULT_PORT = 5173;
-const SOURCES = ["src", "css", "index.html", "finalize.html"];
+const SOURCES = ["src", "css", "pages", "public", "deno.json"];
 
 function port(): number {
   const raw = Deno.env.get("DNS_TOOL_PORT");

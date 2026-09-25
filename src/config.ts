@@ -4,12 +4,6 @@
 
 export interface AppConfig {
   /**
-   * Shown next to the page heading. Kept in step with `version` in `deno.json`
-   * by `test/config.test.ts`, since the browser bundle cannot read that file.
-   */
-  readonly appVersion: string;
-
-  /**
    * Reverse-DNS namespace for the generated profile's `PayloadIdentifier`.
    */
   readonly identifierPrefix: string;
@@ -26,7 +20,6 @@ export interface AppConfig {
 }
 
 export const appConfig: AppConfig = {
-  appVersion: "3.2.0",
   identifierPrefix: "local.encrypted-dns.",
   profileFilename: "encrypted-dns.mobileconfig",
   systemScopeByDefault: true,

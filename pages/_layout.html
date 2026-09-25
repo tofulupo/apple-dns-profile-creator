@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DNS Profile Creator</title>
+    <meta name="description" content="{{description}}">
+    <link rel="stylesheet" href="{{stylesheet}}">
+    <script type="module" src="{{script}}"></script>
+
+    <link rel="icon" type="image/png" sizes="96x96"
+      href="icons/favicon-96x96.png" />
+    <link rel="icon" type="image/svg+xml" href="icons/favicon.svg" />
+    <link rel="shortcut icon" href="icons/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180"
+      href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title" content="DNS profile" />
+    <link rel="manifest" href="site.webmanifest" />
+    <meta name="theme-color" content="#f4f6f9"
+      media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#14171c"
+      media="(prefers-color-scheme: dark)">
+  </head>
+
+  <body>
+    <div class="page">
+      <header class="site-header">
+        <h1>DNS profile creator <span class="version">version {{ version }}</span></h1>
+        <h2>Encrypted DNS for iOS and macOS</h2>
+      </header>
+
+      <nav class="tabs">
+        {{ nav }}
+      </nav>
+
+      <main>
+        {{ content }}
+      </main>
+
+      <footer class="site-footer">
+        <a href="https://adguard-dns.io/kb/general/dns-providers/"
+          target="_blank"
+          rel="noopener">Find a DNS provider</a>
+        <a href="https://github.com/tofulupo/apple-dns-profile-creator"
+          target="_blank"
+          rel="noopener">Source Code</a>
+      </footer>
+    </div>
+  </body>
+</html>

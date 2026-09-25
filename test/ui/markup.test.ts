@@ -6,6 +6,9 @@ import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join, resolve } from "@std/path";
 
+import { PAGES } from "../../pages/pages.ts";
+import { renderPage } from "../../scripts/build.ts";
+
 const here = import.meta.dirname;
 if (here === undefined) {
   throw new Error("Markup test must be loaded from a file URL");
@@ -13,7 +16,7 @@ if (here === undefined) {
 const ROOT = resolve(here, "..", "..");
 
 function referencedIds(module: string): string[] {
-  const source = Deno.readTextFileSync(join(ROOT, "src", "ui", module));
+  const source = Deno.readTextFileSync(join(ROOT, module));
   const ids = [
     ...source.matchAll(
       /\b(?:element|input|textarea)(?:<[^>()]*>)?\(\s*"([^"]+)"/g,
@@ -24,24 +27,29 @@ function referencedIds(module: string): string[] {
   return [...new Set(ids)].sort();
 }
 
-function declaredIds(page: string): Set<string> {
-  const source = Deno.readTextFileSync(join(ROOT, page));
+function declaredIds(html: string): Set<string> {
   return new Set(
-    [...source.matchAll(/\bid="([^"]+)"/g)]
+    [...html.matchAll(/\bid="([^"]+)"/g)]
       .map((match) => match[1])
       .filter((id): id is string => id !== undefined),
   );
 }
 
-const pages = [
-  ["tool.ts", "index.html"],
-  ["profile.ts", "finalize.html"],
-] as const;
+const rendered = await Promise.all(
+  PAGES.map(async (page) => ({
+    page,
+    html: await renderPage(page, {
+      stylesheet: "app.css",
+      script: page.script,
+      version: "0.0.0-test",
+    }),
+  })),
+);
 
-for (const [module, page] of pages) {
-  describe(`${module} against ${page}`, () => {
-    const declared = declaredIds(page);
-    const referenced = referencedIds(module);
+for (const { page, html } of rendered) {
+  describe(`${page.script} against ${page.file}`, () => {
+    const declared = declaredIds(html);
+    const referenced = referencedIds(page.script);
 
     it("references at least one element", () => {
       expect(referenced.length).toBeGreaterThan(0);
@@ -52,5 +60,19 @@ for (const [module, page] of pages) {
         expect(declared.has(id)).toBe(true);
       });
     }
+  });
+
+  describe(`rendered ${page.file}`, () => {
+    it("fills every placeholder", () => {
+      expect(html).not.toContain("{{");
+      expect(html).toContain("version 0.0.0-test");
+    });
+
+    it("marks only its own tab as current", () => {
+      const current = [
+        ...html.matchAll(/<a href="([^"]+)"[^>]*aria-current="page"/g),
+      ].map((match) => match[1]);
+      expect(current).toEqual([page.file]);
+    });
   });
 }
