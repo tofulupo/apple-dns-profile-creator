@@ -10,6 +10,7 @@ import { element, input, setFieldError } from "./dom.ts";
 import { downloadProfile } from "./download.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { createConfigStore } from "./storage.ts";
+import { enableThemeSwitch } from "./theme.ts";
 
 const store = createConfigStore(localStorage);
 
@@ -176,6 +177,7 @@ async function download(): Promise<void> {
 }
 
 function init(): void {
+  enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
   input("systemChk").checked = appConfig.systemScopeByDefault;
   downloadButton.addEventListener("click", download);
   enableDrop(emptyZone, (file) => void importFile(file));

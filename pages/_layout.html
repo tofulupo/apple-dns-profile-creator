@@ -20,6 +20,16 @@
       media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#14171c"
       media="(prefers-color-scheme: dark)">
+    <script>
+    // Applies a chosen theme before first paint, so it never flashes the
+    // other one. Key and values must match src/ui/theme.ts.
+    try {
+      const theme = localStorage.getItem("dns-mobileconfig:theme");
+      if (theme === "light" || theme === "dark") {
+        document.documentElement.dataset.theme = theme;
+      }
+    } catch {}
+    </script>
   </head>
 
   <body>
@@ -27,10 +37,16 @@
       <header class="site-header">
         <div class="site-header__top">
           <h1>DNS profile creator</h1>
-          <a class="version"
-            href="https://github.com/tofulupo/apple-dns-profile-creator"
-            target="_blank" rel="noopener"
-            aria-label="v{{ version }}, source code on GitHub">v{{ version }}</a>
+          <div class="site-header__actions">
+            <a class="version"
+              href="https://github.com/tofulupo/apple-dns-profile-creator"
+              target="_blank" rel="noopener"
+              aria-label="v{{ version }}, source code on GitHub">v{{ version }}</a>
+            <button type="button" class="theme-switch" id="themeSwitch"
+              aria-label="Theme">
+              <span class="icon icon--theme" aria-hidden="true"></span>
+            </button>
+          </div>
         </div>
         <h2>Encrypted DNS for iOS and macOS</h2>
       </header>

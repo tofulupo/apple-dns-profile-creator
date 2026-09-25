@@ -8,6 +8,7 @@ import { join, resolve } from "@std/path";
 
 import { PAGES } from "../../pages/pages.ts";
 import { renderPage } from "../../scripts/build.ts";
+import { THEME_KEY } from "../../src/ui/theme.ts";
 
 const here = import.meta.dirname;
 if (here === undefined) {
@@ -66,6 +67,12 @@ for (const { page, html } of rendered) {
     it("fills every placeholder", () => {
       expect(html).not.toContain("{{");
       expect(html).toContain(">v0.0.0-test</a>");
+    });
+
+    it("applies a saved theme before first paint with the module's key", () => {
+      expect(html).toContain(
+        `localStorage.getItem(${JSON.stringify(THEME_KEY)})`,
+      );
     });
 
     it("marks only its own tab as current", () => {

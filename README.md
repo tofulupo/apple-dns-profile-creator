@@ -100,6 +100,7 @@ src/ui/        browser layer - DOM wiring only, no profile semantics
   tool.ts        entry point for pages/index.html
   profile.ts     entry point for pages/finalize.html
   storage.ts     localStorage-backed configuration store
+  theme.ts       header theme switch: system, light or dark
   download.ts    Blob download, or the desktop binding when present
   dropzone.ts    drag and drop onto either page's zone, reading the file
   dom.ts         typed DOM helpers
@@ -261,8 +262,8 @@ removed.
   test suite uses as fixtures
 - [Mullvad](https://github.com/mullvad/encrypted-dns-profiles) for their
   published profiles
-- [Reicon](https://reicon.dev) for the server, shield and receipt icons in
-  `public/icons/` (MIT, see `public/icons/LICENSE-reicon.txt`)
+- [Reicon](https://reicon.dev) for the server, shield, receipt, sun, moon and
+  monitor icons in `public/icons/` (MIT, see `public/icons/LICENSE-reicon.txt`)
 
 [upstream]: https://code.diluvian.cc/fyr77/dns-mobileconfig
 

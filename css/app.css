@@ -1,60 +1,58 @@
 /* ==========================================================================
    DNS profile creator - single stylesheet
-   Light by default, with a real dark theme (slate, not pure black).
+   A light and a real dark theme (slate, not pure black). Every colour is a
+   light-dark() pair, resolved by `color-scheme` on the root: the system
+   setting by default, or the choice made with the header's theme switch.
    ========================================================================== */
 
 :root {
-  /* `light dark` lets the browser theme native controls (checkboxes, radios,
-     scrollbars, date pickers) for us, which is what the old stylesheet was
-     hand-patching with per-input background overrides. */
+  /* Also themes native controls (checkboxes, radios, scrollbars, the file
+     picker), which the old stylesheet hand-patched per input. */
   color-scheme: light dark;
 
-  --bg: #f4f6f9;
-  --surface: #ffffff;
-  --surface-sunken: #eef1f5;
-  --border: #dde2e9;
-  --border-strong: #c6cdd8;
-  --text: #1b1f26;
-  --muted: #5e6672;
-  --accent: #2f6feb;
-  --accent-hover: #2458c9;
-  --accent-contrast: #ffffff;
+  --bg: light-dark(#f4f6f9, #14171c);
+  --surface: light-dark(#ffffff, #1c2027);
+  --surface-sunken: light-dark(#eef1f5, #23282f);
+  --border: light-dark(#dde2e9, #2e343d);
+  --border-strong: light-dark(#c6cdd8, #3c444f);
+  --text: light-dark(#1b1f26, #e4e8ee);
+  --muted: light-dark(#5e6672, #98a1ad);
+  --accent: light-dark(#2f6feb, #4c8dff);
+  --accent-hover: light-dark(#2458c9, #6ba1ff);
+  --accent-contrast: light-dark(#ffffff, #0f1319);
   /* Accent as text on the sunken surface of a selected tab or option; plain
      --accent falls just short of 4.5:1 there in the light theme. */
-  --accent-text: #2458c9;
-  --success: #1a7f37;
-  --danger: #cf3c3c;
-  --danger-hover: #b23232;
-  --focus: #2f6feb;
+  --accent-text: light-dark(#2458c9, #6ba1ff);
+  --success: light-dark(#1a7f37, #3fb950);
+  --danger: light-dark(#cf3c3c, #e75c5c);
+  --danger-hover: light-dark(#b23232, #f07272);
+  --focus: light-dark(#2f6feb, #6ba1ff);
 
   --radius: 10px;
   --radius-sm: 7px;
-  --shadow: 0 1px 2px rgb(16 24 40 / 6%), 0 1px 3px rgb(16 24 40 / 8%);
+  --shadow:
+    0 1px 2px light-dark(rgb(16 24 40 / 6%), rgb(0 0 0 / 30%)),
+    0 1px 3px light-dark(rgb(16 24 40 / 8%), rgb(0 0 0 / 25%));
   --gap: 1rem;
 
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14171c;
-    --surface: #1c2027;
-    --surface-sunken: #23282f;
-    --border: #2e343d;
-    --border-strong: #3c444f;
-    --text: #e4e8ee;
-    --muted: #98a1ad;
-    --accent: #4c8dff;
-    --accent-hover: #6ba1ff;
-    --accent-contrast: #0f1319;
-    --accent-text: #6ba1ff;
-    --success: #3fb950;
-    --danger: #e75c5c;
-    --danger-hover: #f07272;
-    --focus: #6ba1ff;
-    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 1px 3px rgb(0 0 0 / 25%);
-  }
+/* Set before first paint by the inline script in pages/_layout.html. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+/* Held for one frame by src/ui/theme.ts while the theme changes. */
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
 }
 
 *,
@@ -91,12 +89,20 @@ h1 {
   letter-spacing: -0.02em;
 }
 
+/* Keeps the version badge and theme switch beside the title on small
+   phones (360px) instead of wrapping them onto a line of their own. */
+@media (max-width: 24rem) {
+  h1 {
+    font-size: 1.45rem;
+  }
+}
+
 .site-header__top {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem 1rem;
+  gap: 0.5rem 0.75rem;
 }
 
 .version {
@@ -115,6 +121,51 @@ h1 {
 .version:hover {
   border-color: var(--border-strong);
   color: var(--text);
+}
+
+.site-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+/* Round icon button beside the version badge, matching its height. */
+.theme-switch {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.theme-switch:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.theme-switch .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* The icon shows the current choice, driven by the same attribute as the
+   colours, so it is right from the first paint. */
+.icon--theme {
+  --icon: url("icons/monitor.svg");
+}
+
+:root[data-theme="light"] .icon--theme {
+  --icon: url("icons/sun.svg");
+}
+
+:root[data-theme="dark"] .icon--theme {
+  --icon: url("icons/moon.svg");
 }
 
 h2 {
@@ -623,6 +674,18 @@ textarea::placeholder {
     padding: 0.5rem 0.8rem;
     font-size: 0.875rem;
     white-space: nowrap;
+  }
+}
+
+/* Below ~360px the row cannot fit icon, ".mobileconfig" and the button, and
+   the word ran under the button. The icon is the one part that is decorative. */
+@media (max-width: 22.4rem) {
+  .zone {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .zone__icon {
+    display: none;
   }
 }
 

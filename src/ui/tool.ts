@@ -8,6 +8,7 @@ import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
 import { element, input, setFieldError, textarea } from "./dom.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { createConfigStore } from "./storage.ts";
+import { enableThemeSwitch } from "./theme.ts";
 
 const store = createConfigStore(localStorage);
 
@@ -253,6 +254,7 @@ async function handleUpload(file: File): Promise<void> {
 }
 
 function init(): void {
+  enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
   renderPresets();
 
   for (const id of ["doh", "dot"]) {
