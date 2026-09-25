@@ -52,6 +52,18 @@ describe("fields that survive today", () => {
     ]);
   });
 
+  it("preserves SSIDs with commas and outer spaces exactly", () => {
+    const excludedWifi = ["Home, Sweet Home", " Cafe ", "Joe's, 5G"];
+    const [output] = parseProfileXml(
+      buildProfileXml(
+        [config({ excludedWifi })],
+        { systemScope: false },
+        stubUuid(),
+      ),
+    );
+    expect(output?.excludedWifi).toEqual(excludedWifi);
+  });
+
   it("preserves excluded domains", () => {
     const input = config({ excludedDomains: ["example.com", "internal.lan"] });
     expect(roundTrip(input).excludedDomains).toEqual([

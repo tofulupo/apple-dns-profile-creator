@@ -8,14 +8,29 @@ import { join } from "@std/path";
 
 import { parseProfileXml } from "../../src/lib/import.ts";
 import {
+  configProblems,
+  hasProblems,
   isIPv4,
   isIPv6,
+  MAX_SSID_BYTES,
+  parseLines,
   parseList,
   serverError,
 } from "../../src/lib/validate.ts";
+import { config, fullSurfaceConfigs } from "../helpers/configs.ts";
+import { extractedFixtures, plainXmlFixtures } from "../helpers/fixtures.ts";
 
 describe("isIPv4", () => {
-  for (const value of ["0.0.0.0", "1.1.1.1", "192.0.2.1", "255.255.255.255"]) {
+  for (
+    const value of [
+      "0.0.0.0",
+      "1.1.1.1",
+      "10.0.0.1",
+      "100.64.0.9",
+      "192.0.2.1",
+      "255.255.255.255",
+    ]
+  ) {
     it(`accepts ${value}`, () => expect(isIPv4(value)).toBe(true));
   }
 
@@ -29,6 +44,10 @@ describe("isIPv4", () => {
       "not-an-address",
       "1.1.1.1 ",
       "2001:db8::1",
+      // Leading zeros: octal to some parsers, decimal to others.
+      "01.1.1.1",
+      "010.0.0.1",
+      "1.1.1.00",
     ]
   ) {
     it(`rejects ${JSON.stringify(value)}`, () =>
@@ -46,14 +65,22 @@ describe("isIPv6", () => {
       "::",
       "2001:0db8:0000:0000:0000:0000:0000:0001",
       "::ffff:192.0.2.1",
-      "fe80::1%eth0",
+      "fe80::1",
     ]
   ) {
     it(`accepts ${value}`, () => expect(isIPv6(value)).toBe(true));
   }
 
   for (
-    const value of ["", "192.0.2.1", "2001:db8:::1", "gggg::1", "nonsense"]
+    const value of [
+      "",
+      "192.0.2.1",
+      "2001:db8:::1",
+      "gggg::1",
+      "nonsense",
+      // A zone index names an interface on one machine only.
+      "fe80::1%eth0",
+    ]
   ) {
     it(`rejects ${JSON.stringify(value)}`, () =>
       expect(isIPv6(value)).toBe(false));
@@ -158,5 +185,106 @@ describe("parseList", () => {
       "Silence of the LANs",
       "Home",
     ]);
+  });
+});
+
+describe("parseLines", () => {
+  it("returns nothing for blank input", () => {
+    expect(parseLines("")).toEqual([]);
+    expect(parseLines("  \n\t\n")).toEqual([]);
+  });
+
+  it("splits on newlines only, so commas stay inside a name", () => {
+    expect(parseLines("Home, Sweet Home\nOffice")).toEqual([
+      "Home, Sweet Home",
+      "Office",
+    ]);
+  });
+
+  it("keeps leading and trailing spaces, which are part of an SSID", () => {
+    expect(parseLines(" Cafe \nOffice")).toEqual([" Cafe ", "Office"]);
+  });
+
+  it("accepts Windows line endings and drops blank lines", () => {
+    expect(parseLines("a\r\n\r\nb\n")).toEqual(["a", "b"]);
+  });
+});
+
+describe("configProblems", () => {
+  it("finds nothing wrong with a valid configuration", () => {
+    for (const valid of [config(), ...fullSurfaceConfigs()]) {
+      expect(configProblems(valid)).toEqual({});
+      expect(hasProblems(configProblems(valid))).toBe(false);
+    }
+  });
+
+  it("requires a name that is not just spaces", () => {
+    expect(configProblems(config({ name: "" })).name).toBe(
+      "Give the provider a name.",
+    );
+    expect(configProblems(config({ name: "   " })).name).toBeDefined();
+  });
+
+  it("checks the server against the protocol", () => {
+    expect(
+      configProblems(config({ protocol: "HTTPS", serverUrl: "dot.example" }))
+        .serverUrl,
+    ).toBe("A DoH server must be an https:// URL.");
+    expect(configProblems(config({ serverUrl: "" })).serverUrl).toBe(
+      "A server address is required.",
+    );
+  });
+
+  it("names every resolver address that is not an IP", () => {
+    expect(
+      configProblems(
+        config({ serverAddresses: ["192.0.2.1", "x", "010.0.0.1"] }),
+      )
+        .serverAddresses,
+    ).toBe("Not valid IP addresses: x, 010.0.0.1");
+  });
+
+  it("measures SSIDs in UTF-8 bytes, not characters", () => {
+    const fits = ["a".repeat(MAX_SSID_BYTES), "é".repeat(MAX_SSID_BYTES / 2)];
+    expect(configProblems(config({ excludedWifi: fits }))).toEqual({});
+
+    const tooLong = ["a".repeat(MAX_SSID_BYTES + 1), "😀".repeat(9)];
+    const problem = configProblems(config({ excludedWifi: tooLong }))
+      .excludedWifi;
+    expect(problem).toContain(`“${"a".repeat(MAX_SSID_BYTES + 1)}”`);
+    expect(problem).toContain(`“${"😀".repeat(9)}”`);
+  });
+
+  it("reports every field at once", () => {
+    const broken = config({
+      name: "",
+      serverUrl: "",
+      serverAddresses: ["nope"],
+      excludedWifi: ["x".repeat(40)],
+    });
+    expect(Object.keys(configProblems(broken)).sort()).toEqual([
+      "excludedWifi",
+      "name",
+      "serverAddresses",
+      "serverUrl",
+    ]);
+  });
+
+  it("passes every upstream fixture and golden profile as imported", async () => {
+    const golden = join(import.meta.dirname ?? ".", "..", "golden");
+    const sources = [...plainXmlFixtures(), ...extractedFixtures()]
+      .map((f) => ({ name: f.name, text: f.text }));
+    for await (const entry of Deno.readDir(golden)) {
+      sources.push({
+        name: entry.name,
+        text: await Deno.readTextFile(join(golden, entry.name)),
+      });
+    }
+    for (const source of sources) {
+      for (const imported of parseProfileXml(source.text)) {
+        expect({ source: source.name, problems: configProblems(imported) })
+          .toEqual({ source: source.name, problems: {} });
+      }
+    }
   });
 });

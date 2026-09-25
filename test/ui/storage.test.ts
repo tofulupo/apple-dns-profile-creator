@@ -4,8 +4,11 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { createConfigStore } from "../../src/ui/storage.ts";
-import type { ConfigStore } from "../../src/ui/storage.ts";
+import {
+  createConfigStore,
+  StorageUnavailableError,
+} from "../../src/ui/storage.ts";
+import type { ConfigStore, StorageArea } from "../../src/ui/storage.ts";
 import { config } from "../helpers/configs.ts";
 
 /** Minimal in-memory `Storage`. */
@@ -80,35 +83,104 @@ describe("configuration list", () => {
     expect(store.list()[0]).toEqual(original);
   });
 
-  it("replaces by index without reordering", () => {
-    store.add(config({ name: "First" }));
-    store.add(config({ name: "Second" }));
-    store.replace(0, config({ name: "Replaced" }));
+  it("appends several in order", () => {
+    store.add(config({ name: "First" }), config({ name: "Second" }));
+    expect(store.list().map((c) => c.name)).toEqual(["First", "Second"]);
+  });
+
+  it("updates an entry in place without reordering", () => {
+    const first = config({ name: "First" });
+    store.add(first, config({ name: "Second" }));
+    store.update(first, config({ name: "Replaced" }));
     expect(store.list().map((c) => c.name)).toEqual(["Replaced", "Second"]);
   });
 
-  it("removes by index and closes the gap", () => {
-    store.add(config({ name: "First" }));
-    store.add(config({ name: "Second" }));
-    store.add(config({ name: "Third" }));
-    store.remove(1);
+  it("removes the matching entry and closes the gap", () => {
+    const second = config({ name: "Second" });
+    store.add(config({ name: "First" }), second, config({ name: "Third" }));
+    store.remove(second);
     expect(store.list().map((c) => c.name)).toEqual(["First", "Third"]);
-  });
-
-  it("ignores out-of-range writes", () => {
-    store.add(config({ name: "Only" }));
-    store.replace(5, config({ name: "Nope" }));
-    store.remove(-1);
-    store.remove(99);
-    expect(store.list().map((c) => c.name)).toEqual(["Only"]);
   });
 
   it("clears everything", () => {
     store.add(config());
-    store.setEditIndex(0);
+    store.startEdit(config());
+    store.setImportWarnings(["Left out a rule."]);
     store.clear();
     expect(store.list()).toEqual([]);
-    expect(store.takeEditIndex()).toBeUndefined();
+    expect(store.takeEditTarget()).toBeUndefined();
+    expect(store.takeImportWarnings()).toEqual([]);
+  });
+});
+
+describe("changes made in another tab meanwhile", () => {
+  it("update the edited entry even after it moved", () => {
+    const edited = config({ name: "Edited" });
+    const other = config({ name: "Other" });
+    store.add(other, edited);
+    // Another tab deletes the entry before it, shifting its index.
+    createConfigStore(storage).remove(other);
+    store.update(edited, config({ name: "Saved" }));
+    expect(store.list().map((c) => c.name)).toEqual(["Saved"]);
+  });
+
+  it("re-add an edited entry that was deleted rather than lose it", () => {
+    const edited = config({ name: "Edited" });
+    store.add(edited, config({ name: "Bystander" }));
+    createConfigStore(storage).remove(edited);
+    store.update(edited, config({ name: "Saved" }));
+    expect(store.list().map((c) => c.name)).toEqual(["Bystander", "Saved"]);
+  });
+
+  it("never delete a different entry", () => {
+    const gone = config({ name: "Gone" });
+    store.add(gone, config({ name: "Keep" }));
+    createConfigStore(storage).remove(gone);
+    store.remove(gone);
+    expect(store.list().map((c) => c.name)).toEqual(["Keep"]);
+  });
+
+  it("match entries whatever order their keys were stored in", () => {
+    const entry = config({ name: "Reordered", allowFailover: true });
+    const reversed = Object.fromEntries(Object.entries(entry).reverse());
+    storage.raw(CONFIGS_KEY, JSON.stringify([reversed]));
+    store.remove(entry);
+    expect(store.list()).toEqual([]);
+  });
+});
+
+describe("blocked or full storage", () => {
+  const refusing: StorageArea = {
+    getItem: () => {
+      throw new DOMException("denied", "SecurityError");
+    },
+    setItem: () => {
+      throw new DOMException("full", "QuotaExceededError");
+    },
+    removeItem: () => {
+      throw new DOMException("denied", "SecurityError");
+    },
+  };
+
+  it("reads as empty instead of throwing", () => {
+    const blocked = createConfigStore(refusing);
+    expect(blocked.list()).toEqual([]);
+    expect(blocked.takeEditTarget()).toBeUndefined();
+    expect(blocked.takeImportWarnings()).toEqual([]);
+  });
+
+  it("reports refused writes as StorageUnavailableError, with the cause", () => {
+    const blocked = createConfigStore(refusing);
+    let caught: unknown;
+    try {
+      blocked.add(config());
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(StorageUnavailableError);
+    expect((caught as Error).cause).toBeInstanceOf(DOMException);
+    expect(() => blocked.clear()).toThrow(StorageUnavailableError);
+    expect(() => blocked.startEdit(config())).toThrow(StorageUnavailableError);
   });
 });
 
@@ -199,21 +271,50 @@ describe("fields added after v1", () => {
   });
 });
 
-describe("edit index", () => {
+describe("import warnings", () => {
+  it("are empty when unset", () => {
+    expect(store.takeImportWarnings()).toEqual([]);
+  });
+
+  it("are consumed exactly once, in order", () => {
+    store.setImportWarnings(["First.", "Second, with a comma."]);
+    expect(store.takeImportWarnings()).toEqual([
+      "First.",
+      "Second, with a comma.",
+    ]);
+    expect(store.takeImportWarnings()).toEqual([]);
+  });
+
+  it("replace earlier ones, even with none", () => {
+    store.setImportWarnings(["Stale."]);
+    store.setImportWarnings([]);
+    expect(store.takeImportWarnings()).toEqual([]);
+  });
+
+  it("fall back to empty on corrupt data", () => {
+    storage.raw("dns-mobileconfig:import-warnings", "{not json");
+    expect(store.takeImportWarnings()).toEqual([]);
+    storage.raw("dns-mobileconfig:import-warnings", "[1, 2]");
+    expect(store.takeImportWarnings()).toEqual([]);
+  });
+});
+
+describe("edit target", () => {
   it("is undefined when unset", () => {
-    expect(store.takeEditIndex()).toBeUndefined();
+    expect(store.takeEditTarget()).toBeUndefined();
   });
 
   it("is consumed exactly once", () => {
-    store.setEditIndex(2);
-    expect(store.takeEditIndex()).toBe(2);
-    expect(store.takeEditIndex()).toBeUndefined();
+    const target = config({ name: "Target", allowFailover: true });
+    store.startEdit(target);
+    expect(store.takeEditTarget()).toEqual(target);
+    expect(store.takeEditTarget()).toBeUndefined();
   });
 
-  it("rejects a non-numeric or negative value", () => {
-    storage.raw("dns-mobileconfig:edit-index", "banana");
-    expect(store.takeEditIndex()).toBeUndefined();
-    storage.raw("dns-mobileconfig:edit-index", "-1");
-    expect(store.takeEditIndex()).toBeUndefined();
+  it("rejects stored data of the wrong shape", () => {
+    storage.raw("dns-mobileconfig:edit-target", "banana");
+    expect(store.takeEditTarget()).toBeUndefined();
+    storage.raw("dns-mobileconfig:edit-target", '{"name":"Half"}');
+    expect(store.takeEditTarget()).toBeUndefined();
   });
 });

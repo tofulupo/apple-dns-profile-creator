@@ -24,9 +24,23 @@ const PROLOG = '<?xml version="1.0" encoding="UTF-8"?>\n' +
 
 const EPILOG = "</plist>\n";
 
-/** Escapes text for use in element content. */
+/**
+ * Characters XML 1.0 cannot carry at all, not even as a reference: C0 controls
+ * other than tab, LF and CR, U+FFFE and U+FFFF, and (under the `u` flag, which
+ * matches a surrogate only when unpaired) lone surrogates.
+ */
+const NON_XML_CHARS =
+  // deno-lint-ignore no-control-regex
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF\uD800-\uDFFF]/gu;
+
+/**
+ * Escapes text for use in element content. Characters XML cannot represent are
+ * dropped, since a document containing them is rejected outright by plutil
+ * and by the device.
+ */
 function escapeText(value: string): string {
   return value
+    .replace(NON_XML_CHARS, "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");

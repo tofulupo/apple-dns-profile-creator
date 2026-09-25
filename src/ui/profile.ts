@@ -6,13 +6,14 @@ import { appConfig } from "../config.ts";
 import { buildProfileXml } from "../lib/profile.ts";
 import type { DnsConfig } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
-import { element, input, setFieldError } from "./dom.ts";
+import { configProblems } from "../lib/validate.ts";
+import { element, input, setFieldError, showNotices } from "./dom.ts";
 import { downloadProfile } from "./download.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
-import { createConfigStore } from "./storage.ts";
+import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
 
-const store = createConfigStore(localStorage);
+const store = createConfigStore(browserStorage());
 
 const list = element("dynamicList");
 const emptyState = element("emptyState");
@@ -22,6 +23,12 @@ const configCount = element("configCount");
 const downloadPanel = element("downloadPanel");
 const downloadButton = element<HTMLButtonElement>("downloadBtn");
 const deleteAllButton = element<HTMLButtonElement>("deleteAllBtn");
+const importNotice = element<HTMLUListElement>("importNotice");
+const downloadBlocked = element("downloadBlocked");
+
+function problemsOf(config: DnsConfig): string[] {
+  return Object.values(configProblems(config));
+}
 
 function row(label: string, value: string, mono = false): DocumentFragment {
   const fragment = document.createDocumentFragment();
@@ -56,9 +63,16 @@ function button(
   return element;
 }
 
-function card(config: DnsConfig, index: number): HTMLElement {
+function card(config: DnsConfig): HTMLElement {
+  const problems = problemsOf(config);
+  const label = config.name.trim() === ""
+    ? "Unnamed configuration"
+    : config.name;
+
   const article = document.createElement("article");
-  article.className = "profile-card";
+  article.className = problems.length > 0
+    ? "profile-card profile-card--invalid"
+    : "profile-card";
 
   const header = document.createElement("header");
   header.className = "profile-card__head";
@@ -66,27 +80,50 @@ function card(config: DnsConfig, index: number): HTMLElement {
   // Cards sit under the list's own heading.
   const title = document.createElement("h4");
   title.className = "profile-card__title";
-  title.textContent = config.name;
+  title.textContent = label;
 
   const actions = document.createElement("div");
   actions.className = "profile-card__actions";
   actions.append(
-    button("Edit", "btn btn--icon", () => {
-      store.setEditIndex(index);
-      location.href = "index.html";
-    }),
+    button(
+      problems.length > 0 ? "Fix" : "Edit",
+      "btn btn--icon",
+      () => {
+        if (persist(() => store.startEdit(config))) {
+          location.href = "index.html";
+        }
+      },
+      `${problems.length > 0 ? "Fix" : "Edit"} ${label}`,
+    ),
     button(
       "\u2715",
       "btn btn--danger btn--icon",
       () => {
-        store.remove(index);
+        persist(() => store.remove(config));
         render();
       },
-      `Delete ${config.name}`,
+      `Delete ${label}`,
     ),
   );
 
   header.append(title, actions);
+  article.append(header);
+
+  if (problems.length > 0) {
+    // Imported and stored entries never went through the form's checks, so
+    // this is where their mistakes surface.
+    const problemList = document.createElement("ul");
+    problemList.className = "profile-card__problems";
+    problemList.setAttribute("aria-label", `Problems with ${label}`);
+    problemList.append(
+      ...problems.map((problem) => {
+        const item = document.createElement("li");
+        item.textContent = problem;
+        return item;
+      }),
+    );
+    article.append(problemList);
+  }
 
   const body = document.createElement("dl");
   body.className = "profile-card__body";
@@ -101,7 +138,13 @@ function card(config: DnsConfig, index: number): HTMLElement {
     body.append(row("Resolvers", config.serverAddresses.join(", "), true));
   }
   if (config.excludedWifi.length > 0) {
-    body.append(row("Excluded Wi-Fi", config.excludedWifi.join(", ")));
+    // Quoted, since a network name can contain the comma between them.
+    body.append(
+      row(
+        "Excluded Wi-Fi",
+        config.excludedWifi.map((ssid) => `“${ssid}”`).join(", "),
+      ),
+    );
   }
   if (config.excludedDomains.length > 0) {
     body.append(row("Excluded domains", config.excludedDomains.join(", ")));
@@ -119,7 +162,7 @@ function card(config: DnsConfig, index: number): HTMLElement {
   if (config.allowFailover === true) flags.append(badge("Failover allowed"));
   if (config.prohibitDisablement) flags.append(badge("Disablement prohibited"));
 
-  article.append(header, body);
+  article.append(body);
   if (flags.childElementCount > 0) article.append(flags);
   return article;
 }
@@ -137,6 +180,16 @@ function render(): void {
   emptyState.hidden = count > 0;
   configList.hidden = count === 0;
   downloadPanel.hidden = count === 0;
+
+  const invalid = configs.filter((config) => problemsOf(config).length > 0)
+    .length;
+  downloadButton.disabled = invalid > 0;
+  downloadBlocked.hidden = invalid === 0;
+  downloadBlocked.textContent = invalid === 0
+    ? ""
+    : `Fix ${
+      invalid === 1 ? "the configuration" : `the ${invalid} configurations`
+    } marked above before downloading.`;
 }
 
 /**
@@ -145,37 +198,42 @@ function render(): void {
  */
 async function importFile(file: File): Promise<void> {
   let configs: DnsConfig[];
+  let warnings: string[];
   try {
-    configs = await readProfileFile(file);
+    ({ configs, warnings } = await readProfileFile(file));
   } catch (error) {
+    showNotices(importNotice, []);
     setFieldError(emptyState, uploadError(error));
     return;
   }
 
   setFieldError(emptyState, null);
-  for (const config of configs) {
-    store.add(config);
-  }
+  if (!persist(() => store.add(...configs))) return;
+  showNotices(importNotice, warnings);
   render();
 }
 
 async function download(): Promise<void> {
   const configs = store.list();
-  if (configs.length === 0) return;
-
-  const xml = buildProfileXml(
-    configs,
-    {
-      systemScope: input("systemChk").checked,
-      identifierPrefix: appConfig.identifierPrefix,
-    },
-    // Falls back to crypto.getRandomValues() when
-    // crypto.randomUUID() is unavailable, which is the case on a plain http://
-    // LAN address.
-    randomUuid,
-  );
+  // Re-checked here rather than trusting the button: another tab may have
+  // changed the list since it was last rendered.
+  if (configs.length === 0 || configs.some((c) => problemsOf(c).length > 0)) {
+    render();
+    return;
+  }
 
   try {
+    const xml = buildProfileXml(
+      configs,
+      {
+        systemScope: input("systemChk").checked,
+        identifierPrefix: appConfig.identifierPrefix,
+      },
+      // Falls back to crypto.getRandomValues() when
+      // crypto.randomUUID() is unavailable, which is the case on a plain
+      // http:// LAN address.
+      randomUuid,
+    );
     await downloadProfile(appConfig.profileFilename, xml);
   } catch (error) {
     alert(
@@ -189,13 +247,19 @@ async function download(): Promise<void> {
 function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
   input("systemChk").checked = appConfig.systemScopeByDefault;
-  downloadButton.addEventListener("click", download);
+  downloadButton.addEventListener("click", () => void download());
   enableDrop(emptyZone, (file) => void importFile(file));
   deleteAllButton.addEventListener("click", () => {
     if (!confirm("Delete all configurations on this page?")) return;
-    store.clear();
+    persist(() => store.clear());
+    showNotices(importNotice, []);
     render();
   });
+  // Keeps this list in step with edits and deletions made in another tab,
+  // since Download saves whatever is stored, not what is on screen.
+  store.subscribe(render);
+  // Left by the tool page when a multi-configuration upload sent us here.
+  showNotices(importNotice, store.takeImportWarnings());
   render();
 }
 

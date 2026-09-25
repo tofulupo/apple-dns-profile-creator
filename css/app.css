@@ -24,6 +24,7 @@
      --accent falls just short of 4.5:1 there in the light theme. */
   --accent-text: light-dark(#2458c9, #6ba1ff);
   --success: light-dark(#1a7f37, #3fb950);
+  --warning: light-dark(#9a6700, #d29922);
   --danger: light-dark(#cf3c3c, #e75c5c);
   --danger-hover: light-dark(#b23232, #f07272);
   --focus: light-dark(#2f6feb, #6ba1ff);
@@ -425,6 +426,18 @@ textarea::placeholder {
   margin: 0.4rem 0 0;
   color: var(--danger);
   font-size: 0.85rem;
+}
+
+/* Import warnings: parts of an uploaded profile that were left out. */
+.notices {
+  margin: 0.4rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--warning);
+  font-size: 0.85rem;
+}
+
+.notices--block {
+  margin: 0 0 1.25rem;
 }
 
 .field--invalid :is(input, textarea) {
@@ -971,6 +984,18 @@ textarea::placeholder {
   margin: 0;
   font-size: 1rem;
   overflow-wrap: anywhere;
+}
+
+.profile-card--invalid {
+  border-color: var(--danger);
+}
+
+/* What stops an imported or stored entry from being downloaded. */
+.profile-card__problems {
+  margin: 0;
+  padding: 0.8rem 1.1rem 0 2.3rem;
+  color: var(--danger);
+  font-size: 0.85rem;
 }
 
 .profile-card__actions {

@@ -87,6 +87,18 @@ describe("buildPlist", () => {
     expect(xml).toContain("&lt;tag&gt; &amp; ");
     expect(xml).not.toMatch(/<string><tag>/);
   });
+
+  it("drops characters XML cannot represent, in values and keys", () => {
+    const xml = buildPlist({ "k\u0001ey": "a\u0000b\u001Fc\uFFFE\uD800d" });
+    expect(xml).toContain("<key>key</key>");
+    expect(xml).toContain("<string>abcd</string>");
+    expect(parsePlist(xml)).toEqual({ key: "abcd" });
+  });
+
+  it("keeps tab, newline, paired surrogates and non-ASCII text", () => {
+    const value = "tab\there\nnext line 😀 é\u0085";
+    expect(parsePlist(buildPlist({ value }))).toEqual({ value });
+  });
 });
 
 describe("parsePlist", () => {
@@ -180,6 +192,20 @@ if (plutilAvailable()) {
         buildProfile([config], { systemScope: true }, uuid),
       );
       plutilLint(xml, "generated-profile");
+    });
+
+    it("a profile built from control characters passes plutil -lint", () => {
+      const xml = buildPlist(
+        buildProfile(
+          [{
+            ...fullSurfaceConfigs()[0]!,
+            name: "Bell\u0007 & form\u000Cfeed",
+          }],
+          { systemScope: true },
+          stubUuid(),
+        ),
+      );
+      plutilLint(xml, "generated-control-characters");
     });
 
     // Every upstream fixture carries a single payload, so this is the only

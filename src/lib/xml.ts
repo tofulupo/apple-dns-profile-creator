@@ -27,24 +27,40 @@ const NAMED_ENTITIES: Readonly<Record<string, string>> = {
   apos: "'",
 };
 
-function decodeEntities(text: string): string {
+/** A code point XML 1.0 allows in a document (the `Char` production). */
+function isXmlChar(code: number): boolean {
+  return code === 0x9 || code === 0xa || code === 0xd ||
+    (code >= 0x20 && code <= 0xd7ff) ||
+    (code >= 0xe000 && code <= 0xfffd) ||
+    (code >= 0x10000 && code <= 0x10ffff);
+}
+
+function decodeEntities(
+  text: string,
+  fail: (message: string) => never,
+): string {
   if (!text.includes("&")) {
     return text;
   }
-  return text.replace(
-    /&(#x?[0-9A-Fa-f]+|[A-Za-z]+);/g,
-    (match, body: string) => {
-      if (body.startsWith("#x") || body.startsWith("#X")) {
-        const code = Number.parseInt(body.slice(2), 16);
-        return Number.isNaN(code) ? match : String.fromCodePoint(code);
-      }
-      if (body.startsWith("#")) {
-        const code = Number.parseInt(body.slice(1), 10);
-        return Number.isNaN(code) ? match : String.fromCodePoint(code);
-      }
+  // `#[^;]*` is deliberately loose, so that `&#12ab;` is reported below
+  // instead of being skipped by the pattern and kept as literal text.
+  return text.replace(/&(#[^;&<]*|[A-Za-z]+);/g, (match, body: string) => {
+    if (!body.startsWith("#")) {
       return NAMED_ENTITIES[body] ?? match;
-    },
-  );
+    }
+    const hex = /^#[xX]([0-9A-Fa-f]+)$/.exec(body)?.[1];
+    const decimal = /^#([0-9]+)$/.exec(body)?.[1];
+    const code = hex !== undefined
+      ? Number.parseInt(hex, 16)
+      : decimal !== undefined
+      ? Number.parseInt(decimal, 10)
+      : undefined;
+    if (code === undefined) fail(`Malformed character reference ${match}`);
+    if (!isXmlChar(code)) {
+      fail(`Character reference ${match} is not an allowed character`);
+    }
+    return String.fromCodePoint(code);
+  });
 }
 
 export function parseXml(source: string): XmlElement {
@@ -145,7 +161,7 @@ export function parseXml(source: string): XmlElement {
       i++;
       const end = source.indexOf(quote, i);
       if (end < 0) fail(`Unterminated value for attribute '${attribute}'`);
-      attributes[attribute] = decodeEntities(source.slice(i, end));
+      attributes[attribute] = decodeEntities(source.slice(i, end), fail);
       i = end + 1;
     }
 
@@ -189,7 +205,7 @@ export function parseXml(source: string): XmlElement {
 
       const next = source.indexOf("<", i);
       const chunk = next < 0 ? source.slice(i) : source.slice(i, next);
-      text += decodeEntities(chunk);
+      text += decodeEntities(chunk, fail);
       i = next < 0 ? source.length : next;
     }
   }

@@ -6,6 +6,8 @@
  * storage key; this module only handles switching and the toolbar colour.
  */
 
+import { browserStorage, type StorageArea } from "./storage.ts";
+
 export type Theme = "system" | "light" | "dark";
 
 /** Also hardcoded in the layout's inline script; the markup test checks both. */
@@ -33,7 +35,7 @@ export function nextTheme(theme: Theme): Theme {
   return ORDER[(ORDER.indexOf(theme) + 1) % ORDER.length] ?? "system";
 }
 
-function saveTheme(storage: Storage, theme: Theme): void {
+function saveTheme(storage: StorageArea, theme: Theme): void {
   try {
     if (theme === "system") storage.removeItem(THEME_KEY);
     else storage.setItem(THEME_KEY, theme);
@@ -70,7 +72,10 @@ function describe(button: HTMLButtonElement, theme: Theme): void {
 }
 
 export function enableThemeSwitch(button: HTMLButtonElement): void {
-  let theme = readTheme(localStorage);
+  // Deferred lookup: reading the `localStorage` global itself throws when
+  // storage is blocked, which the try blocks above would not catch.
+  const storage = browserStorage();
+  let theme = readTheme(storage);
   describe(button, theme);
   syncThemeColor(theme);
 
@@ -85,7 +90,7 @@ export function enableThemeSwitch(button: HTMLButtonElement): void {
     else root.dataset["theme"] = theme;
     void root.offsetWidth;
     requestAnimationFrame(() => root.classList.remove("theme-switching"));
-    saveTheme(localStorage, theme);
+    saveTheme(storage, theme);
     describe(button, theme);
     syncThemeColor(theme);
   });

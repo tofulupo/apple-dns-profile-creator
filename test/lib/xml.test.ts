@@ -86,6 +86,13 @@ describe("parseXml rejects malformed input", () => {
     ["an unquoted attribute value", "<plist version=1.0></plist>"],
     ["content after the root element", "<plist/><extra/>"],
     ["an unterminated CDATA section", "<string><![CDATA[oops</string>"],
+    ["a code point beyond Unicode", "<string>&#99999999;</string>"],
+    ["a hex code point beyond Unicode", "<string>&#x110000;</string>"],
+    ["a character XML forbids", "<string>&#0;</string>"],
+    ["a lone surrogate", "<string>&#xD800;</string>"],
+    ["a decimal reference with hex digits", "<string>&#12ab;</string>"],
+    ["an empty character reference", "<string>&#;</string>"],
+    ["a bad reference in an attribute", '<plist version="&#99999999;"/>'],
   ];
 
   for (const [label, source] of cases) {

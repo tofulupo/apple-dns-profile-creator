@@ -16,6 +16,24 @@ export const input = (id: string): HTMLInputElement =>
 export const textarea = (id: string): HTMLTextAreaElement =>
   element<HTMLTextAreaElement>(id);
 
+/**
+ * Lists `messages` as the items of `list`, hiding it when there are none.
+ * Used for import warnings: things left out that are not errors.
+ */
+export function showNotices(
+  list: HTMLElement,
+  messages: readonly string[],
+): void {
+  list.replaceChildren(
+    ...messages.map((message) => {
+      const item = document.createElement("li");
+      item.textContent = message;
+      return item;
+    }),
+  );
+  list.hidden = messages.length === 0;
+}
+
 export function setFieldError(
   field: HTMLElement,
   message: string | null,

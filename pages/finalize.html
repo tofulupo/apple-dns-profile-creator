@@ -9,6 +9,9 @@
   <p class="field__error" hidden></p>
 </div>
 
+<ul class="notices notices--block" id="importNotice" role="status"
+  aria-label="Parts of the profile that were not imported" hidden></ul>
+
 <section class="config-list" id="configList" aria-labelledby="configCount"
   hidden>
   <header class="list-header">
@@ -49,8 +52,9 @@
     </details>
   </div>
 
-  <button id="downloadBtn" class="btn btn--primary btn--block">Download
-    profile</button>
+  <button id="downloadBtn" class="btn btn--primary btn--block"
+    aria-describedby="downloadBlocked">Download profile</button>
+  <p class="field__error" id="downloadBlocked" role="status" hidden></p>
 
   <div class="note">
     <span class="icon icon--info" aria-hidden="true"></span>

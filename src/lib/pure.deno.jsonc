@@ -1,0 +1,17 @@
+// Type-checks the pure core without DOM or Deno types, so a stray `document`
+// or `Deno.*` in src/lib fails `deno task check`. Web APIs that workers share
+// (crypto, atob, URL) stay available.
+//
+// Not named deno.json(c), so Deno never discovers it on its own; it is only
+// used through `--config`. Keep the strictness flags in step with deno.json.
+{
+  "compilerOptions": {
+    "lib": ["esnext", "webworker"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true
+  }
+}

@@ -3,34 +3,42 @@
  */
 
 import { appConfig, type DnsPreset } from "../config.ts";
-import { isIPv4, isIPv6, parseList, serverError } from "../lib/validate.ts";
+import {
+  configProblems,
+  hasProblems,
+  parseLines,
+  parseList,
+  serverError,
+} from "../lib/validate.ts";
 import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
-import { element, input, setFieldError, textarea } from "./dom.ts";
+import { element, input, setFieldError, showNotices, textarea } from "./dom.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
-import { createConfigStore } from "./storage.ts";
+import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
 
-const store = createConfigStore(localStorage);
+const store = createConfigStore(browserStorage());
 
 const form = element<HTMLFormElement>("mainForm");
 const submit = input("btn_addToProfile");
 const dropzone = element("dropzone");
 const uploadStatus = element("uploadStatus");
 const uploadHint = uploadStatus.textContent;
+const uploadNotice = element<HTMLUListElement>("uploadNotice");
 const serverCheck = element("serverCheck");
 const serverCheckText = element("serverCheckText");
 const presetList = element("presets");
 
-let editIndex: number | undefined;
+/** The stored configuration the form is editing, if any. */
+let editing: DnsConfig | undefined;
 
 function readForm(): DnsConfig {
   const supplementalMatchDomains = parseList(input("matchDomains").value);
   return {
     name: input("provName").value.trim(),
-    protocol: input("doh").checked ? "HTTPS" : "TLS",
+    protocol: selectedProtocol(),
     serverUrl: input("serverUrl").value.trim(),
     serverAddresses: parseList(textarea("serverAddresses").value),
-    excludedWifi: parseList(input("exclWifi").value),
+    excludedWifi: parseLines(textarea("exclWifi").value),
     excludedDomains: parseList(input("exclDomains").value),
     useWifi: input("useWifi").checked,
     useCellular: input("useCell").checked,
@@ -50,7 +58,7 @@ function writeForm(config: DnsConfig): void {
   if (config.serverAddresses.length > 0) {
     element<HTMLDetailsElement>("disclosure-serverAddresses").open = true;
   }
-  input("exclWifi").value = config.excludedWifi.join(", ");
+  textarea("exclWifi").value = config.excludedWifi.join("\n");
   input("exclDomains").value = config.excludedDomains.join(", ");
   input("matchDomains").value = (config.supplementalMatchDomains ?? [])
     .join(", ");
@@ -176,38 +184,19 @@ function renderPresets(): void {
 }
 
 /**
- * Validates at the input, where a mistake can actually be reported.
+ * Validates at the input, where a mistake can actually be reported. The rules
+ * themselves live in `configProblems`, shared with the profile page.
  */
 function validate(config: DnsConfig): boolean {
-  let ok = true;
-
-  const nameField = element("field-provName");
-  if (config.name === "") {
-    setFieldError(nameField, "Give the provider a name.");
-    ok = false;
-  } else {
-    setFieldError(nameField, null);
-  }
-
-  const serverMessage = serverError(config.protocol, config.serverUrl);
-  setFieldError(element("field-serverUrl"), serverMessage);
-  if (serverMessage !== null) ok = false;
-
-  const addressField = element("field-serverAddresses");
-  const invalid = config.serverAddresses.filter(
-    (address) => !isIPv4(address) && !isIPv6(address),
+  const problems = configProblems(config);
+  setFieldError(element("field-provName"), problems.name ?? null);
+  setFieldError(element("field-serverUrl"), problems.serverUrl ?? null);
+  setFieldError(
+    element("field-serverAddresses"),
+    problems.serverAddresses ?? null,
   );
-  if (invalid.length > 0) {
-    setFieldError(
-      addressField,
-      `Not valid IP addresses: ${invalid.join(", ")}`,
-    );
-    ok = false;
-  } else {
-    setFieldError(addressField, null);
-  }
-
-  return ok;
+  setFieldError(element("field-exclWifi"), problems.excludedWifi ?? null);
+  return !hasProblems(problems);
 }
 
 /**
@@ -231,26 +220,37 @@ function showLoaded(name: string | null): void {
 async function handleUpload(file: File): Promise<void> {
   const uploadField = element("field-fileupload");
   let configs: DnsConfig[];
+  let warnings: string[];
   try {
-    configs = await readProfileFile(file);
+    ({ configs, warnings } = await readProfileFile(file));
   } catch (error) {
     showLoaded(null);
+    showNotices(uploadNotice, []);
     setFieldError(uploadField, uploadError(error));
     return;
   }
 
   setFieldError(uploadField, null);
 
-  if (configs.length === 1) {
-    writeForm(configs[0] as DnsConfig);
+  const [only] = configs;
+  if (configs.length === 1 && only !== undefined) {
+    writeForm(only);
     showLoaded(file.name);
+    showNotices(uploadNotice, warnings);
+    // Point at anything the profile got wrong now, not on the first submit.
+    validate(readForm());
     return;
   }
 
-  for (const config of configs) {
-    store.add(config);
-  }
-  location.href = "finalize.html";
+  // Several at once go straight to the list, where the profile page marks
+  // any that need fixing and holds back the download until they are.
+
+  const saved = persist(() => {
+    store.add(...configs);
+    // Shown by the profile page, since this one is about to be left.
+    store.setImportWarnings(warnings);
+  });
+  if (saved) location.href = "finalize.html";
 }
 
 function init(): void {
@@ -281,23 +281,20 @@ function init(): void {
     const config = readForm();
     if (!validate(config)) return;
 
-    if (editIndex === undefined) {
-      store.add(config);
-    } else {
-      store.replace(editIndex, config);
-    }
-    location.href = "finalize.html";
+    const original = editing;
+    const saved = persist(() => {
+      if (original === undefined) store.add(config);
+      else store.update(original, config);
+    });
+    if (saved) location.href = "finalize.html";
   });
 
-  editIndex = store.takeEditIndex();
-  if (editIndex !== undefined) {
-    const existing = store.list()[editIndex];
-    if (existing === undefined) {
-      editIndex = undefined;
-    } else {
-      writeForm(existing);
-      submit.value = "Save changes";
-    }
+  editing = store.takeEditTarget();
+  if (editing !== undefined) {
+    writeForm(editing);
+    submit.value = "Save changes";
+    // Usually reached through "Fix" on a flagged card, so show why at once.
+    validate(readForm());
   }
 
   applyProtocol();

@@ -12,8 +12,8 @@ const PROFILE_DESCRIPTION =
 const PROFILE_DISPLAY_NAME = "Encrypted DNS (DoH, DoT)";
 
 export const DEFAULT_IDENTIFIER_PREFIX = "local.encrypted-dns.";
-const PAYLOAD_TYPE = "com.apple.dnsSettings.managed";
-const PAYLOAD_IDENTIFIER_PREFIX = `${PAYLOAD_TYPE}.`;
+export const DNS_PAYLOAD_TYPE = "com.apple.dnsSettings.managed";
+const PAYLOAD_IDENTIFIER_PREFIX = `${DNS_PAYLOAD_TYPE}.`;
 
 /**
  * Builds the `com.apple.dnsSettings.managed` payload for one configuration.
@@ -29,7 +29,7 @@ function buildPayload(config: DnsConfig, uuid: UuidFactory): PlistDict {
       `Configures device to use ${config.name} Encrypted DNS over ${config.protocol}`,
     PayloadDisplayName: config.name,
     PayloadIdentifier: PAYLOAD_IDENTIFIER_PREFIX + uuid(),
-    PayloadType: PAYLOAD_TYPE,
+    PayloadType: DNS_PAYLOAD_TYPE,
     PayloadUUID: uuid(),
     PayloadVersion: 1,
     ProhibitDisablement: config.prohibitDisablement,
@@ -42,6 +42,9 @@ export function buildProfile(
   uuid: UuidFactory,
 ): PlistDict {
   const profile: PlistDict = {
+    // Placeholder, keeping the key first in the output. Filled in below: the
+    // profile must draw its two UUIDs before its payloads draw theirs, and a
+    // literal would evaluate the payloads first.
     PayloadContent: [],
     PayloadDescription: PROFILE_DESCRIPTION,
     PayloadDisplayName: PROFILE_DISPLAY_NAME,

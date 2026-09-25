@@ -6,23 +6,27 @@
  * needs handling here.
  */
 
-import { parseProfileXml } from "../lib/import.ts";
-import type { DnsConfig } from "../lib/types.ts";
+import { importProfileXml, type ProfileImport } from "../lib/import.ts";
 
 /**
  * Reads a chosen or dropped file as a configuration profile. Rejects when it
  * holds no DNS settings; turn the rejection into text with `uploadError`.
+ * Resolves with the import's warnings too, which the caller should show.
  */
-export async function readProfileFile(file: File): Promise<DnsConfig[]> {
-  const configs = parseProfileXml(await file.text());
-  if (configs.length === 0) {
+export async function readProfileFile(file: File): Promise<ProfileImport> {
+  const result = importProfileXml(await file.text());
+  if (result.configs.length === 0) {
     throw new Error("That profile contains no DNS settings.");
   }
-  return configs;
+  return result;
 }
 
 export function uploadError(error: unknown): string {
   return error instanceof Error ? error.message : "Could not read that file.";
+}
+
+function isInside(zone: HTMLElement, event: Event): boolean {
+  return event.target instanceof Node && zone.contains(event.target);
 }
 
 function carriesFiles(event: DragEvent): boolean {
@@ -71,11 +75,11 @@ export function enableDrop(
   // webview, navigate to it and throw away whatever is in the form.
   document.addEventListener("dragover", (event) => {
     if (!carriesFiles(event) || event.dataTransfer === null) return;
-    if (zone.contains(event.target as Node)) return;
+    if (isInside(zone, event)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "none";
   });
   document.addEventListener("drop", (event) => {
-    if (!zone.contains(event.target as Node)) event.preventDefault();
+    if (!isInside(zone, event)) event.preventDefault();
   });
 }

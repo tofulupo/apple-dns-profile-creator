@@ -15,6 +15,8 @@
     <span class="btn" aria-hidden="true">Choose file</span>
   </label>
   <p class="field__error" hidden></p>
+  <ul class="notices" id="uploadNotice" role="status"
+    aria-label="Parts of the profile that were not imported" hidden></ul>
 </div>
 
 <form id="mainForm" novalidate>
@@ -86,13 +88,16 @@
   <details class="disclosure">
     <summary>Advanced</summary>
     <div class="disclosure__body">
-      <div class="field">
+      <div class="field" id="field-exclWifi">
         <label for="exclWifi"
           class="optional">Excluded Wi-Fi networks</label>
-        <input type="text" id="exclWifi"
-          placeholder="MyHomeNetwork, Silence of the LANs">
-        <span
-          class="hint">Comma-separated SSIDs on which encrypted DNS will be disabled.</span>
+        <textarea id="exclWifi" rows="3" spellcheck="false"
+          autocapitalize="off" autocomplete="off"
+          placeholder="MyHomeNetwork&#10;Silence of the LANs"></textarea>
+        <span class="hint">Wi-Fi networks on which encrypted DNS will be
+          disabled, one per line. Type each name exactly: commas and spaces
+          are part of it.</span>
+        <p class="field__error" hidden></p>
       </div>
 
       <div class="field">
