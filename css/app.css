@@ -499,10 +499,12 @@ textarea::placeholder {
   border-color: var(--border-strong);
 }
 
+/* No weight change here: bolder text widens the chip, and on narrow phones
+   that wrapped the chip row and shifted everything below it. */
 .chip[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-sunken));
   border-color: var(--accent);
   color: var(--accent-text);
-  font-weight: 500;
 }
 
 /* --------------------------------------------------------------------------
