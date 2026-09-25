@@ -5,7 +5,7 @@ profiles for iOS and macOS. Everything happens in the browser. Nothing is
 uploaded anywhere, and the tool works fully offline, which makes it suitable for
 hosting on a home network.
 
-**[Use it now](https://tofulupo.github.io/apple-dns-profile-creator/)** - no
+**[Try it out](https://tofulupo.github.io/apple-dns-profile-creator/)** - no
 install, no sign-up, nothing leaves your device.
 
 Apple has supported DNS-over-HTTPS and DNS-over-TLS since iOS 14 and macOS 11,

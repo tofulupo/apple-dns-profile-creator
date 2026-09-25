@@ -395,6 +395,25 @@ textarea {
   min-height: 5.5rem;
 }
 
+/* iOS Safari zooms the page into any focused field whose text is smaller
+   than 16px, so fields get exactly 16px on touch screens and on every iOS
+   and iPadOS browser (-webkit-touch-callout exists only there, which also
+   covers an iPad driven by a trackpad). The viewport stays zoomable: a
+   maximum-scale would stop the jump but also block pinch-zoom. */
+@media (pointer: coarse) {
+  input[type="text"],
+  textarea {
+    font-size: 1rem;
+  }
+}
+
+@supports (-webkit-touch-callout: none) {
+  input[type="text"],
+  textarea {
+    font-size: 1rem;
+  }
+}
+
 input[type="text"]::placeholder,
 textarea::placeholder {
   color: var(--muted);
