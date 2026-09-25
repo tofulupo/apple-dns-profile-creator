@@ -13,7 +13,9 @@ import {
 } from "../../src/lib/plist.ts";
 import { buildProfile } from "../../src/lib/profile.ts";
 import type { DnsConfig } from "../../src/lib/types.ts";
+import { fullSurfaceConfigs } from "../helpers/configs.ts";
 import { extractedFixtures, plainXmlFixtures } from "../helpers/fixtures.ts";
+import { stubUuid } from "../helpers/uuid.ts";
 
 const scratch = Deno.makeTempDirSync({ prefix: "dns-mobileconfig-" });
 afterAll(() => Deno.removeSync(scratch, { recursive: true }));
@@ -178,6 +180,19 @@ if (plutilAvailable()) {
         buildProfile([config], { systemScope: true }, uuid),
       );
       plutilLint(xml, "generated-profile");
+    });
+
+    // Every upstream fixture carries a single payload, so this is the only
+    // place Apple's parser sees a profile with several.
+    it("a profile with several DNS payloads passes plutil -lint", () => {
+      const profile = buildProfile(
+        fullSurfaceConfigs(),
+        { systemScope: true },
+        stubUuid(),
+      );
+      const payloads = profile["PayloadContent"];
+      expect(Array.isArray(payloads) && payloads.length).toBe(2);
+      plutilLint(buildPlist(profile), "generated-multi-payload-profile");
     });
   });
 }

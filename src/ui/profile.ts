@@ -17,6 +17,9 @@ const store = createConfigStore(localStorage);
 const list = element("dynamicList");
 const emptyState = element("emptyState");
 const emptyZone = element("emptyZone");
+const configList = element("configList");
+const configCount = element("configCount");
+const downloadPanel = element("downloadPanel");
 const downloadButton = element<HTMLButtonElement>("downloadBtn");
 const deleteAllButton = element<HTMLButtonElement>("deleteAllBtn");
 
@@ -60,7 +63,8 @@ function card(config: DnsConfig, index: number): HTMLElement {
   const header = document.createElement("header");
   header.className = "profile-card__head";
 
-  const title = document.createElement("h3");
+  // Cards sit under the list's own heading.
+  const title = document.createElement("h4");
   title.className = "profile-card__title";
   title.textContent = config.name;
 
@@ -123,10 +127,16 @@ function card(config: DnsConfig, index: number): HTMLElement {
 function render(): void {
   const configs = store.list();
 
+  const count = configs.length;
+
   list.replaceChildren(...configs.map(card));
-  emptyState.hidden = configs.length > 0;
-  downloadButton.disabled = configs.length === 0;
-  deleteAllButton.disabled = configs.length === 0;
+  configCount.textContent = `${count} ${
+    count === 1 ? "configuration" : "configurations"
+  }`;
+  // With nothing to download or delete, only the empty state is shown.
+  emptyState.hidden = count > 0;
+  configList.hidden = count === 0;
+  downloadPanel.hidden = count === 0;
 }
 
 /**

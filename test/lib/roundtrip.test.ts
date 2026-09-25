@@ -4,11 +4,12 @@
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
+import { appConfig } from "../../src/config.ts";
 import { collectServerAddresses } from "../../src/lib/addresses.ts";
-import { parseProfile } from "../../src/lib/import.ts";
-import { buildProfile } from "../../src/lib/profile.ts";
+import { parseProfile, parseProfileXml } from "../../src/lib/import.ts";
+import { buildProfile, buildProfileXml } from "../../src/lib/profile.ts";
 import type { DnsConfig } from "../../src/lib/types.ts";
-import { config } from "../helpers/configs.ts";
+import { config, fullSurfaceConfigs } from "../helpers/configs.ts";
 import { stubUuid } from "../helpers/uuid.ts";
 
 /** Export a config and import it straight back. */
@@ -147,6 +148,49 @@ describe("previously broken round-trips", () => {
       const input = config({ protocol, name: "Provider" });
       expect(roundTrip(roundTrip(input))).toEqual(roundTrip(input));
     }
+  });
+});
+
+/**
+ * Export several configs as the XML a user downloads, and upload it again.
+ * Going through the text rather than the dictionary covers the same path as
+ * a real download and re-import on either page.
+ */
+function roundTripXml(input: readonly DnsConfig[]): DnsConfig[] {
+  const xml = buildProfileXml([...input], { systemScope: true }, stubUuid());
+  return parseProfileXml(xml);
+}
+
+describe("multi-configuration profiles", () => {
+  it("round-trips every quick preset in one profile, in order", () => {
+    // What the tool page stores after a preset click: the preset's name,
+    // protocol and server, no resolver addresses, form defaults otherwise.
+    const input = appConfig.presets.map((preset) =>
+      config({
+        name: preset.name,
+        protocol: preset.protocol,
+        serverUrl: preset.serverUrl,
+        serverAddresses: [],
+      })
+    );
+    expect(input.length).toBeGreaterThan(1);
+    expect(roundTripXml(input)).toEqual(input);
+  });
+
+  it("round-trips a mix of DoH and DoT with every field set", () => {
+    const input = fullSurfaceConfigs();
+    expect(new Set(input.map((c) => c.protocol))).toEqual(
+      new Set(["HTTPS", "TLS"]),
+    );
+    expect(roundTripXml(input)).toEqual(input);
+  });
+
+  it("keeps same-named configurations apart", () => {
+    const input = [
+      config({ name: "Twin", serverUrl: "one.example.com" }),
+      config({ name: "Twin", serverUrl: "two.example.com" }),
+    ];
+    expect(roundTripXml(input)).toEqual(input);
   });
 });
 

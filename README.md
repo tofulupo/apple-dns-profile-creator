@@ -262,8 +262,9 @@ removed.
   test suite uses as fixtures
 - [Mullvad](https://github.com/mullvad/encrypted-dns-profiles) for their
   published profiles
-- [Reicon](https://reicon.dev) for the server, shield, receipt, sun, moon and
-  monitor icons in `public/icons/` (MIT, see `public/icons/LICENSE-reicon.txt`)
+- [Reicon](https://reicon.dev) for the server, shield, receipt, sun, moon,
+  monitor, download and info icons in `public/icons/` (MIT, see
+  `public/icons/LICENSE-reicon.txt`)
 
 [upstream]: https://code.diluvian.cc/fyr77/dns-mobileconfig
 

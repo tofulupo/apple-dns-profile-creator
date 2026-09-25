@@ -229,6 +229,14 @@ code {
   --icon: url("icons/shield-check.svg");
 }
 
+.icon--download {
+  --icon: url("icons/download.svg");
+}
+
+.icon--info {
+  --icon: url("icons/info.svg");
+}
+
 .site-header {
   padding: 2rem 0 1.25rem;
 }
@@ -791,15 +799,62 @@ textarea::placeholder {
   width: 100%;
 }
 
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-bottom: var(--gap);
+.btn--small {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.875rem;
 }
 
-.actions .btn--grow {
-  flex: 1 1 14rem;
+/* Profile page: the configurations, headed by their count and the one
+   action that applies to all of them, kept away from Download. */
+.config-list {
+  margin-bottom: 1.5rem;
+}
+
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.list-header__title {
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.list-header .btn--danger {
+  margin-right: -0.7rem;
+}
+
+.panel .btn--block {
+  margin-top: 0.25rem;
+}
+
+/* The unsigned-profile note under Download, with its explanation inline. */
+.note {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 1.1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.note > .icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.1rem;
+}
+
+.note__body {
+  min-width: 0;
+}
+
+.note__body > p {
+  margin: 0;
 }
 
 .disclosure {
@@ -892,6 +947,7 @@ textarea::placeholder {
 .profile-card__title {
   flex: 1;
   min-width: 0;
+  margin: 0;
   font-size: 1rem;
   overflow-wrap: anywhere;
 }
