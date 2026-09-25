@@ -11,6 +11,8 @@ export interface Page {
   readonly file: string;
   /** Label of the page's tab. */
   readonly nav: string;
+  /** Tab icon: the `icon--<name>` class in `css/app.css`. */
+  readonly icon: string;
   /** `<meta name="description">` text. */
   readonly description: string;
   /** Entry module, relative to the project root. */
@@ -26,6 +28,7 @@ export const PAGES: readonly Page[] = [
   {
     file: "index.html",
     nav: "Tool",
+    icon: "upload",
     description:
       "Build encrypted DNS (DoH and DoT) configuration profiles for iOS and macOS, entirely in your browser.",
     script: "src/ui/tool.ts",
@@ -34,6 +37,7 @@ export const PAGES: readonly Page[] = [
   {
     file: "finalize.html",
     nav: "Profile",
+    icon: "profile",
     description:
       "Review your encrypted DNS configurations and download the finished configuration profile.",
     script: "src/ui/profile.ts",

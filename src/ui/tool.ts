@@ -2,8 +2,9 @@
  * Entry point for the tool page (`index.html`).
  */
 
-import { isIPv4, isIPv6, parseList } from "../lib/validate.ts";
-import type { DnsConfig } from "../lib/types.ts";
+import { appConfig, type DnsPreset } from "../config.ts";
+import { isIPv4, isIPv6, parseList, serverError } from "../lib/validate.ts";
+import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
 import { element, input, setFieldError, textarea } from "./dom.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { createConfigStore } from "./storage.ts";
@@ -15,6 +16,9 @@ const submit = input("btn_addToProfile");
 const dropzone = element("dropzone");
 const uploadStatus = element("uploadStatus");
 const uploadHint = uploadStatus.textContent;
+const serverCheck = element("serverCheck");
+const serverCheckText = element("serverCheckText");
+const presetList = element("presets");
 
 let editIndex: number | undefined;
 
@@ -57,6 +61,10 @@ function writeForm(config: DnsConfig): void {
   applyProtocol();
 }
 
+function selectedProtocol(): DnsProtocol {
+  return input("doh").checked ? "HTTPS" : "TLS";
+}
+
 function applyProtocol(): void {
   const doh = input("doh").checked;
   element("dohdotServerLabel").textContent = doh
@@ -65,6 +73,105 @@ function applyProtocol(): void {
   input("serverUrl").placeholder = doh
     ? "https://example.com/dns-query"
     : "dot.example.com";
+  updateServerCheck();
+  syncPresets();
+}
+
+/**
+ * Turns the shield in the server field into a green check once the value is
+ * usable. Only ever reassures: a mistake is reported on submit, and cleared
+ * here as soon as it is fixed.
+ */
+function updateServerCheck(): void {
+  const protocol = selectedProtocol();
+  const valid = serverError(protocol, input("serverUrl").value.trim()) ===
+    null;
+  serverCheck.classList.toggle("input-check--valid", valid);
+  serverCheckText.textContent = valid
+    ? protocol === "HTTPS" ? "Valid DoH server URL." : "Valid DoT server name."
+    : "";
+  if (valid) setFieldError(element("field-serverUrl"), null);
+}
+
+function matchesPreset(preset: DnsPreset): boolean {
+  return input("provName").value.trim() === preset.name &&
+    selectedProtocol() === preset.protocol &&
+    input("serverUrl").value.trim() === preset.serverUrl;
+}
+
+function syncPresets(): void {
+  appConfig.presets.forEach((preset, index) => {
+    presetList.children[index]?.setAttribute(
+      "aria-pressed",
+      String(matchesPreset(preset)),
+    );
+  });
+}
+
+function applyPreset(preset: DnsPreset): void {
+  const addresses = textarea("serverAddresses");
+  const hasAddresses = addresses.value.trim() !== "";
+  const blank = input("provName").value.trim() === "" &&
+    input("serverUrl").value.trim() === "";
+  // Switching from one untouched preset to another loses nothing, so only
+  // ask when the fields hold something the user entered.
+  const untouched = !hasAddresses &&
+    (blank || appConfig.presets.some(matchesPreset));
+  if (
+    !untouched &&
+    !confirm(
+      `Replace the provider name and server with ${preset.name}?` +
+        (hasAddresses ? " The resolver addresses will be cleared." : ""),
+    )
+  ) {
+    return;
+  }
+
+  input("provName").value = preset.name;
+  input(preset.protocol === "HTTPS" ? "doh" : "dot").checked = true;
+  input("serverUrl").value = preset.serverUrl;
+  // A preset names its server only; addresses from another provider would
+  // point the profile at the wrong resolver.
+  addresses.value = "";
+  setFieldError(element("field-provName"), null);
+  setFieldError(element("field-serverAddresses"), null);
+  applyProtocol();
+}
+
+/**
+ * Switching protocol away from a loaded preset clears its server, since a
+ * preset's server only speaks the preset's protocol (all DoH at the moment),
+ * and leaving the URL in place would just fail the DoT check.
+ */
+function changeProtocol(): void {
+  const name = input("provName").value.trim();
+  const server = input("serverUrl");
+  const leftPreset = appConfig.presets.some((preset) =>
+    preset.name === name &&
+    preset.serverUrl === server.value.trim() &&
+    preset.protocol !== selectedProtocol()
+  );
+  if (leftPreset) server.value = "";
+  applyProtocol();
+}
+
+function renderPresets(): void {
+  presetList.replaceChildren(
+    ...appConfig.presets.map((preset) => {
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "chip";
+      chip.textContent = preset.name;
+      chip.setAttribute("aria-pressed", "false");
+      chip.addEventListener("click", () => applyPreset(preset));
+      return chip;
+    }),
+  );
+  // An empty group would leave a stray label on the page.
+  presetList.closest<HTMLElement>(".field")?.toggleAttribute(
+    "hidden",
+    appConfig.presets.length === 0,
+  );
 }
 
 /**
@@ -81,24 +188,9 @@ function validate(config: DnsConfig): boolean {
     setFieldError(nameField, null);
   }
 
-  const serverField = element("field-serverUrl");
-  if (config.serverUrl === "") {
-    setFieldError(serverField, "A server address is required.");
-    ok = false;
-  } else if (
-    config.protocol === "HTTPS" && !/^https:\/\/.+/.test(config.serverUrl)
-  ) {
-    setFieldError(serverField, "A DoH server must be an https:// URL.");
-    ok = false;
-  } else if (config.protocol === "TLS" && config.serverUrl.includes(":")) {
-    setFieldError(
-      serverField,
-      "Custom ports are not supported for DoT. Remove the “:” part.",
-    );
-    ok = false;
-  } else {
-    setFieldError(serverField, null);
-  }
+  const serverMessage = serverError(config.protocol, config.serverUrl);
+  setFieldError(element("field-serverUrl"), serverMessage);
+  if (serverMessage !== null) ok = false;
 
   const addressField = element("field-serverAddresses");
   const invalid = config.serverAddresses.filter(
@@ -161,9 +253,16 @@ async function handleUpload(file: File): Promise<void> {
 }
 
 function init(): void {
+  renderPresets();
+
   for (const id of ["doh", "dot"]) {
-    input(id).addEventListener("change", applyProtocol);
+    input(id).addEventListener("change", changeProtocol);
   }
+  input("provName").addEventListener("input", syncPresets);
+  input("serverUrl").addEventListener("input", () => {
+    updateServerCheck();
+    syncPresets();
+  });
 
   const fileInput = input("fileupload");
   fileInput.addEventListener("change", () => {

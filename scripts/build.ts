@@ -85,7 +85,10 @@ function fill(template: string, values: Record<string, string>): string {
 function navigation(current: Page): string {
   return PAGES.map((page) => {
     const state = page === current ? ' aria-current="page"' : "";
-    return `<a href="${escape(page.file)}" class="tab"${state}>${
+    const icon = `<span class="icon icon--${
+      escape(page.icon)
+    }" aria-hidden="true"></span>`;
+    return `<a href="${escape(page.file)}" class="tab"${state}>${icon}${
       escape(page.nav)
     }</a>`;
   }).join("\n");

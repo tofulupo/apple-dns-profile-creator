@@ -65,7 +65,7 @@ for (const { page, html } of rendered) {
   describe(`rendered ${page.file}`, () => {
     it("fills every placeholder", () => {
       expect(html).not.toContain("{{");
-      expect(html).toContain("version 0.0.0-test");
+      expect(html).toContain(">v0.0.0-test</a>");
     });
 
     it("marks only its own tab as current", () => {

@@ -19,6 +19,10 @@
   --accent: #2f6feb;
   --accent-hover: #2458c9;
   --accent-contrast: #ffffff;
+  /* Accent as text on the sunken surface of a selected tab or option; plain
+     --accent falls just short of 4.5:1 there in the light theme. */
+  --accent-text: #2458c9;
+  --success: #1a7f37;
   --danger: #cf3c3c;
   --danger-hover: #b23232;
   --focus: #2f6feb;
@@ -44,6 +48,8 @@
     --accent: #4c8dff;
     --accent-hover: #6ba1ff;
     --accent-contrast: #0f1319;
+    --accent-text: #6ba1ff;
+    --success: #3fb950;
     --danger: #e75c5c;
     --danger-hover: #f07272;
     --focus: #6ba1ff;
@@ -85,12 +91,30 @@ h1 {
   letter-spacing: -0.02em;
 }
 
+.site-header__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
 .version {
-  font-size: 0.85rem;
-  font-weight: 400;
-  letter-spacing: 0;
+  padding: 0.15rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
   color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-decoration: none;
   white-space: nowrap;
+}
+
+.version:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
 }
 
 h2 {
@@ -122,6 +146,38 @@ code {
   margin-top: 0.35rem;
 }
 
+/* An icon drawn from an SVG in icons/, painted in the current text colour so
+   it follows the theme and hover states like the text beside it. */
+.icon {
+  display: inline-block;
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.icon--upload {
+  --icon: url("icons/icon.svg");
+}
+
+.icon--profile {
+  --icon: url("icons/profile_icon.svg");
+}
+
+.icon--server {
+  --icon: url("icons/server.svg");
+}
+
+.icon--shield-plus {
+  --icon: url("icons/shield-plus.svg");
+}
+
+.icon--shield-check {
+  --icon: url("icons/shield-check.svg");
+}
+
 .site-header {
   padding: 2rem 0 1.25rem;
 }
@@ -138,24 +194,31 @@ code {
 }
 
 .tab {
+  display: flex;
   flex: 1;
-  padding: 0.55rem 0.9rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   color: var(--muted);
   font-weight: 500;
   font-size: 0.95rem;
-  text-align: center;
   text-decoration: none;
 }
 
 .tab:hover {
-  background: var(--surface-sunken);
   color: var(--text);
 }
 
-.tab[aria-current="page"] {
-  background: var(--accent);
-  color: var(--accent-contrast);
+/* Selected tabs and protocol options share one look: a raised segment with
+   only the icon and label in the accent colour. */
+.tab[aria-current="page"],
+.segmented__option:has(input:checked) {
+  background: var(--surface-sunken);
+  border-color: var(--border-strong);
+  color: var(--accent-text);
 }
 
 .panel {
@@ -169,6 +232,28 @@ code {
 
 .panel > h3 {
   margin-bottom: 0.75rem;
+}
+
+.panel__title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.panel__icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--accent-text);
+}
+
+.panel__icon .icon {
+  width: 1.15rem;
+  height: 1.15rem;
 }
 
 fieldset {
@@ -218,7 +303,8 @@ legend {
   }
 }
 
-label {
+label,
+.label {
   display: block;
   margin-bottom: 0.3rem;
   font-size: 0.9rem;
@@ -265,6 +351,99 @@ textarea::placeholder {
 
 .field--invalid :is(input, textarea) {
   border-color: var(--danger);
+}
+
+/* Server field: a shield inside the input turns into a green check once the
+   value is usable for the selected protocol. */
+.input-check {
+  position: relative;
+}
+
+.input-check input {
+  padding-right: 2.5rem;
+}
+
+.input-check__icon {
+  --icon: url("icons/shield-plus.svg");
+
+  position: absolute;
+  top: 50%;
+  right: 0.75rem;
+  color: var(--muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: color 0.15s ease;
+}
+
+.input-check--valid .input-check__icon {
+  --icon: url("icons/shield-check.svg");
+
+  color: var(--success);
+}
+
+/* Two-way protocol switch. The radios stay in the page, visually hidden, so
+   arrow keys and screen readers treat it as the radio group it is. */
+.segmented {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.segmented__option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1.3;
+  text-align: center;
+  cursor: pointer;
+}
+
+.segmented__option:hover {
+  color: var(--text);
+}
+
+.segmented__option:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Provider presets. */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.chip {
+  padding: 0.3rem 0.8rem;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.chip:hover {
+  border-color: var(--border-strong);
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent-text);
+  font-weight: 500;
 }
 
 /* --------------------------------------------------------------------------
@@ -336,20 +515,9 @@ textarea::placeholder {
 .zone__icon {
   width: 3rem;
   height: 3rem;
-  background-color: currentColor;
-  -webkit-mask: var(--zone-icon) center / contain no-repeat;
-  mask: var(--zone-icon) center / contain no-repeat;
   transition:
     color 0.15s ease,
     transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.zone__icon--upload {
-  --zone-icon: url("icons/icon.svg");
-}
-
-.zone__icon--profile {
-  --zone-icon: url("icons/profile_icon.svg");
 }
 
 .zone--loaded .zone__icon {

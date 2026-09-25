@@ -224,6 +224,11 @@ Application settings live in [`src/config.ts`](src/config.ts) as typed
 constants. The version shown in the header is `version` in
 [`deno.json`](deno.json), injected at build time.
 
+The **Quick presets** on the tool page are `presets` in the same file: up to six
+providers, each a name, protocol and server. `test/config.test.ts` fails the
+suite if there are more than six, if names repeat, or if a server would not pass
+the form's own check.
+
 | Variable            | Effect                                 |
 | ------------------- | -------------------------------------- |
 | `DNS_TOOL_PORT`     | Dev/preview server port (default 5173) |
@@ -256,6 +261,8 @@ removed.
   test suite uses as fixtures
 - [Mullvad](https://github.com/mullvad/encrypted-dns-profiles) for their
   published profiles
+- [Reicon](https://reicon.dev) for the server, shield and receipt icons in
+  `public/icons/` (MIT, see `public/icons/LICENSE-reicon.txt`)
 
 [upstream]: https://code.diluvian.cc/fyr77/dns-mobileconfig
 

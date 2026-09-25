@@ -3,7 +3,7 @@
     <input type="file" id="fileupload" class="visually-hidden"
       accept=".mobileconfig,application/x-apple-aspen-config"
       aria-label="Load a .mobileconfig" aria-describedby="uploadStatus">
-    <span class="zone__icon zone__icon--upload" aria-hidden="true"></span>
+    <span class="icon icon--upload zone__icon" aria-hidden="true"></span>
     <span class="zone__text">
       <span class="zone__title" aria-hidden="true">
         <span class="zone__title-pointer">Drop a .mobileconfig here</span>
@@ -19,7 +19,16 @@
 
 <form id="mainForm" novalidate>
   <section class="panel">
-    <h3>DNS Provider</h3>
+    <h3 class="panel__title">
+      <span class="panel__icon" aria-hidden="true"><span
+          class="icon icon--server"></span></span>
+      DNS Provider
+    </h3>
+
+    <div class="field" role="group" aria-labelledby="presetsLabel">
+      <span class="label" id="presetsLabel">Quick presets</span>
+      <div class="chips" id="presets"></div>
+    </div>
 
     <div class="field" id="field-provName">
       <label for="provName">Choose a Name</label>
@@ -29,23 +38,31 @@
     </div>
 
     <fieldset class="field">
-      <legend class="visually-hidden">Encryption protocol</legend>
-      <span class="choice">
-        <input type="radio" id="doh" name="encryption" value="HTTPS"
-          checked>
-        <label for="doh">DNS-over-HTTPS (DoH)</label>
-      </span>
-      <span class="choice">
-        <input type="radio" id="dot" name="encryption" value="TLS">
-        <label for="dot">DNS-over-TLS (DoT)</label>
-      </span>
+      <legend>Query protocol</legend>
+      <div class="segmented">
+        <label class="segmented__option">
+          <input type="radio" id="doh" name="encryption" value="HTTPS"
+            class="visually-hidden" checked>
+          DNS-over-HTTPS (DoH)
+        </label>
+        <label class="segmented__option">
+          <input type="radio" id="dot" name="encryption" value="TLS"
+            class="visually-hidden">
+          DNS-over-TLS (DoT)
+        </label>
+      </div>
     </fieldset>
 
     <div class="field" id="field-serverUrl">
       <label for="serverUrl"
         id="dohdotServerLabel">DoH server URL</label>
-      <input type="text" id="serverUrl"
-        placeholder="https://example.com/dns-query">
+      <div class="input-check" id="serverCheck">
+        <input type="text" id="serverUrl"
+          placeholder="https://example.com/dns-query"
+          aria-describedby="serverCheckText">
+        <span class="icon input-check__icon" aria-hidden="true"></span>
+        <span class="visually-hidden" id="serverCheckText"></span>
+      </div>
       <p class="field__error" hidden></p>
     </div>
   </section>

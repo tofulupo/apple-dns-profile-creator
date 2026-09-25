@@ -1,6 +1,8 @@
 /**
- * Resolver address validation.
+ * Server and resolver address validation.
  */
+
+import type { DnsProtocol } from "./types.ts";
 
 /** https://regex101.com/r/ChFXjy/2 */
 export const IPV4_PATTERN =
@@ -19,6 +21,41 @@ export function isIPv4(value: string): boolean {
 
 export function isIPv6(value: string): boolean {
   return IPV6_PATTERN.test(value);
+}
+
+/** A DNS name, or an IPv4 address written the same way. No port, no path. */
+const HOST_NAME_PATTERN = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+\.?$/i;
+
+/**
+ * Why `server` cannot be used with `protocol`, or null when it can. The
+ * form reports the message on submit, and shows a check mark while it is null.
+ */
+export function serverError(
+  protocol: DnsProtocol,
+  server: string,
+): string | null {
+  if (server === "") return "A server address is required.";
+
+  if (protocol === "HTTPS") {
+    let url: URL;
+    try {
+      url = new URL(server);
+    } catch {
+      return "A DoH server must be an https:// URL.";
+    }
+    if (url.protocol !== "https:" || url.hostname === "" || /\s/.test(server)) {
+      return "A DoH server must be an https:// URL.";
+    }
+    return null;
+  }
+
+  if (server.includes(":")) {
+    return "Custom ports are not supported for DoT. Remove the “:” part.";
+  }
+  if (!HOST_NAME_PATTERN.test(server)) {
+    return "A DoT server must be a host name such as dot.example.com.";
+  }
+  return null;
 }
 
 export function parseList(value: string): string[] {
