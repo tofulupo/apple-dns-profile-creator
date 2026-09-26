@@ -5,7 +5,7 @@
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
     "build": "deno run --allow-read --allow-write --allow-run scripts/build.ts",
     "preview": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts",
-    "desktop": "deno task build && deno desktop --include dist --allow-read --allow-write --allow-env --allow-net --allow-run=open desktop.ts",
+    "desktop": "deno task build && deno desktop --include dist --allow-read --allow-write --allow-env=HOME --allow-net=127.0.0.1 --allow-run=open desktop.ts",
     "test": "deno test --allow-read --allow-write --allow-run",
     "check": "deno check src pages test scripts desktop.ts && deno check --config src/lib/pure.deno.jsonc src/lib && deno lint && deno fmt --check && deno task test",
     "fixtures:fetch": "deno run --allow-net --allow-read --allow-write --allow-run scripts/fetch_fixtures.ts",
@@ -32,16 +32,12 @@
       "name": "DNS Profile Creator",
       "identifier": "local.encrypted-dns.tool",
       "icons": {
-        "macos": "./public/icons/web-app-manifest-512x512.png",
-        "windows": "./public/icons/favicon.ico",
-        "linux": "./public/icons/web-app-manifest-512x512.png"
+        "macos": "./public/icons/web-app-manifest-512x512.png"
       }
     },
     "backend": "webview",
     "output": {
-      "macos": "./build/DNS Profile Creator",
-      "windows": "./build/dns-profile-creator",
-      "linux": "./build/dns-profile-creator"
+      "macos": "./build/DNS Profile Creator"
     }
   },
   "fmt": {

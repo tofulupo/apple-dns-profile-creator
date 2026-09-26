@@ -183,7 +183,7 @@ function render(): void {
 
   const invalid = configs.filter((config) => problemsOf(config).length > 0)
     .length;
-  downloadButton.disabled = invalid > 0;
+  downloadButton.disabled = saving || invalid > 0;
   downloadBlocked.hidden = invalid === 0;
   downloadBlocked.textContent = invalid === 0
     ? ""
@@ -213,7 +213,14 @@ async function importFile(file: File): Promise<void> {
   render();
 }
 
+/**
+ * True while a download is in progress. In the desktop app that includes the
+ * Deno-side dialogs, and a second click would queue a second save.
+ */
+let saving = false;
+
 async function download(): Promise<void> {
+  if (saving) return;
   const configs = store.list();
   // Re-checked here rather than trusting the button: another tab may have
   // changed the list since it was last rendered.
@@ -222,6 +229,8 @@ async function download(): Promise<void> {
     return;
   }
 
+  saving = true;
+  downloadButton.disabled = true;
   try {
     const xml = buildProfileXml(
       configs,
@@ -241,6 +250,9 @@ async function download(): Promise<void> {
         error instanceof Error ? error.message : String(error)
       }`,
     );
+  } finally {
+    saving = false;
+    render();
   }
 }
 

@@ -1,18 +1,35 @@
 /**
  * Local file download.
  */
+import type { DesktopBindings } from "../desktop/bindings.ts";
+
 const MOBILECONFIG_MIME = "application/x-apple-aspen-config";
 
-type SaveProfile = (filename: string, xml: string) => Promise<void>;
+type SaveProfile = DesktopBindings["saveProfile"];
 
 /**
  * `deno desktop` exposes Deno-side handlers on a `bindings` global.
  */
 function desktopSave(): SaveProfile | undefined {
-  const host = globalThis as { bindings?: { saveProfile?: SaveProfile } };
+  const host = globalThis as { bindings?: Partial<DesktopBindings> };
   return typeof host.bindings?.saveProfile === "function"
     ? host.bindings.saveProfile
     : undefined;
+}
+
+/**
+ * A binding's rejection arrives as a plain `{ name, message, stack }` object,
+ * which would print as "[object Object]". Turned back into an `Error` here.
+ */
+export function asError(error: unknown): Error {
+  if (error instanceof Error) return error;
+  if (
+    typeof error === "object" && error !== null && "message" in error &&
+    typeof error.message === "string"
+  ) {
+    return new Error(error.message);
+  }
+  return new Error(String(error));
 }
 
 export async function downloadProfile(
@@ -21,7 +38,11 @@ export async function downloadProfile(
 ): Promise<void> {
   const save = desktopSave();
   if (save !== undefined) {
-    await save(filename, xml);
+    try {
+      await save(filename, xml);
+    } catch (error) {
+      throw asError(error);
+    }
     return;
   }
 

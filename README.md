@@ -17,7 +17,7 @@ tool builds those profiles.
 | You want to                           | Use                     | Notes                              |
 | ------------------------------------- | ----------------------- | ---------------------------------- |
 | Install a profile on an iPhone / iPad | LAN server/github pages | The device must download it itself |
-| Install a profile on a Mac            | Desktop app             | Saves and opens System Settings    |
+| Install a profile on a Mac            | Desktop app (macOS)     | Saves and opens System Settings    |
 | Host it for your household/company    | `dist/` on any server   | Static files, no runtime needed    |
 | Work on the code                      | `deno task dev`         | Rebuilds on save                   |
 
@@ -38,7 +38,7 @@ git clone git@github.com:tofulupo/apple-dns-profile-creator.git
 deno task dev              # build, watch and serve on the LAN
 deno task build            # production bundle into dist/
 deno task preview          # build once, then serve
-deno task desktop          # build, then package a desktop app into build/
+deno task desktop          # build, then package the macOS app into build/
 
 deno task check            # type-check + lint + fmt --check + test
 deno task test             # test suite only
@@ -118,6 +118,11 @@ scripts/       build and dev server
   build.ts       render pages into the layout, deno bundle -> dist/, sitemap
   serve.ts       static file server, --watch rebuilds
 
+src/desktop/   macOS app helpers, used by desktop.ts
+  bindings.ts    the binding's type, shared with src/ui/download.ts
+  save.ts        save to a folder without overwriting
+  window_state.ts  remembered window size
+
 desktop.ts     deno desktop entry point: serves dist/, saves via a binding
 public/        copied verbatim into the build, names unchanged
 ```
@@ -194,10 +199,18 @@ A hosted instance stays entirely client-side - nothing is uploaded.
 deno task desktop
 ```
 
-Packages `dist/` and a small Deno server into a native application in `build/`
-using [`deno desktop`](https://docs.deno.com/runtime/desktop/) - about 66 MB,
-with the OS's own webview. Add `--all-targets` to cross-compile for macOS,
-Windows and Linux from one machine.
+Packages `dist/` and a small Deno server into a macOS application,
+`build/DNS Profile Creator.app`, using
+[`deno desktop`](https://docs.deno.com/runtime/desktop/) - about 66 MB, with the
+system's own webview. The server listens on a private `127.0.0.1` port only.
+
+**Download profile** saves straight to `~/Downloads`, never over an existing
+file (`encrypted-dns 2.mobileconfig` and so on), then offers to open it, which
+hands it to System Settings for installation. The window remembers its size,
+stored in `~/Library/Application Support/local.encrypted-dns.tool/`.
+
+Only macOS is built for now: a `.mobileconfig` can only be installed on Apple
+devices.
 
 **The bundle is only ad-hoc signed**, which is fine locally but not
 distributable. Set `desktop.macos.codesignIdentity` in `deno.json` to a
