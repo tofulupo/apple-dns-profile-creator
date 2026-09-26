@@ -23,6 +23,7 @@ const LLMS = "pages/llms.txt";
 // removed afterwards.
 const STAGE = join(DIST, ".pages");
 const STYLESHEET = "css/app.css";
+const REPOSITORY_URL = "https://github.com/tofulupo/apple-dns-profile-creator";
 
 export interface PageAssets {
   /** Stylesheet URL, relative to the page. */
@@ -125,6 +126,28 @@ export function presetChips(): string {
   ).join("\n");
 }
 
+/**
+ * schema.org description of the tool, embedded as JSON-LD so search engines
+ * and AI answer engines can tell what the site is. Describes the start page,
+ * whichever page it is embedded in.
+ */
+export function structuredData(version: string): Record<string, unknown> {
+  const start = PAGES.find((page) => page.file === "index.html");
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: "DNS Profile Creator",
+    description: start?.description,
+    url: SITE_URL,
+    applicationCategory: "UtilitiesApplication",
+    operatingSystem: "iOS, macOS",
+    softwareVersion: version,
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+    sameAs: [REPOSITORY_URL],
+  };
+}
+
 /** Renders a page's content fragment into the shared layout. */
 export async function renderPage(
   page: Page,
@@ -134,8 +157,17 @@ export async function renderPage(
     Deno.readTextFile(join(ROOT, LAYOUT)),
     Deno.readTextFile(join(PAGES_DIR, page.file)),
   ]);
+  // The whole element is generated, since deno fmt parses the body of a JSON
+  // script and fails on a placeholder there. `<` is escaped so no value can
+  // close the element early.
+  const jsonLd = `<script type="application/ld+json">${
+    JSON.stringify(structuredData(assets.version)).replaceAll("<", "\\u003c")
+  }</script>`;
   return fill(layout, {
+    title: escape(page.title),
     description: escape(page.description),
+    canonical: escape(pageUrl(page)),
+    structuredData: jsonLd,
     stylesheet: escape(assets.stylesheet),
     script: escape(assets.script),
     version: escape(assets.version),

@@ -3,10 +3,17 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>DNS Profile Creator</title>
-    <meta name="description" content="{{description}}">
-    <link rel="stylesheet" href="{{stylesheet}}">
-    <script type="module" src="{{script}}"></script>
+    <title>{{ title }}</title>
+    <meta name="description" content="{{ description }}">
+    <link rel="canonical" href="{{ canonical }}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="DNS Profile Creator">
+    <meta property="og:title" content="{{ title }}">
+    <meta property="og:description" content="{{ description }}">
+    <meta property="og:url" content="{{ canonical }}">
+    {{ structuredData }}
+    <link rel="stylesheet" href="{{ stylesheet }}">
+    <script type="module" src="{{ script }}"></script>
 
     <link rel="icon" type="image/png" sizes="96x96"
       href="icons/favicon-96x96.png" />

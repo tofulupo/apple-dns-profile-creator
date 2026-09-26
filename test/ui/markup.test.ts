@@ -6,8 +6,8 @@ import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { dirname, join, resolve } from "@std/path";
 
-import { PAGES } from "../../pages/pages.ts";
-import { renderPage } from "../../scripts/build.ts";
+import { PAGES, SITE_URL } from "../../pages/pages.ts";
+import { pageUrl, renderPage } from "../../scripts/build.ts";
 import { THEME_KEY } from "../../src/ui/theme.ts";
 import { appConfig } from "../../src/config.ts";
 
@@ -59,6 +59,13 @@ const rendered = await Promise.all(
   })),
 );
 
+describe("page titles", () => {
+  it("differ between pages", () => {
+    const titles = PAGES.map((page) => page.title);
+    expect(new Set(titles).size).toBe(titles.length);
+  });
+});
+
 for (const { page, html } of rendered) {
   describe(`${page.script} against ${page.file}`, () => {
     const declared = declaredIds(html);
@@ -95,6 +102,28 @@ for (const { page, html } of rendered) {
         ? appConfig.presets.map((preset) => preset.name)
         : [];
       expect(chips).toEqual(expected);
+    });
+
+    it("has its own title, canonical URL and Open Graph tags", () => {
+      const url = pageUrl(page);
+      expect(html).toContain(`<title>${page.title}</title>`);
+      expect(html).toContain(`<link rel="canonical" href="${url}">`);
+      expect(html).toContain(`<meta property="og:url" content="${url}">`);
+      expect(html).toContain(
+        `<meta property="og:title" content="${page.title}">`,
+      );
+    });
+
+    it("embeds JSON-LD that parses and points at the deployed site", () => {
+      const match = html.match(
+        /<script type="application\/ld\+json">([^<]*)<\/script>/,
+      );
+      expect(match?.[1]).toBeDefined();
+      const data = JSON.parse(match?.[1] ?? "");
+      expect(data["@type"]).toBe("WebApplication");
+      expect(data.url).toBe(SITE_URL);
+      expect(data.softwareVersion).toBe("0.0.0-test");
+      expect(typeof data.description).toBe("string");
     });
 
     it("marks only its own tab as current", () => {

@@ -11,6 +11,8 @@ export interface Page {
   readonly file: string;
   /** Label of the page's tab. */
   readonly nav: string;
+  /** `<title>` text, also used for `og:title`. */
+  readonly title: string;
   /** Tab icon: the `icon--<name>` class in `css/app.css`. */
   readonly icon: string;
   /** `<meta name="description">` text. */
@@ -31,6 +33,7 @@ export const PAGES: readonly Page[] = [
   {
     file: "index.html",
     nav: "Tool",
+    title: "DNS Profile Creator – encrypted DNS profiles for iOS and macOS",
     icon: "upload",
     description:
       "Build encrypted DNS (DoH and DoT) configuration profiles for iOS and macOS, entirely in your browser.",
@@ -40,6 +43,7 @@ export const PAGES: readonly Page[] = [
   {
     file: "finalize.html",
     nav: "Profile",
+    title: "Download profile – DNS Profile Creator",
     icon: "profile",
     description:
       "Review your encrypted DNS configurations and download the finished configuration profile.",
