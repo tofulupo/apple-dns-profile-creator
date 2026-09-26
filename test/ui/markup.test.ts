@@ -9,6 +9,7 @@ import { dirname, join, resolve } from "@std/path";
 import { PAGES } from "../../pages/pages.ts";
 import { renderPage } from "../../scripts/build.ts";
 import { THEME_KEY } from "../../src/ui/theme.ts";
+import { appConfig } from "../../src/config.ts";
 
 const here = import.meta.dirname;
 if (here === undefined) {
@@ -84,6 +85,16 @@ for (const { page, html } of rendered) {
       expect(html).toContain(
         `localStorage.getItem(${JSON.stringify(THEME_KEY)})`,
       );
+    });
+
+    it("renders one preset chip per preset, in order", () => {
+      const chips = [
+        ...html.matchAll(/<button type="button" class="chip"[^>]*>([^<]*)</g),
+      ].map((match) => match[1]);
+      const expected = page.file === "index.html"
+        ? appConfig.presets.map((preset) => preset.name)
+        : [];
+      expect(chips).toEqual(expected);
     });
 
     it("marks only its own tab as current", () => {

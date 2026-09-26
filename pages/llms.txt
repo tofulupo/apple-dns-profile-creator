@@ -7,29 +7,34 @@
 > since iOS 14 and macOS 11, but exposes no way to use them without an app
 > or a configuration profile — this tool builds those profiles.
 
-Links:
+On the tool page, resolver addresses may be entered one per line or
+comma-separated, in any mix of IPv4 and IPv6 (tried in the order given).
+Advanced settings include disabling encrypted DNS on specified Wi-Fi SSIDs or
+domains, restricting encrypted DNS to listed domains only, falling back to the
+network's resolver when the encrypted server is unreachable
+(iOS/macOS/visionOS 26+), and preventing profile removal on supervised
+devices.
 
-- [The Tool]: {{ site }}
-  Create or import encrypted-DNS configuration profiles. Enter resolver
-  settings by hand, or upload an existing .mobileconfig (signed profiles
-  work too — embedded settings are read directly).
-- [Finalize / Download]: {{ site }}finalize.html
-  Review the collected configurations and download the finished profile.
-- [GitHub Repository]: https://github.com/tofulupo/apple-dns-profile-creator
-  Source code, build instructions, and documentation.
-- [Project Documentation]: https://github.com/tofulupo/apple-dns-profile-creator#readme
+Profiles from the website are NOT signed. Unsigned profiles install
+identically; iOS and macOS merely label them "Not Signed" during
+installation. The macOS desktop app can optionally sign them with a
+certificate from the user's Keychain.
+
+## Tool
+
+- [The Tool]({{ site }}): Create or import encrypted-DNS configuration
+  profiles. Enter resolver settings by hand, or upload an existing
+  .mobileconfig (signed profiles work too — embedded settings are read
+  directly).
+- [Finalize / Download]({{ site }}finalize.html): Review the collected
+  configurations and download the finished profile.
+
+## Docs
+
+- [Project Documentation](https://github.com/tofulupo/apple-dns-profile-creator#readme):
   Architecture overview, ways to run the tool, and developer setup.
 
-Optional:
+## Optional
 
-- [Advanced options]: On the tool page, resolver addresses may be entered
-  one per line or comma-separated, in any mix of IPv4 and IPv6 (tried in
-  the order given). Advanced settings include disabling encrypted DNS on
-  specified Wi-Fi SSIDs or domains, restricting encrypted DNS to listed
-  domains only, falling back to the network's resolver when the encrypted
-  server is unreachable (iOS/macOS/visionOS 26+), and preventing profile
-  removal on supervised devices.
-- [Profile signing]: Profiles from the website are NOT signed. Unsigned
-  profiles install identically; iOS and macOS merely label them "Not Signed"
-  during installation. The macOS desktop app can optionally sign them with a
-  certificate from the user's Keychain.
+- [GitHub Repository](https://github.com/tofulupo/apple-dns-profile-creator):
+  Source code, build instructions, and documentation.

@@ -50,8 +50,21 @@ describe("llms.txt", () => {
   it("links both pages on the deployed site, with no placeholder left", async () => {
     const llms = await renderLlms();
     expect(llms).not.toContain("{{");
-    expect(llms).toContain(`[The Tool]: ${SITE_URL}\n`);
-    expect(llms).toContain(`[Finalize / Download]: ${SITE_URL}finalize.html`);
+    expect(llms).toContain(`- [The Tool](${SITE_URL}): `);
+    expect(llms).toContain(
+      `- [Finalize / Download](${SITE_URL}finalize.html): `,
+    );
+  });
+
+  // The llms.txt format: every list entry is a Markdown link, and sections
+  // are H2 headings. Lighthouse found no links in `- [Name]: url` entries.
+  it("writes every list entry as a Markdown link under an H2 section", async () => {
+    const llms = await renderLlms();
+    const entries = llms.split("\n").filter((line) => line.startsWith("- "));
+    expect(entries.length).toBeGreaterThan(0);
+    expect(entries.filter((line) => !/^- \[[^\]]+\]\([^)\s]+\)/.test(line)))
+      .toEqual([]);
+    expect(llms).toContain("\n## Optional\n");
   });
 });
 

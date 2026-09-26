@@ -15,8 +15,10 @@
     <span class="btn" aria-hidden="true">Choose file</span>
   </label>
   <p class="field__error" hidden></p>
-  <ul class="notices" id="uploadNotice" role="status"
-    aria-label="Parts of the profile that were not imported" hidden></ul>
+  <div role="status">
+    <ul class="notices" id="uploadNotice"
+      aria-label="Parts of the profile that were not imported" hidden></ul>
+  </div>
 </div>
 
 <form id="mainForm" novalidate>
@@ -29,7 +31,9 @@
 
     <div class="field" role="group" aria-labelledby="presetsLabel">
       <span class="label" id="presetsLabel">Quick presets</span>
-      <div class="chips" id="presets"></div>
+      <div class="chips" id="presets">
+        {{ presets }}
+      </div>
     </div>
 
     <div class="field" id="field-provName">
@@ -57,7 +61,7 @@
 
     <div class="field" id="field-serverUrl">
       <label for="serverUrl"
-        id="dohdotServerLabel">DoH server URL</label>
+        id="dohdotServerLabel">DoH URL</label>
       <div class="input-check" id="serverCheck">
         <input type="text" id="serverUrl"
           placeholder="https://example.com/dns-query"

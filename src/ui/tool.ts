@@ -173,18 +173,18 @@ function changeProtocol(): void {
   applyProtocol();
 }
 
-function renderPresets(): void {
-  presetList.replaceChildren(
-    ...appConfig.presets.map((preset) => {
-      const chip = document.createElement("button");
-      chip.type = "button";
-      chip.className = "chip";
-      chip.textContent = preset.name;
-      chip.setAttribute("aria-pressed", "false");
-      chip.addEventListener("click", () => applyPreset(preset));
-      return chip;
-    }),
-  );
+/**
+ * The chips themselves are rendered by the build (`presetChips` in
+ * `scripts/build.ts`), one per preset in the same order, so they are in
+ * place at first paint instead of shifting the form down.
+ */
+function bindPresets(): void {
+  appConfig.presets.forEach((preset, index) => {
+    presetList.children[index]?.addEventListener(
+      "click",
+      () => applyPreset(preset),
+    );
+  });
   // An empty group would leave a stray label on the page.
   presetList.closest<HTMLElement>(".field")?.toggleAttribute(
     "hidden",
@@ -264,7 +264,7 @@ async function handleUpload(file: File): Promise<void> {
 
 function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
-  renderPresets();
+  bindPresets();
 
   for (const id of ["doh", "dot"]) {
     input(id).addEventListener("change", changeProtocol);

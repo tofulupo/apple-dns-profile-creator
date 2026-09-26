@@ -10,6 +10,7 @@ import {
   SEPARATOR,
 } from "@std/path";
 import { type Page, PAGES, SITE_URL } from "../pages/pages.ts";
+import { appConfig } from "../src/config.ts";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
@@ -111,6 +112,19 @@ export async function readVersion(): Promise<string> {
   return manifest.version;
 }
 
+/**
+ * The quick-preset buttons, in `appConfig.presets` order. Rendered here
+ * rather than by the page script so the row is in place at first paint and
+ * does not push the form down; `tool.ts` attaches the handlers by position.
+ */
+export function presetChips(): string {
+  return appConfig.presets.map((preset) =>
+    `<button type="button" class="chip" aria-pressed="false">${
+      escape(preset.name)
+    }</button>`
+  ).join("\n");
+}
+
 /** Renders a page's content fragment into the shared layout. */
 export async function renderPage(
   page: Page,
@@ -126,7 +140,7 @@ export async function renderPage(
     script: escape(assets.script),
     version: escape(assets.version),
     nav: navigation(page),
-    content: content.trim(),
+    content: fill(content.trim(), { presets: presetChips() }, page.file),
   }, LAYOUT);
 }
 
