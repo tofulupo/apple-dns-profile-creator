@@ -2,13 +2,13 @@
   "fill-specializations" : [
     {
       "value" : {
-        "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
+        "solid" : "display-p3:0.95703,0.96484,0.97656,1.00000"
       }
     },
     {
       "appearance" : "dark",
       "value" : {
-        "solid" : "srgb:0.00000,0.00000,0.00000,1.00000"
+        "solid" : "display-p3:0.08234,0.09021,0.10980,1.00000"
       }
     }
   ],
@@ -19,17 +19,23 @@
           "fill-specializations" : [
             {
               "value" : {
-                "solid" : "srgb:0.00000,0.00000,0.00000,1.00000"
+                "solid" : "srgb:0.10588,0.12157,0.14902,1.00000"
               }
             },
             {
               "appearance" : "dark",
               "value" : {
+                "solid" : "srgb:0.89412,0.90980,0.93333,1.00000"
+              }
+            },
+            {
+              "appearance" : "tinted",
+              "value" : {
                 "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
               }
             }
           ],
-          "glass" : false,
+          "glass-specializations" : [ { "value" : false }, { "appearance" : "tinted", "value" : true } ],
           "image-name" : "glyph.svg",
           "name" : "glyph"
         }
