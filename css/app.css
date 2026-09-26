@@ -747,34 +747,106 @@ textarea::placeholder {
   outline-offset: 2px;
 }
 
-.choice {
+/* --------------------------------------------------------------------------
+   Settings-style on/off rows: title and hint on the left, a switch on the
+   right, the whole row one tap target. Each switch is a real checkbox with
+   role="switch", so scripts, keyboard (Space) and screen readers (on/off)
+   work unchanged; only its look is drawn here, identically in every browser.
+   -------------------------------------------------------------------------- */
+
+.switch-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.switch-row {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  margin-bottom: 0.4rem;
-}
-
-.choice label {
+  gap: 1rem;
+  min-height: 3rem;
   margin: 0;
+  padding: 0.7rem 0.9rem;
+  font-size: 1rem;
   font-weight: 400;
+  cursor: pointer;
 }
 
-.choice input {
-  accent-color: var(--accent);
-  width: 1.05rem;
-  height: 1.05rem;
-  margin: 0;
+.switch-row + .switch-row {
+  border-top: 1px solid var(--border);
+}
+
+.switch-row__text {
+  display: grid;
+  flex: 1;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.switch-row > .switch-row__title {
+  flex: 1;
+}
+
+.switch-row__title {
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.switch-row__hint {
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+
+/* The knob is a gradient rather than a pseudo-element, which Firefox does not
+   draw on inputs; sliding its background-position animates it everywhere. */
+.switch {
+  --knob: 1.25rem;
+
   flex: none;
+  width: 2.75rem;
+  height: 1.625rem;
+  margin: 0;
+  appearance: none;
+  background-color: color-mix(in srgb, var(--muted) 55%, var(--surface));
+  background-image: radial-gradient(
+    circle closest-side,
+    #ffffff calc(100% - 1px),
+    transparent
+  );
+  background-position: 0.1875rem 50%;
+  background-repeat: no-repeat;
+  background-size: var(--knob) var(--knob);
+  border-radius: 999px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    background-position 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.choice-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 1.25rem;
+.switch:checked {
+  background-color: var(--accent);
+  background-position: calc(100% - 0.1875rem) 50%;
 }
 
-.choice-row .choice {
-  margin-bottom: 0;
+@media (prefers-reduced-motion: reduce) {
+  .switch {
+    transition: none;
+  }
+}
+
+/* Subsections of a disclosure (Advanced: Exceptions, Behavior). */
+.subheading {
+  margin: 0 0 0.9rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.subheading:not(:first-child) {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--border);
 }
 
 .btn {

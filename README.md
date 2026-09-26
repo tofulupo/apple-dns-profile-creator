@@ -31,6 +31,9 @@ git clone git@github.com:tofulupo/apple-dns-profile-creator.git
 
 ### Tasks to run
 
+> [!NOTE]
+> Requires [Deno](https://deno.com) 2.9 or newer.
+
 ```sh
 deno task dev              # build, watch and serve on the LAN
 deno task build            # production bundle into dist/
@@ -160,9 +163,6 @@ resolver, which is usually what you want.
 Under the hood they are different mechanisms: exclusions become `OnDemandRules`
 that switch the resolver off, while the limit becomes `SupplementalMatchDomains`
 inside `DNSSettings`. Setting both is legal but rarely useful.
-
-> [!NOTE]
-> Requires [Deno](https://deno.com) 2.9 or newer.
 
 ### Running on a LAN
 

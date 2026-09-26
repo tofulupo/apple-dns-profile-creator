@@ -88,6 +88,8 @@
   <details class="disclosure">
     <summary>Advanced</summary>
     <div class="disclosure__body">
+      <h4 class="subheading">Exceptions</h4>
+
       <div class="field" id="field-exclWifi">
         <label for="exclWifi"
           class="optional">Excluded Wi-Fi networks</label>
@@ -119,44 +121,55 @@
           <em>only</em> there. One leading <code>*</code> allowed.</span>
       </div>
 
+      <h4 class="subheading">Behavior</h4>
+
       <fieldset class="field">
         <legend>Interfaces to use encrypted DNS on</legend>
-        <div class="choice-row">
-          <span class="choice">
-            <input type="checkbox" id="useWifi" checked>
-            <label for="useWifi">Wi-Fi</label>
-          </span>
-          <span class="choice">
-            <input type="checkbox" id="useCell" checked>
-            <label for="useCell">Cellular</label>
-          </span>
-          <span class="choice">
-            <input type="checkbox" id="useEthernet" checked>
-            <label for="useEthernet">Ethernet</label>
-          </span>
+        <div class="switch-list">
+          <label class="switch-row">
+            <span class="switch-row__title">Wi-Fi</span>
+            <input type="checkbox" role="switch" class="switch" id="useWifi"
+              checked>
+          </label>
+          <label class="switch-row">
+            <span class="switch-row__title">Cellular</span>
+            <input type="checkbox" role="switch" class="switch" id="useCell"
+              checked>
+          </label>
+          <label class="switch-row">
+            <span class="switch-row__title">Ethernet</span>
+            <input type="checkbox" role="switch" class="switch"
+              id="useEthernet" checked>
+          </label>
         </div>
-        <span
-          class="hint">Untick to disable encrypted DNS on that interface.</span>
       </fieldset>
 
-      <div class="field">
-        <span class="choice">
-          <input type="checkbox" id="allowFailover">
-          <label for="allowFailover">Allow failover</label>
-        </span>
-        <span class="hint">Falls back to the network's own resolver when
-          the encrypted server cannot be reached. Needs iOS 26, macOS 26
-          or visionOS 26; older systems ignore it.</span>
-      </div>
-
-      <div class="field">
-        <span class="choice">
-          <input type="checkbox" id="lockProfile">
-          <label for="lockProfile">Prohibit disablement</label>
-        </span>
-        <span
-          class="hint">Stops users removing the profile. Only effective on supervised
-                    devices.</span>
+      <div class="field switch-list">
+        <label class="switch-row">
+          <span class="switch-row__text">
+            <span class="switch-row__title" id="allowFailoverLabel">Allow
+              failover</span>
+            <span class="switch-row__hint" id="allowFailoverHint">Falls back
+              to the network's own resolver when the encrypted server cannot
+              be reached. Needs iOS 26, macOS 26 or visionOS 26; older systems
+              ignore it.</span>
+          </span>
+          <input type="checkbox" role="switch" class="switch" id="allowFailover"
+            aria-labelledby="allowFailoverLabel"
+            aria-describedby="allowFailoverHint">
+        </label>
+        <label class="switch-row">
+          <span class="switch-row__text">
+            <span class="switch-row__title" id="lockProfileLabel">Prohibit
+              disablement</span>
+            <span class="switch-row__hint" id="lockProfileHint">Stops users
+              removing the profile. Only effective on supervised
+              devices.</span>
+          </span>
+          <input type="checkbox" role="switch" class="switch" id="lockProfile"
+            aria-labelledby="lockProfileLabel"
+            aria-describedby="lockProfileHint">
+        </label>
       </div>
     </div>
   </details>

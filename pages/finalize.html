@@ -30,12 +30,18 @@
   </h3>
 
   <div class="field">
-    <span class="choice">
-      <input type="checkbox" id="systemChk" checked
-        aria-describedby="systemHint">
-      <label for="systemChk">Use system scope</label>
-    </span>
-    <span class="hint" id="systemHint">Required on macOS 26 and later.</span>
+    <div class="switch-list">
+      <label class="switch-row">
+        <span class="switch-row__text">
+          <span class="switch-row__title" id="systemLabel">Use system
+            scope</span>
+          <span class="switch-row__hint" id="systemHint">Required on macOS 26
+            and later.</span>
+        </span>
+        <input type="checkbox" role="switch" class="switch" id="systemChk"
+          checked aria-labelledby="systemLabel" aria-describedby="systemHint">
+      </label>
+    </div>
     <details class="help">
       <summary>What is the system scope?</summary>
       <div class="help__body">
