@@ -100,10 +100,18 @@ function updateServerCheck(): void {
   if (valid) setFieldError(element("field-serverUrl"), null);
 }
 
+/**
+ * Whether the form holds exactly `preset`, addresses included: once the user
+ * edits any of them, it is their configuration rather than the preset.
+ */
 function matchesPreset(preset: DnsPreset): boolean {
+  const addresses = parseList(textarea("serverAddresses").value);
+  const expected = preset.serverAddresses ?? [];
   return input("provName").value.trim() === preset.name &&
     selectedProtocol() === preset.protocol &&
-    input("serverUrl").value.trim() === preset.serverUrl;
+    input("serverUrl").value.trim() === preset.serverUrl &&
+    addresses.length === expected.length &&
+    addresses.every((address, i) => address === expected[i]);
 }
 
 function syncPresets(): void {
@@ -119,27 +127,30 @@ function applyPreset(preset: DnsPreset): void {
   const addresses = textarea("serverAddresses");
   const hasAddresses = addresses.value.trim() !== "";
   const blank = input("provName").value.trim() === "" &&
-    input("serverUrl").value.trim() === "";
+    input("serverUrl").value.trim() === "" && !hasAddresses;
   // Switching from one untouched preset to another loses nothing, so only
   // ask when the fields hold something the user entered.
-  const untouched = !hasAddresses &&
-    (blank || appConfig.presets.some(matchesPreset));
+  const untouched = blank || appConfig.presets.some(matchesPreset);
   if (
     !untouched &&
     !confirm(
       `Replace the provider name and server with ${preset.name}?` +
-        (hasAddresses ? " The resolver addresses will be cleared." : ""),
+        (hasAddresses ? " The resolver addresses will be replaced." : ""),
     )
   ) {
     return;
   }
 
+  const presetAddresses = preset.serverAddresses ?? [];
   input("provName").value = preset.name;
   input(preset.protocol === "HTTPS" ? "doh" : "dot").checked = true;
   input("serverUrl").value = preset.serverUrl;
-  // A preset names its server only; addresses from another provider would
-  // point the profile at the wrong resolver.
-  addresses.value = "";
+  // Always replaced, never kept: addresses from another provider would point
+  // the profile at the wrong resolver.
+  addresses.value = presetAddresses.join("\n");
+  if (presetAddresses.length > 0) {
+    element<HTMLDetailsElement>("disclosure-serverAddresses").open = true;
+  }
   setFieldError(element("field-provName"), null);
   setFieldError(element("field-serverAddresses"), null);
   applyProtocol();
@@ -259,6 +270,7 @@ function init(): void {
     input(id).addEventListener("change", changeProtocol);
   }
   input("provName").addEventListener("input", syncPresets);
+  textarea("serverAddresses").addEventListener("input", syncPresets);
   input("serverUrl").addEventListener("input", () => {
     updateServerCheck();
     syncPresets();

@@ -176,13 +176,13 @@ function roundTripXml(input: readonly DnsConfig[]): DnsConfig[] {
 describe("multi-configuration profiles", () => {
   it("round-trips every quick preset in one profile, in order", () => {
     // What the tool page stores after a preset click: the preset's name,
-    // protocol and server, no resolver addresses, form defaults otherwise.
+    // protocol, server and addresses, form defaults otherwise.
     const input = appConfig.presets.map((preset) =>
       config({
         name: preset.name,
         protocol: preset.protocol,
         serverUrl: preset.serverUrl,
-        serverAddresses: [],
+        serverAddresses: preset.serverAddresses ?? [],
       })
     );
     expect(input.length).toBeGreaterThan(1);

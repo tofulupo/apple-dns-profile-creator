@@ -1,11 +1,12 @@
 {
-  "version": "3.6.2",
+  "version": "3.6.3",
   "license": "MIT",
   "tasks": {
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
     "build": "deno run --allow-read --allow-write --allow-run scripts/build.ts",
     "preview": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts",
-    "desktop": "deno task build && deno desktop --include dist --allow-read --allow-write --allow-env=HOME --allow-net=127.0.0.1 --allow-run=open,security desktop.ts",
+    "desktop": "deno task build && deno desktop --include dist --allow-read --allow-write --allow-env=HOME --allow-net=127.0.0.1 --allow-run=open,security desktop.ts && deno run --allow-read --allow-write --allow-run=xcode-select,xcrun,plutil,codesign scripts/app_icon.ts",
+    "desktop:icon": "deno run --allow-read --allow-write --allow-run scripts/app_icon.ts --render-fallback",
     "test": "deno test --allow-read --allow-write --allow-run",
     "check": "deno check src pages test scripts desktop.ts && deno check --config src/lib/pure.deno.jsonc src/lib && deno lint && deno fmt --check && deno task test",
     "fixtures:fetch": "deno run --allow-net --allow-read --allow-write --allow-run scripts/fetch_fixtures.ts",
@@ -32,7 +33,7 @@
       "name": "DNS Profile Creator",
       "identifier": "local.encrypted-dns.tool",
       "icons": {
-        "macos": "./public/icons/web-app-manifest-512x512.png"
+        "macos": "./desktop/AppIcon.png"
       }
     },
     "backend": "webview",
@@ -42,7 +43,7 @@
   },
   "fmt": {
     "lineWidth": 80,
-    "exclude": ["dist/", "build/", "test/fixtures/"]
+    "exclude": ["dist/", "build/", "test/fixtures/", "desktop/AppIcon.icon/"]
   },
   "lint": {
     "exclude": ["dist/", "build/", "test/fixtures/"]

@@ -39,6 +39,7 @@ deno task dev              # build, watch and serve on the LAN
 deno task build            # production bundle into dist/
 deno task preview          # build once, then serve
 deno task desktop          # build, then package the macOS app into build/
+deno task desktop:icon     # re-render desktop/AppIcon.png after editing the icon
 
 deno task check            # type-check + lint + fmt --check + test
 deno task test             # test suite only
@@ -127,6 +128,7 @@ src/desktop/   macOS app helpers, used by desktop.ts
   window_state.ts  remembered window size
 
 desktop.ts     deno desktop entry point: serves dist/, saves via a binding
+desktop/       macOS app icon: AppIcon.icon (light + dark), AppIcon.png fallback
 public/        copied verbatim into the build, names unchanged
 ```
 
@@ -280,9 +282,11 @@ constants. The version shown in the header is `version` in
 [`deno.json`](deno.json), injected at build time.
 
 The **Quick presets** on the tool page are `presets` in the same file: up to six
-providers, each a name, protocol and server. `test/config.test.ts` fails the
-suite if there are more than six, if names repeat, or if a server would not pass
-the form's own check.
+providers, each a name, protocol and server, plus optional `serverAddresses`
+(the provider's resolver IPs, filled into the form so one click gives a complete
+profile). `test/config.test.ts` fails the suite if there are more than six, if
+names repeat, if a server would not pass the form's own check, or if an address
+is not a valid IP or appears twice.
 
 | Variable            | Effect                                 |
 | ------------------- | -------------------------------------- |

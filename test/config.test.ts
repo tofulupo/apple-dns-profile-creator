@@ -5,7 +5,7 @@ import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
 import { appConfig } from "../src/config.ts";
-import { serverError } from "../src/lib/validate.ts";
+import { isIPv4, isIPv6, serverError } from "../src/lib/validate.ts";
 
 describe("presets", () => {
   it("offers at most six", () => {
@@ -24,6 +24,12 @@ describe("presets", () => {
 
     it(`${preset.name} passes the form's server check`, () => {
       expect(serverError(preset.protocol, preset.serverUrl)).toBeNull();
+    });
+
+    it(`${preset.name} has only valid, distinct resolver addresses`, () => {
+      const addresses = preset.serverAddresses ?? [];
+      expect(addresses.filter((a) => !isIPv4(a) && !isIPv6(a))).toEqual([]);
+      expect(new Set(addresses).size).toBe(addresses.length);
     });
   }
 });
