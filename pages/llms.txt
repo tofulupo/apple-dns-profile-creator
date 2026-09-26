@@ -9,11 +9,11 @@
 
 Links:
 
-- [The Tool]: https://tofulupo.github.io/apple-dns-profile-creator/
+- [The Tool]: {{ site }}
   Create or import encrypted-DNS configuration profiles. Enter resolver
   settings by hand, or upload an existing .mobileconfig (signed profiles
   work too — embedded settings are read directly).
-- [Finalize / Download]: https://tofulupo.github.io/apple-dns-profile-creator/finalize.html
+- [Finalize / Download]: {{ site }}finalize.html
   Review the collected configurations and download the finished profile.
 - [GitHub Repository]: https://github.com/tofulupo/apple-dns-profile-creator
   Source code, build instructions, and documentation.
@@ -29,6 +29,7 @@ Optional:
   domains only, falling back to the network's resolver when the encrypted
   server is unreachable (iOS/macOS/visionOS 26+), and preventing profile
   removal on supervised devices.
-- [Profile signing]: Generated profiles are NOT signed. Unsigned profiles
-  install identically; iOS and macOS merely label them "Not Signed" during
-  installation.
+- [Profile signing]: Profiles from the website are NOT signed. Unsigned
+  profiles install identically; iOS and macOS merely label them "Not Signed"
+  during installation. The macOS desktop app can optionally sign them with a
+  certificate from the user's Keychain.

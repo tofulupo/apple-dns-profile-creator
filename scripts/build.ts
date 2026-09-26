@@ -15,6 +15,8 @@ const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
 const PAGES_DIR = join(ROOT, "pages");
 const LAYOUT = "pages/_layout.html";
+/** Rendered with the site's address into dist/llms.txt. */
+const LLMS = "pages/llms.txt";
 // Rendered pages are staged inside dist/ so their script paths resolve from a
 // fixed location. The bundler writes them flat into dist/, and the stage is
 // removed afterwards.
@@ -71,12 +73,16 @@ function escape(text: string): string {
     .replaceAll('"', "&quot;");
 }
 
-function fill(template: string, values: Record<string, string>): string {
+function fill(
+  template: string,
+  values: Record<string, string>,
+  source: string,
+): string {
   // deno fmt pads placeholders to `{{ key }}`, so allow either spelling.
   return template.replaceAll(/\{\{\s*(\w+)\s*\}\}/g, (_match, key: string) => {
     const value = values[key];
     if (value === undefined) {
-      throw new Error(`${LAYOUT} uses unknown placeholder {{${key}}}`);
+      throw new Error(`${source} uses unknown placeholder {{${key}}}`);
     }
     return value;
   });
@@ -121,7 +127,27 @@ export async function renderPage(
     version: escape(assets.version),
     nav: navigation(page),
     content: content.trim(),
-  });
+  }, LAYOUT);
+}
+
+/** robots.txt, pointing crawlers at the sitemap on the deployed site. */
+export function renderRobots(): string {
+  return [
+    "User-agent: *",
+    "Allow: /",
+    "",
+    `Sitemap: ${new URL("sitemap.xml", SITE_URL).href}`,
+    "",
+  ].join("\n");
+}
+
+/** llms.txt, with `{{ site }}` in the template replaced by `SITE_URL`. */
+export async function renderLlms(): Promise<string> {
+  return fill(
+    await Deno.readTextFile(join(ROOT, LLMS)),
+    { site: SITE_URL },
+    LLMS,
+  );
 }
 
 /**
@@ -220,7 +246,11 @@ export async function build(): Promise<void> {
     });
   }
 
+  // Generated rather than copied from public/, so the site's address lives
+  // only in SITE_URL.
   await Deno.writeTextFile(join(DIST, "sitemap.xml"), await sitemap());
+  await Deno.writeTextFile(join(DIST, "robots.txt"), renderRobots());
+  await Deno.writeTextFile(join(DIST, "llms.txt"), await renderLlms());
 }
 
 if (import.meta.main) await build();

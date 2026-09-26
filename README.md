@@ -5,8 +5,8 @@ profiles for iOS and macOS. Everything happens in the browser. Nothing is
 uploaded anywhere, and the tool works fully offline, which makes it suitable for
 hosting on a home network.
 
-**[Try it out](https://tofulupo.github.io/apple-dns-profile-creator/)** - no
-install, no sign-up, nothing leaves your device.
+**[Try it out](https://apple.mobileconfig.deno.net)** - no install, no sign-up,
+nothing leaves your device.
 
 Apple has supported DNS-over-HTTPS and DNS-over-TLS since iOS 14 and macOS 11,
 but exposes no way to use them without an app or a configuration profile. This
@@ -14,12 +14,12 @@ tool builds those profiles.
 
 ## Which way to run it
 
-| You want to                           | Use                     | Notes                              |
-| ------------------------------------- | ----------------------- | ---------------------------------- |
-| Install a profile on an iPhone / iPad | LAN server/github pages | The device must download it itself |
-| Install a profile on a Mac            | Desktop app (macOS)     | Saves and opens System Settings    |
-| Host it for your household/company    | `dist/` on any server   | Static files, no runtime needed    |
-| Work on the code                      | `deno task dev`         | Rebuilds on save                   |
+| You want to                           | Use                    | Notes                              |
+| ------------------------------------- | ---------------------- | ---------------------------------- |
+| Install a profile on an iPhone / iPad | LAN server/Deno Deploy | The device must download it itself |
+| Install a profile on a Mac            | Desktop app (macOS)    | Saves and opens System Settings    |
+| Host it for your household/company    | `dist/` on any server  | Static files, no runtime needed    |
+| Work on the code                      | `deno task dev`        | Rebuilds on save                   |
 
 ## first steps
 
@@ -111,13 +111,16 @@ src/ui/        browser layer - DOM wiring only, no profile semantics
   dom.ts         typed DOM helpers
 
 pages/         HTML sources
-  pages.ts       page table: nav order, descriptions, entry modules, sitemap
+  pages.ts       page table: nav order, descriptions, entry modules,
+                 SITE_URL (the deployed address)
   _layout.html   shared shell: head, header, tabs, footer
   index.html     <main> content of the tool page
   finalize.html  <main> content of the profile page
+  llms.txt       template for dist/llms.txt; {{ site }} becomes SITE_URL
 
 scripts/       build and dev server
-  build.ts       render pages into the layout, deno bundle -> dist/, sitemap
+  build.ts       render pages into the layout, deno bundle -> dist/,
+                 sitemap.xml, robots.txt and llms.txt from SITE_URL
   serve.ts       static file server, --watch rebuilds
 
 src/desktop/   macOS app helpers, used by desktop.ts
@@ -187,9 +190,17 @@ the file instead, opening it from Files should start the same flow.
 For a permanent install, `deno task build` produces a static `dist/` that any
 web server can host, over HTTP or HTTPS. Nothing server-side is required.
 
-### GitHub Pages
+### Deno Deploy
 
-The `pages` workflow publishes `dist/` on every push to `main`.
+The public instance at <https://apple.mobileconfig.deno.net> runs on
+[Deno Deploy](https://deno.com/deploy), which builds and publishes on every push
+to `main`. Its settings live in the `deploy` block of `deno.json`: run
+`deno task build`, then serve `dist/` as static files, with unknown paths
+answered by a 404 rather than the tool page.
+
+The site's address is `SITE_URL` in `pages/pages.ts`. The build derives
+`sitemap.xml`, `robots.txt` and `llms.txt` from it, so moving the site to
+another domain is that one line.
 
 A hosted instance stays entirely client-side - nothing is uploaded.
 

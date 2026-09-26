@@ -1,5 +1,5 @@
 {
-  "version": "3.6.3",
+  "version": "3.6.4",
   "license": "MIT",
   "tasks": {
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
@@ -27,6 +27,14 @@
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true
+  },
+  "deploy": {
+    "build": "deno task build",
+    "runtime": {
+      "type": "static",
+      "cwd": "dist",
+      "spa": false
+    }
   },
   "desktop": {
     "app": {

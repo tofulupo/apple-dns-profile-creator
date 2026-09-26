@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://tofulupo.github.io/apple-dns-profile-creator/sitemap.xml

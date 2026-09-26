@@ -21,8 +21,11 @@ export interface Page {
   readonly priority: number;
 }
 
-/** Public URL of the deployed site, for the sitemap. Ends with a slash. */
-export const SITE_URL = "https://tofulupo.github.io/apple-dns-profile-creator/";
+/**
+ * Public URL of the deployed site, on Deno Deploy. The build derives
+ * sitemap.xml, robots.txt and llms.txt from it. Ends with a slash.
+ */
+export const SITE_URL = "https://apple.mobileconfig.deno.net/";
 
 export const PAGES: readonly Page[] = [
   {
