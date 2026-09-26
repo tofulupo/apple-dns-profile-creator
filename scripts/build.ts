@@ -130,12 +130,84 @@ export async function renderPage(
   }, LAYOUT);
 }
 
+/**
+ * Crawlers welcomed by name in robots.txt. `User-agent: *` already allows
+ * everyone; some tools still look for their own entry. Each is the crawler's
+ * name (its robots.txt product token), not its full user-agent string, which
+ * is what crawlers match against.
+ */
+export const NAMED_CRAWLERS: readonly string[] = [
+  "Kagibot",
+  "GPTBot",
+  "ChatGPT-User",
+  "OAI-SearchBot",
+  "ClaudeBot",
+  "PerplexityBot",
+  "Google-Extended",
+  "Google-InspectionTool",
+  "Bytespider",
+  "CCBot",
+  "Amazonbot",
+  "Applebot-Extended",
+  "FacebookBot",
+  "Meta-ExternalAgent",
+  "cohere-ai",
+  "YouBot",
+  "Diffbot",
+  "PetalBot",
+  "Barkrowler",
+  "Timpibot",
+  "Seekr",
+  "Kangaroo",
+  "Velenpublicwebcrawler",
+  "omgili",
+  "ICC-Crawler",
+  "BrightBot",
+  "Scrapy",
+  "xAI-Bot",
+  "DuckAssistBot",
+  "bingbot",
+  "Ai2Bot",
+  "MistralBot",
+  "Googlebot",
+  "Applebot",
+  "AhrefsBot",
+  "SemrushBot",
+  "YandexBot",
+  "Baiduspider",
+  "BraveBot",
+  "Yeti",
+  "HuggingFaceBot",
+  "DuckDuckBot",
+  "Mozilla",
+  "archive.org_bot",
+  "TurnitinBot",
+  "iaskspider",
+  "Sogou web spider",
+  "DataForSeoBot",
+  "MJ12bot",
+  "rogerbot",
+  "DeepSeekBot",
+  "Firecrawl",
+  "JinaBot",
+  "Exa-Search",
+  "MojeekBot",
+  "ApifyBot",
+  "QwenBot",
+  "YandexGPT",
+  "img2dataset",
+  "news-please",
+  "Slurp",
+  "Twitterbot",
+];
+
 /** robots.txt, pointing crawlers at the sitemap on the deployed site. */
 export function renderRobots(): string {
+  const groups = ["*", ...NAMED_CRAWLERS].map((agent) =>
+    `User-agent: ${agent}\nAllow: /\n`
+  );
   return [
-    "User-agent: *",
-    "Allow: /",
-    "",
+    ...groups,
     `Sitemap: ${new URL("sitemap.xml", SITE_URL).href}`,
     "",
   ].join("\n");
@@ -170,11 +242,36 @@ async function lastCommitDate(paths: string[]): Promise<string | undefined> {
   }
 }
 
+/** A page's public URL; the start page is the site root itself. */
+export function pageUrl(page: Page): string {
+  return page.file === "index.html"
+    ? SITE_URL
+    : new URL(page.file, SITE_URL).href;
+}
+
+/**
+ * IndexNow keys: 8 to 128 letters, digits or dashes. The key is public by
+ * design (search engines fetch it from the site to confirm ownership), but
+ * it is kept out of the repository: Deno Deploy passes it to the build as
+ * the INDEXNOW_KEY environment variable.
+ */
+export const INDEXNOW_KEY_PATTERN = /^[A-Za-z0-9-]{8,128}$/;
+
+/** The file IndexNow looks for at the site root: `<key>.txt`, holding the key. */
+export function indexNowKeyFile(
+  key: string,
+): { name: string; content: string } {
+  if (!INDEXNOW_KEY_PATTERN.test(key)) {
+    throw new Error(
+      "INDEXNOW_KEY must be 8 to 128 letters, digits or dashes.",
+    );
+  }
+  return { name: `${key}.txt`, content: key };
+}
+
 async function sitemap(): Promise<string> {
   const entries = await Promise.all(PAGES.map(async (page) => {
-    const loc = page.file === "index.html"
-      ? SITE_URL
-      : new URL(page.file, SITE_URL).href;
+    const loc = pageUrl(page);
     const lastmod = await lastCommitDate([LAYOUT, `pages/${page.file}`]);
     return [
       "  <url>",
@@ -251,6 +348,14 @@ export async function build(): Promise<void> {
   await Deno.writeTextFile(join(DIST, "sitemap.xml"), await sitemap());
   await Deno.writeTextFile(join(DIST, "robots.txt"), renderRobots());
   await Deno.writeTextFile(join(DIST, "llms.txt"), await renderLlms());
+
+  // Only where the key is configured, i.e. on Deno Deploy; local builds and
+  // CI skip it.
+  const key = Deno.env.get("INDEXNOW_KEY");
+  if (key !== undefined && key !== "") {
+    const file = indexNowKeyFile(key.trim());
+    await Deno.writeTextFile(join(DIST, file.name), file.content);
+  }
 }
 
 if (import.meta.main) await build();

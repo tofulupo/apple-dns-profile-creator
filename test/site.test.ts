@@ -8,7 +8,7 @@ import { join, resolve } from "@std/path";
 import { walkSync } from "@std/fs/walk";
 
 import { SITE_URL } from "../pages/pages.ts";
-import { renderLlms, renderRobots } from "../scripts/build.ts";
+import { NAMED_CRAWLERS, renderLlms, renderRobots } from "../scripts/build.ts";
 
 const here = import.meta.dirname;
 if (here === undefined) throw new Error("Must be loaded from a file URL");
@@ -25,8 +25,24 @@ describe("SITE_URL", () => {
 describe("robots.txt", () => {
   it("allows crawling and points at the deployed sitemap", () => {
     const robots = renderRobots();
-    expect(robots).toContain("User-agent: *");
+    expect(robots.startsWith("User-agent: *\nAllow: /\n")).toBe(true);
     expect(robots).toContain(`Sitemap: ${SITE_URL}sitemap.xml`);
+  });
+
+  it("gives every named crawler its own group, allowed everywhere", () => {
+    const robots = renderRobots();
+    for (const agent of NAMED_CRAWLERS) {
+      expect(robots).toContain(`\nUser-agent: ${agent}\nAllow: /\n`);
+    }
+  });
+
+  it("names each crawler once, by name rather than full user-agent string", () => {
+    const lower = NAMED_CRAWLERS.map((agent) => agent.toLowerCase());
+    expect(new Set(lower).size).toBe(lower.length);
+    // A version or URL means a whole user-agent string was pasted, which
+    // crawlers do not match against.
+    expect(NAMED_CRAWLERS.filter((agent) => /[/()+:;]/.test(agent)))
+      .toEqual([]);
   });
 });
 
