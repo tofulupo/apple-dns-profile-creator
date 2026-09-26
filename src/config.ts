@@ -20,6 +20,9 @@ export interface AppConfig {
   /** File name offered when the profile is downloaded. */
   readonly profileFilename: string;
 
+  /** File name for a profile signed in the desktop app. */
+  readonly signedProfileFilename: string;
+
   /**
    * Whether "Use system scope" starts ticked.
    *
@@ -38,6 +41,7 @@ export interface AppConfig {
 export const appConfig: AppConfig = {
   identifierPrefix: "local.encrypted-dns.",
   profileFilename: "encrypted-dns.mobileconfig",
+  signedProfileFilename: "encrypted-dns-signed.mobileconfig",
   systemScopeByDefault: true,
   presets: [
     {

@@ -10,7 +10,7 @@
         <span class="zone__title-touch">Load a .mobileconfig</span>
       </span>
       <span class="zone__status" id="uploadStatus"
-        role="status">Signed profiles work too.</span>
+        role="status">Supports signed profiles</span>
     </span>
     <span class="btn" aria-hidden="true">Choose file</span>
   </label>
@@ -35,7 +35,7 @@
     <div class="field" id="field-provName">
       <label for="provName">Choose a Name</label>
       <input type="text" id="provName"
-        placeholder="MyCoolSecureProvider">
+        placeholder="My DNS Provider">
       <p class="field__error" hidden></p>
     </div>
 
@@ -45,12 +45,12 @@
         <label class="segmented__option">
           <input type="radio" id="doh" name="encryption" value="HTTPS"
             class="visually-hidden" checked>
-          DNS-over-HTTPS (DoH)
+          DNS over HTTPS (DoH)
         </label>
         <label class="segmented__option">
           <input type="radio" id="dot" name="encryption" value="TLS"
             class="visually-hidden">
-          DNS-over-TLS (DoT)
+          DNS over TLS (DoT)
         </label>
       </div>
     </fieldset>

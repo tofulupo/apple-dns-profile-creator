@@ -10,6 +10,7 @@ import { configProblems } from "../lib/validate.ts";
 import { element, input, setFieldError, showNotices } from "./dom.ts";
 import { downloadProfile } from "./download.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
+import { enableSigning, type Signing } from "./signing.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
 
@@ -25,6 +26,18 @@ const downloadButton = element<HTMLButtonElement>("downloadBtn");
 const deleteAllButton = element<HTMLButtonElement>("deleteAllBtn");
 const importNotice = element<HTMLUListElement>("importNotice");
 const downloadBlocked = element("downloadBlocked");
+const downloadLabel = element("downloadLabel");
+const downloadIcon = element("downloadIcon");
+
+let signing: Signing = { selected: () => undefined };
+
+function updateDownloadButton(): void {
+  const signed = signing.selected() !== undefined;
+  downloadLabel.textContent = signed
+    ? "Download signed profile"
+    : "Download profile";
+  downloadIcon.hidden = !signed;
+}
 
 function problemsOf(config: DnsConfig): string[] {
   return Object.values(configProblems(config));
@@ -243,7 +256,14 @@ async function download(): Promise<void> {
       // http:// LAN address.
       randomUuid,
     );
-    await downloadProfile(appConfig.profileFilename, xml);
+    const signWith = signing.selected();
+    await downloadProfile(
+      signWith === undefined
+        ? appConfig.profileFilename
+        : appConfig.signedProfileFilename,
+      xml,
+      signWith,
+    );
   } catch (error) {
     alert(
       `Could not save the profile: ${
@@ -259,6 +279,7 @@ async function download(): Promise<void> {
 function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
   input("systemChk").checked = appConfig.systemScopeByDefault;
+  signing = enableSigning(updateDownloadButton);
   downloadButton.addEventListener("click", () => void download());
   enableDrop(emptyZone, (file) => void importFile(file));
   deleteAllButton.addEventListener("click", () => {

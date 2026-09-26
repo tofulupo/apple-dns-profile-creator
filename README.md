@@ -105,6 +105,7 @@ src/ui/        browser layer - DOM wiring only, no profile semantics
   storage.ts     localStorage-backed configuration store
   theme.ts       header theme switch: system, light or dark
   download.ts    Blob download, or the desktop binding when present
+  signing.ts     desktop-only Signature choice on the profile page
   dropzone.ts    drag and drop onto either page's zone, reading the file
   dom.ts         typed DOM helpers
 
@@ -119,8 +120,10 @@ scripts/       build and dev server
   serve.ts       static file server, --watch rebuilds
 
 src/desktop/   macOS app helpers, used by desktop.ts
-  bindings.ts    the binding's type, shared with src/ui/download.ts
+  bindings.ts    the bindings' types, shared with src/ui/
   save.ts        save to a folder without overwriting
+  signing.ts     Keychain signing through macOS's `security` tool
+  certificate.ts Subject Key Identifier from a DER certificate
   window_state.ts  remembered window size
 
 desktop.ts     deno desktop entry point: serves dist/, saves via a binding
@@ -212,9 +215,47 @@ stored in `~/Library/Application Support/local.encrypted-dns.tool/`.
 Only macOS is built for now: a `.mobileconfig` can only be installed on Apple
 devices.
 
+#### Signing with the Keychain
+
+In the desktop app the Download panel offers **Signed with Keychain**: pick a
+certificate that has its private key in your Keychain, and the profile is saved
+as `encrypted-dns-signed.mobileconfig`, signed through macOS's own `security`
+tool. The key never leaves the Keychain; the first time, macOS asks whether
+`security` may use it. Expired certificates are not listed.
+
+![The Download panel in the desktop app, signing with a Keychain certificate](docs/screenshots/desktop_signed_profile.png)
+
+Devices show a signed profile as "Verified" only if they trust the certificate's
+issuer. A self-signed certificate shows as "Not Verified" unless it is installed
+and trusted on each device.
+
 **The bundle is only ad-hoc signed**, which is fine locally but not
 distributable. Set `desktop.macos.codesignIdentity` in `deno.json` to a
 Developer ID to produce something notarizable.
+
+### Profile signing
+
+Profiles from the website are **not** signed; the desktop app can sign them with
+a Keychain certificate (see above). An unsigned profile installs identically;
+iOS and macOS just label it "Not Signed" during installation. Signing changes
+that label and adds tamper protection, nothing else. To sign a downloaded
+profile yourself:
+
+#### Create a self-signed signing certificate
+
+- Open Keychain Access (in /Applications/Utilities/)
+- In the menu bar: Keychain Access → Certificate Assistant → Create
+  Certificate...
+- Fill in:
+  - Name: e.g. MDM Signing Cert (remember this — you'll use it as the signing
+    identity)
+  - Identity Type: Self-Signed Root
+  - Certificate Type: Code Signing
+  - Check "Let me override defaults" if you want to extend the validity period
+    (default is ~1 year; 10 years is common for this)
+- Click Continue through the prompts (you can skip entering an email address)
+- When done, the certificate is created directly in your login keychain — no
+  separate import needed
 
 ### HTTP or HTTPS
 
@@ -251,17 +292,6 @@ the form's own check.
 
 Desktop packaging settings (name, icons, identifier, output paths, signing) live
 in the `desktop` block of [`deno.json`](deno.json).
-
-## Profile signing
-
-Profiles are **not** signed. An unsigned profile installs identically; iOS and
-macOS just label it "Not Signed" during installation. Signing changes that label
-and adds tamper protection, nothing else. To sign a downloaded profile yourself:
-
-```sh
-openssl smime -sign -in profile.mobileconfig -out signed.mobileconfig \
-  -signer cert.pem -inkey key.pem -outform der -nodetach
-```
 
 ## History and thanks
 

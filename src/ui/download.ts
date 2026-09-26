@@ -5,15 +5,18 @@ import type { DesktopBindings } from "../desktop/bindings.ts";
 
 const MOBILECONFIG_MIME = "application/x-apple-aspen-config";
 
-type SaveProfile = DesktopBindings["saveProfile"];
-
 /**
- * `deno desktop` exposes Deno-side handlers on a `bindings` global.
+ * The desktop app's bindings, or undefined in a browser. `deno desktop`
+ * exposes Deno-side handlers on a `bindings` global.
  */
-function desktopSave(): SaveProfile | undefined {
-  const host = globalThis as { bindings?: Partial<DesktopBindings> };
-  return typeof host.bindings?.saveProfile === "function"
-    ? host.bindings.saveProfile
+export function desktopBindings(): Partial<DesktopBindings> | undefined {
+  return (globalThis as { bindings?: Partial<DesktopBindings> }).bindings;
+}
+
+function desktopSave(): DesktopBindings["saveProfile"] | undefined {
+  const bindings = desktopBindings();
+  return typeof bindings?.saveProfile === "function"
+    ? bindings.saveProfile
     : undefined;
 }
 
@@ -32,18 +35,27 @@ export function asError(error: unknown): Error {
   return new Error(String(error));
 }
 
+/**
+ * Saves the profile. `signWith`, the id of a Keychain identity, is only
+ * possible in the desktop app, which signs before saving.
+ */
 export async function downloadProfile(
   filename: string,
   xml: string,
+  signWith?: string,
 ): Promise<void> {
   const save = desktopSave();
   if (save !== undefined) {
     try {
-      await save(filename, xml);
+      await save(filename, xml, signWith);
     } catch (error) {
       throw asError(error);
     }
     return;
+  }
+
+  if (signWith !== undefined) {
+    throw new Error("Signing is only available in the desktop app.");
   }
 
   const blob = new Blob([xml], { type: MOBILECONFIG_MIME });

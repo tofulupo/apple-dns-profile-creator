@@ -4,7 +4,7 @@
  */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
-import { join, resolve } from "@std/path";
+import { dirname, join, resolve } from "@std/path";
 
 import { PAGES } from "../../pages/pages.ts";
 import { renderPage } from "../../scripts/build.ts";
@@ -16,15 +16,26 @@ if (here === undefined) {
 }
 const ROOT = resolve(here, "..", "..");
 
+/**
+ * Ids the entry module looks up, including in the sibling UI modules it
+ * imports directly, such as `signing.ts` on the profile page.
+ */
 function referencedIds(module: string): string[] {
-  const source = Deno.readTextFileSync(join(ROOT, module));
-  const ids = [
-    ...source.matchAll(
-      /\b(?:element|input|textarea)(?:<[^>()]*>)?\(\s*"([^"]+)"/g,
-    ),
-  ]
+  const entry = Deno.readTextFileSync(join(ROOT, module));
+  const siblings = [...entry.matchAll(/from "\.\/(\w+\.ts)"/g)]
     .map((match) => match[1])
-    .filter((id): id is string => id !== undefined);
+    .filter((file): file is string => file !== undefined)
+    .map((file) => Deno.readTextFileSync(join(ROOT, dirname(module), file)));
+
+  const ids = [entry, ...siblings].flatMap((source) =>
+    [
+      ...source.matchAll(
+        /\b(?:element|input|textarea)(?:<[^>()]*>)?\(\s*"([^"]+)"/g,
+      ),
+    ]
+      .map((match) => match[1])
+      .filter((id): id is string => id !== undefined)
+  );
   return [...new Set(ids)].sort();
 }
 

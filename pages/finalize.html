@@ -58,11 +58,78 @@
     </details>
   </div>
 
+  <fieldset class="field signing" id="signing" hidden>
+    <legend>Signature</legend>
+    <div class="choice-cards">
+      <label class="choice-card">
+        <input type="radio" name="signature" id="signNone"
+          class="visually-hidden" checked>
+        <span class="choice-card__head">
+          <span class="choice-card__title">Unsigned profile</span>
+          <span class="badge">Default</span>
+        </span>
+        <span class="choice-card__hint">Shown as &ldquo;Not Signed&rdquo;
+          when installing.</span>
+      </label>
+      <label class="choice-card">
+        <input type="radio" name="signature" id="signKeychain"
+          class="visually-hidden" aria-describedby="signKeychainHint">
+        <span class="choice-card__head">
+          <span class="icon icon--shield-check" aria-hidden="true"></span>
+          <span class="choice-card__title">Signed with Keychain</span>
+        </span>
+        <span class="choice-card__hint" id="signKeychainHint">Private key
+          stays in your Keychain.</span>
+      </label>
+    </div>
+
+    <div class="identity" id="identityPanel" hidden>
+      <span class="panel__icon" aria-hidden="true"><span
+          class="icon icon--shield-check"></span></span>
+      <div class="identity__body">
+        <label for="identitySelect">Identity certificate</label>
+        <select id="identitySelect" class="identity__select"
+          aria-describedby="identityStatus"></select>
+        <p class="identity__status" id="identityStatus"></p>
+      </div>
+    </div>
+
+    <details class="help">
+      <summary>Requirements for Keychain signing</summary>
+      <div class="help__body">
+        <p>A certificate together with its private key in your Keychain: from
+          your organisation, from an Apple Developer account, or made yourself
+          in Keychain Access &rsaquo; Certificate Assistant. Expired
+          certificates are not listed.</p>
+        <p>Devices show the profile as &ldquo;Verified&rdquo; only if they
+          trust the certificate&rsquo;s issuer. For a self-signed certificate,
+          install it on each iPhone or iPad and turn it on under Settings
+          &rsaquo; General &rsaquo; About &rsaquo; Certificate Trust Settings;
+          on a Mac, trust it in Keychain Access.</p>
+        <p>The first time you sign, macOS asks whether <code>security</code>
+          may use the key. Choose Allow, or Always Allow to not be asked
+          again.</p>
+      </div>
+    </details>
+  </fieldset>
+
   <button id="downloadBtn" class="btn btn--primary btn--block"
-    aria-describedby="downloadBlocked">Download profile</button>
+    aria-describedby="downloadBlocked"><span class="icon icon--shield-check"
+      id="downloadIcon" aria-hidden="true" hidden></span><span
+      id="downloadLabel">Download profile</span></button>
   <p class="field__error" id="downloadBlocked" role="status" hidden></p>
 
-  <div class="note">
+  <div class="note" id="noteSigned" hidden>
+    <span class="icon icon--info" aria-hidden="true"></span>
+    <div class="note__body">
+      <p>The profile is signed with a certificate from your Keychain; its
+        private key never leaves it. Whether iOS and macOS show it as
+        &ldquo;Verified&rdquo; depends on whether they trust that certificate.
+        See the requirements above.</p>
+    </div>
+  </div>
+
+  <div class="note" id="noteUnsigned">
     <span class="icon icon--info" aria-hidden="true"></span>
     <div class="note__body">
       <p>The profile is not signed, so iOS and macOS label it &ldquo;Not

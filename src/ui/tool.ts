@@ -76,9 +76,7 @@ function selectedProtocol(): DnsProtocol {
 
 function applyProtocol(): void {
   const doh = input("doh").checked;
-  element("dohdotServerLabel").textContent = doh
-    ? "DoH server URL"
-    : "DoT server name";
+  element("dohdotServerLabel").textContent = doh ? "DoH URL" : "DoT hostname";
   input("serverUrl").placeholder = doh
     ? "https://example.com/dns-query"
     : "dot.example.com";

@@ -11,6 +11,7 @@ import { basename, fromFileUrl, join } from "@std/path";
 import manifest from "./deno.json" with { type: "json" };
 import type { DesktopBindings } from "./src/desktop/bindings.ts";
 import { saveWithoutOverwrite } from "./src/desktop/save.ts";
+import { createKeychain } from "./src/desktop/signing.ts";
 import { loadWindowSize, saveWindowSize } from "./src/desktop/window_state.ts";
 
 if (typeof Deno.BrowserWindow !== "function") {
@@ -82,28 +83,42 @@ async function openFile(path: string): Promise<boolean> {
   }
 }
 
+const keychain = createKeychain();
+
 // Typed against the shared declaration, but checked at runtime too: the
 // arguments come from the webview.
 const saveProfile: DesktopBindings["saveProfile"] = async (
   filename: unknown,
   xml: unknown,
+  signWith: unknown,
 ) => {
   if (typeof filename !== "string" || typeof xml !== "string") {
     throw new TypeError("saveProfile needs a file name and the profile text.");
   }
+  if (
+    signWith !== undefined && signWith !== null && typeof signWith !== "string"
+  ) {
+    throw new TypeError("saveProfile needs a certificate id to sign with.");
+  }
+
+  // JSON has no undefined, so an absent id may arrive as null.
+  const signature = typeof signWith === "string"
+    ? await keychain.sign(xml, signWith)
+    : undefined;
 
   const path = await saveWithoutOverwrite(
     join(homeDirectory(), "Downloads"),
     filename,
-    xml,
+    signature?.signed ?? xml,
   );
   const name = basename(path);
 
   // Opening a .mobileconfig hands it to System Settings, which is where the
   // profile has to be installed anyway.
   const open = confirm(
-    `Saved “${name}” to your Downloads folder.\n\n` +
-      "Open it now? macOS then asks you to review and install it in " +
+    `Saved “${name}” to your Downloads folder` +
+      (signature === undefined ? "." : `, signed with “${signature.name}”.`) +
+      "\n\nOpen it now? macOS then asks you to review and install it in " +
       "System Settings.",
   );
   if (open && !await openFile(path)) {
@@ -114,4 +129,8 @@ const saveProfile: DesktopBindings["saveProfile"] = async (
   }
 };
 
+const listSigningIdentities: DesktopBindings["listSigningIdentities"] = () =>
+  keychain.list();
+
 main.bind("saveProfile", saveProfile);
+main.bind("listSigningIdentities", listSigningIdentities);

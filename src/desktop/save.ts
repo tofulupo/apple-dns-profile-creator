@@ -41,22 +41,26 @@ export function numberedFilename(filename: string, n: number): string {
 
 /**
  * Writes `contents` into `folder` under a name derived from `requested`,
- * creating the folder if needed. Returns the path written.
+ * creating the folder if needed. Returns the path written. Text is written as
+ * UTF-8; bytes, such as a signed profile, as they are.
  */
 export async function saveWithoutOverwrite(
   folder: string,
   requested: string,
-  contents: string,
+  contents: string | Uint8Array,
 ): Promise<string> {
   await Deno.mkdir(folder, { recursive: true });
   const filename = profileFilename(requested);
+  const bytes = typeof contents === "string"
+    ? new TextEncoder().encode(contents)
+    : contents;
 
   for (let n = 1; n <= MAX_ATTEMPTS; n++) {
     const path = join(folder, numberedFilename(filename, n));
     try {
       // `createNew` makes the existence check and the write one step, so a
       // file that appears in between is still never replaced.
-      await Deno.writeTextFile(path, contents, { createNew: true });
+      await Deno.writeFile(path, bytes, { createNew: true });
       return path;
     } catch (error) {
       if (!(error instanceof Deno.errors.AlreadyExists)) throw error;
