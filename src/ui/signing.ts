@@ -20,8 +20,8 @@ export interface Signing {
 const STATUS_TEXT: Readonly<Record<SigningIdentity["status"], string>> = {
   trusted: "Trusted on this Mac. Devices that trust its issuer show the " +
     "profile as \u201cVerified\u201d.",
-  untrusted: "Not trusted, probably self-signed. Devices show \u201cNot " +
-    "Verified\u201d unless this certificate is trusted on them.",
+  untrusted: "Probably self-signed. Devices show \u201cNot " +
+    "Verified\u201d.",
 };
 
 function readPreference(): string | undefined {

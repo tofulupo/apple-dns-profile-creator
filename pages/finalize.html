@@ -104,10 +104,7 @@
           in Keychain Access &rsaquo; Certificate Assistant. Expired
           certificates are not listed.</p>
         <p>Devices show the profile as &ldquo;Verified&rdquo; only if they
-          trust the certificate&rsquo;s issuer. For a self-signed certificate,
-          install it on each iPhone or iPad and turn it on under Settings
-          &rsaquo; General &rsaquo; About &rsaquo; Certificate Trust Settings;
-          on a Mac, trust it in Keychain Access.</p>
+          trust the certificate&rsquo;s issuer.</p>
         <p>The first time you sign, macOS asks whether <code>security</code>
           may use the key. Choose Allow, or Always Allow to not be asked
           again.</p>
@@ -126,8 +123,7 @@
     <div class="note__body">
       <p>The profile is signed with a certificate from your Keychain; its
         private key never leaves it. Whether iOS and macOS show it as
-        &ldquo;Verified&rdquo; depends on whether they trust that certificate.
-        See the requirements above.</p>
+        &ldquo;Verified&rdquo; depends on whether they trust that certificate.</p>
     </div>
   </div>
 
@@ -135,14 +131,7 @@
     <span class="icon icon--info" aria-hidden="true"></span>
     <div class="note__body">
       <p>When unsigned, iOS and macOS label it &ldquo;Not
-        Signed&rdquo; and ask you to confirm.</p>
-      <details class="help">
-        <summary>Why is the profile not signed?</summary>
-        <div class="help__body">
-          <p>Signing would require a server holding a
-            private key. An unsigned profile installs exactly the same way. Use Desktop App for local signing</p>
-        </div>
-      </details>
+        Signed&rdquo; and ask you to confirm. Use Desktop App for local signing.</p>
     </div>
   </div>
 </section>
