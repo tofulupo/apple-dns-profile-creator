@@ -440,6 +440,7 @@ textarea::placeholder {
   margin: 0.4rem 0 0;
   color: var(--danger);
   font-size: 0.85rem;
+  text-wrap: pretty;
 }
 
 /* Import warnings: parts of an uploaded profile that were left out. */
@@ -448,6 +449,7 @@ textarea::placeholder {
   padding-left: 1.2rem;
   color: var(--warning);
   font-size: 0.85rem;
+  text-wrap: pretty;
 }
 
 .notices--block {
@@ -546,8 +548,10 @@ textarea::placeholder {
 }
 
 /* No weight change here: bolder text widens the chip, and on narrow phones
-   that wrapped the chip row and shifted everything below it. */
-.chip[aria-pressed="true"] {
+   that wrapped the chip row and shifted everything below it. The profile
+   cards' flags list only options that are on, so they share the look. */
+.chip[aria-pressed="true"],
+.profile-card__flags .badge {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-sunken));
   border-color: var(--accent);
   color: var(--accent-text);
@@ -1059,6 +1063,7 @@ textarea::placeholder {
   margin: 0;
   font-size: 0.85rem;
   line-height: 1.45;
+  text-wrap: pretty;
 }
 
 .identity__status--trusted {
@@ -1091,11 +1096,11 @@ textarea::placeholder {
 
 .note__body {
   min-width: 0;
+  text-wrap: pretty;
 }
 
 .note__body > p {
   margin: 0;
-  text-wrap: pretty;
 }
 
 .disclosure {
@@ -1157,6 +1162,7 @@ textarea::placeholder {
   background: var(--surface-sunken);
   border-radius: var(--radius-sm);
   color: var(--muted);
+  text-wrap: pretty;
 }
 
 .help__body > :first-child {
@@ -1165,7 +1171,6 @@ textarea::placeholder {
 
 .help__body > :last-child {
   margin-bottom: 0;
-  text-wrap: pretty;
 }
 
 .profile-card {
@@ -1204,6 +1209,7 @@ textarea::placeholder {
   padding: 0.8rem 1.1rem 0 2.3rem;
   color: var(--danger);
   font-size: 0.85rem;
+  text-wrap: pretty;
 }
 
 .profile-card__actions {
@@ -1228,12 +1234,12 @@ textarea::placeholder {
 .profile-card__body dd {
   margin: 0;
   overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .profile-card__body dd.mono {
   font-family: var(--font-mono);
   font-size: 0.85rem;
-  text-wrap: pretty;
 }
 
 .profile-card__flags {
