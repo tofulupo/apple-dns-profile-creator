@@ -13,8 +13,8 @@ but exposes no way to use them without an app or a configuration profile. This
 tool builds those profiles.
 
 > [!NOTE]
-> The profiles it produces are **unsigned**, iOS and macOS label them "Not
-> Signed"and will ask for confirmation. Use the Desktop app for local signing
+> The profile is **unsigned**, iOS and macOS reports "Not Signed" and will ask
+> for confirmation. Use the [Desktop app](#desktop-app) for local signing.
 
 ## First steps
 
@@ -124,7 +124,7 @@ src/desktop/   macOS app helpers, used by desktop.ts
   save.ts        save to a folder without overwriting
   signing.ts     Keychain signing through macOS's `security` tool
   certificate.ts Subject Key Identifier from a DER certificate
-  window_state.ts  remembered window size
+  app_state.ts   remembered window size and Profile state
 
 desktop.ts     deno desktop entry point: serves dist/, saves via a binding
 desktop/       macOS app icon: AppIcon.icon (light + dark), AppIcon.png fallback
@@ -136,7 +136,7 @@ public/        copied verbatim into the build, names unchanged
 > structures identically for the `.mobileconfig` payload and for the **iOS 27**
 > `com.apple.configuration.network.dns-settings` declaration.
 
-## the app
+## The app
 
 ### Pages
 
@@ -298,7 +298,7 @@ removed.
 - [Mullvad](https://github.com/mullvad/encrypted-dns-profiles) for their
   published profiles
 - [Reicon](https://reicon.dev) for the server, shield, receipt, sun, moon,
-  monitor, download and info icons in `public/icons/` (MIT, see
+  monitor, download, info and card-remove icons in `public/icons/` (MIT, see
   `public/icons/LICENSE-reicon.txt`)
 
 [upstream]: https://code.diluvian.cc/fyr77/dns-mobileconfig

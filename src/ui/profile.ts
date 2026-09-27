@@ -23,6 +23,7 @@ const list = element("dynamicList");
 const emptyState = element("emptyState");
 const emptyZone = element("emptyZone");
 const configList = element("configList");
+const configCount = element("configCount");
 
 const downloadPanel = element("downloadPanel");
 const downloadButton = element<HTMLButtonElement>("downloadBtn");
@@ -190,6 +191,15 @@ function render(): void {
 
   list.replaceChildren(...configs.map(card));
   showProfileCount(count);
+  // Exact here, while the tab stops at "9+".
+  const number = document.createElement("strong");
+  number.textContent = String(count);
+  configCount.replaceChildren(
+    number,
+    count === 1 ? " configuration" : " configurations",
+  );
+  // With one entry its own delete button does the same, without asking.
+  deleteAllButton.hidden = count < 2;
   // With nothing to download or delete, only the empty state is shown.
   emptyState.hidden = count > 0;
   configList.hidden = count === 0;

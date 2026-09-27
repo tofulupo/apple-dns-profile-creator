@@ -247,6 +247,10 @@ code {
   --icon: url("icons/info.svg");
 }
 
+.icon--card-remove {
+  --icon: url("icons/card-remove.svg");
+}
+
 .site-header {
   padding: 2rem 0 1.25rem;
 }
@@ -935,22 +939,47 @@ textarea::placeholder {
   font-size: 0.875rem;
 }
 
-/* Profile page: the configurations, headed by their count and the one
-   action that applies to all of them, kept away from Download. */
+/* Profile page: the configurations, then a footer with their exact count
+   and the one action that applies to all of them. */
 .config-list {
   margin-bottom: 1.5rem;
 }
 
-.list-header {
-  display: flex;
-  align-items: center;
-  justify-content: end;
-  gap: 1rem;
-  margin-bottom: 0.6rem;
+/* Closer to the cards than the cards are to each other, so the footer reads
+   as part of the list rather than of Download below it. */
+.config-list .profile-card:last-child {
+  margin-bottom: 0.5rem;
 }
 
-.list-header .btn--danger {
+.list-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  min-height: 2.25rem;
+}
+
+.list-footer__count {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.list-footer__count strong {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.list-footer .btn--danger {
+  /* Lines the label up with the cards' right edge, not the hover fill's. */
   margin-right: -0.7rem;
+}
+
+.list-footer .icon {
+  width: 1.1rem;
+  height: 1.1rem;
 }
 
 .panel .btn--block {

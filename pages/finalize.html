@@ -16,11 +16,14 @@
 
 <section class="config-list" id="configList" aria-label="Configurations"
   hidden>
-  <header class="list-header">
-    <button type="button" id="deleteAllBtn"
-      class="btn btn--danger btn--small">Delete all</button>
-  </header>
   <div id="dynamicList"></div>
+  <footer class="list-footer">
+    <p class="list-footer__count" id="configCount" role="status"></p>
+    <button type="button" id="deleteAllBtn"
+      class="btn btn--danger btn--small"><span
+        class="icon icon--card-remove" aria-hidden="true"></span>Delete
+      all</button>
+  </footer>
 </section>
 
 <section class="panel" id="downloadPanel" hidden>
