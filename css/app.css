@@ -281,6 +281,12 @@ code {
   color: var(--text);
 }
 
+/* The configuration count on the Profile tab: "(3)", "(9+)". Tabular figures
+   keep the label from shifting as the number changes. */
+.tab__count {
+  font-variant-numeric: tabular-nums;
+}
+
 /* Selected tabs and protocol options share one look: a raised segment with
    only the icon and label in the accent colour. */
 .tab[aria-current="page"],
@@ -938,15 +944,9 @@ textarea::placeholder {
 .list-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: end;
   gap: 1rem;
   margin-bottom: 0.6rem;
-}
-
-.list-header__title {
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 500;
 }
 
 .list-header .btn--danger {

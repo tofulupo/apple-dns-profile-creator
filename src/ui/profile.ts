@@ -11,6 +11,7 @@ import { element, input, setFieldError, showNotices } from "./dom.ts";
 import { restoreDesktopStorage } from "./desktop_storage.ts";
 import { signalPageReady } from "./page_ready.ts";
 import { downloadProfile } from "./download.ts";
+import { showProfileCount } from "./profile_count.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { enableSigning, type Signing } from "./signing.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
@@ -22,7 +23,7 @@ const list = element("dynamicList");
 const emptyState = element("emptyState");
 const emptyZone = element("emptyZone");
 const configList = element("configList");
-const configCount = element("configCount");
+
 const downloadPanel = element("downloadPanel");
 const downloadButton = element<HTMLButtonElement>("downloadBtn");
 const deleteAllButton = element<HTMLButtonElement>("deleteAllBtn");
@@ -188,9 +189,7 @@ function render(): void {
   const count = configs.length;
 
   list.replaceChildren(...configs.map(card));
-  configCount.textContent = `${count} ${
-    count === 1 ? "configuration" : "configurations"
-  }`;
+  showProfileCount(count);
   // With nothing to download or delete, only the empty state is shown.
   emptyState.hidden = count > 0;
   configList.hidden = count === 0;

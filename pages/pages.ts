@@ -15,6 +15,8 @@ export interface Page {
   readonly title: string;
   /** Tab icon: the `icon--<name>` class in `css/app.css`. */
   readonly icon: string;
+  /** Id of an empty element after the tab label, where the pages show a count. */
+  readonly countId?: string;
   /** `<meta name="description">` text. */
   readonly description: string;
   /** Entry module, relative to the project root. */
@@ -45,6 +47,7 @@ export const PAGES: readonly Page[] = [
     nav: "Profile",
     title: "Download profile – DNS Profile Creator",
     icon: "profile",
+    countId: "profileCount",
     description:
       "Review your encrypted DNS configurations and download the finished configuration profile.",
     script: "src/ui/profile.ts",

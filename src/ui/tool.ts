@@ -15,6 +15,7 @@ import { element, input, setFieldError, showNotices, textarea } from "./dom.ts";
 import { restoreDesktopStorage } from "./desktop_storage.ts";
 import { signalPageReady } from "./page_ready.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
+import { showProfileCount } from "./profile_count.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
 
@@ -257,6 +258,10 @@ function showLoaded(name: string | null, outcome?: LoadOutcome): void {
   }
 }
 
+function updateProfileCount(): void {
+  showProfileCount(store.list().length);
+}
+
 async function handleUpload(file: File): Promise<void> {
   const uploadField = element("field-fileupload");
   let configs: DnsConfig[];
@@ -281,6 +286,7 @@ async function handleUpload(file: File): Promise<void> {
     const saved = duplicate || persist(() => store.add(only));
     editing = saved ? only : undefined;
     editingLoaded = saved;
+    updateProfileCount();
     submit.value = saved ? "Save changes" : submitLabel;
     writeForm(only);
     showLoaded(
@@ -340,6 +346,9 @@ function init(): void {
     });
     if (saved) location.href = "finalize.html";
   });
+
+  updateProfileCount();
+  store.subscribe(updateProfileCount);
 
   editing = store.takeEditTarget();
   if (editing !== undefined) {

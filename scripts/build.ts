@@ -96,9 +96,16 @@ function navigation(current: Page): string {
     const icon = `<span class="icon icon--${
       escape(page.icon)
     }" aria-hidden="true"></span>`;
+    // Filled in and shown by the page script; the tab's aria-label then
+    // carries the exact number.
+    const count = page.countId === undefined
+      ? ""
+      : `<span class="tab__count" id="${
+        escape(page.countId)
+      }" aria-hidden="true" hidden></span>`;
     return `<a href="${escape(page.file)}" class="tab"${state}>${icon}${
       escape(page.nav)
-    }</a>`;
+    }${count}</a>`;
   }).join("\n");
 }
 
