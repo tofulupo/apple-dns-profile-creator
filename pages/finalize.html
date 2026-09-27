@@ -134,21 +134,13 @@
   <div class="note" id="noteUnsigned">
     <span class="icon icon--info" aria-hidden="true"></span>
     <div class="note__body">
-      <p>The profile is not signed, so iOS and macOS label it &ldquo;Not
-        Signed&rdquo; while installing and ask you to confirm. That is expected
-        and does not affect how it works.</p>
+      <p>When unsigned, iOS and macOS label it &ldquo;Not
+        Signed&rdquo; and ask you to confirm.</p>
       <details class="help">
         <summary>Why is the profile not signed?</summary>
         <div class="help__body">
-          <p>Signing would require sending the profile to a server holding a
-            private key. This tool builds the file entirely in your browser
-            instead, so nothing leaves the device.</p>
-          <p>An unsigned profile installs exactly the same way; iOS and macOS
-            simply show it as &ldquo;Not Signed&rdquo; during installation. If
-            you want the &ldquo;Verified&rdquo; label, sign the downloaded file
-            yourself with
-            <code>openssl smime -sign -nodetach -outform der</code> using a
-            certificate your devices already trust.</p>
+          <p>Signing would require a server holding a
+            private key. An unsigned profile installs exactly the same way. Use Desktop App for local signing</p>
         </div>
       </details>
     </div>

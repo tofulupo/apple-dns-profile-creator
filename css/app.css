@@ -204,6 +204,7 @@ code {
   color: var(--muted);
   font-size: 0.85rem;
   margin-top: 0.35rem;
+  text-wrap: pretty;
 }
 
 /* An icon drawn from an SVG in icons/, painted in the current text colour so
@@ -810,6 +811,7 @@ textarea::placeholder {
   color: var(--muted);
   font-size: 0.85rem;
   line-height: 1.45;
+  text-wrap: pretty;
 }
 
 /* The knob is a gradient rather than a pseudo-element, which Firefox does not
@@ -1018,6 +1020,7 @@ textarea::placeholder {
   color: var(--muted);
   font-size: 0.85rem;
   line-height: 1.45;
+  text-wrap: pretty;
 }
 
 .identity {
@@ -1092,6 +1095,7 @@ textarea::placeholder {
 
 .note__body > p {
   margin: 0;
+  text-wrap: pretty;
 }
 
 .disclosure {
@@ -1161,6 +1165,7 @@ textarea::placeholder {
 
 .help__body > :last-child {
   margin-bottom: 0;
+  text-wrap: pretty;
 }
 
 .profile-card {
@@ -1228,6 +1233,7 @@ textarea::placeholder {
 .profile-card__body dd.mono {
   font-family: var(--font-mono);
   font-size: 0.85rem;
+  text-wrap: pretty;
 }
 
 .profile-card__flags {

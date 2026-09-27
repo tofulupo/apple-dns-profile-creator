@@ -53,13 +53,18 @@ export const appConfig: AppConfig = {
     {
       name: "Quad9",
       protocol: "HTTPS",
-      serverUrl: "https://dns11.quad9.net/dns-query",
+      serverUrl: "https://dns.quad9.net/dns-query",
       serverAddresses: [
-        "9.9.9.11",
-        "149.112.112.11",
-        "2620:fe::11",
-        "2620:fe::fe:11",
+        "9.9.9.9",
+        "149.112.112.112",
+        "2620:fe::fe",
+        "2620:fe::9",
       ],
+    },
+    {
+      name: "HaGeZi",
+      protocol: "HTTPS",
+      serverUrl: "https://juuri.hagezi.org/dns-query",
     },
     {
       name: "njal.la",
@@ -68,26 +73,22 @@ export const appConfig: AppConfig = {
       serverAddresses: ["95.215.19.53", "2001:67c:2354:2::53"],
     },
     {
+      name: "DNS.SB",
+      protocol: "HTTPS",
+      serverUrl: "https://doh.dns.sb/dns-query",
+      serverAddresses: ["45.11.45.11", "185.222.222.222", "2a09::", "2a11::"],
+    },
+    {
       name: "FlokiNET",
       protocol: "HTTPS",
       serverUrl: "https://resolv.flokinet.net/dns-query",
       serverAddresses: ["37.156.68.20", "2a06:1700:100:20::1"],
     },
     {
-      name: "HaGeZi",
-      protocol: "HTTPS",
-      serverUrl: "https://juuri.hagezi.org/dns-query",
-    },
-    {
-      name: "DNSBunker",
+      name: "DNS Bunker",
       protocol: "HTTPS",
       serverUrl: "https://dnsbunker.org/dns-query",
       serverAddresses: ["185.250.250.61", "2a0a:51c1:a:ea::"],
-    },
-    {
-      name: "DigitaleGesellschaft",
-      protocol: "HTTPS",
-      serverUrl: "https://dns.digitale-gesellschaft.ch/dns-query",
     },
   ],
 };
