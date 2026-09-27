@@ -31,6 +31,10 @@
   /* The upload zone's dashed outline. */
   --zone-border: light-dark(#94a3b8, #6b7280);
   --success: light-dark(#1a7f37, #3fb950);
+  /* Success as an icon (the server field's check): brighter than the text
+     colour, since a dark green shield barely differs from the grey one it
+     replaces. Icons need 3:1, which #16a34a keeps on white. */
+  --success-icon: light-dark(#16a34a, #3fb950);
   --warning: light-dark(#9a6700, #d29922);
   --danger: light-dark(#cf3c3c, #f87171);
   --danger-hover: light-dark(#b23232, #fca5a5);
@@ -504,7 +508,7 @@ textarea::placeholder {
 .input-check--valid .input-check__icon {
   --icon: url("icons/shield-check.svg");
 
-  color: var(--success);
+  color: var(--success-icon);
 }
 
 /* Two-way protocol switch. The radios stay in the page, visually hidden, so
