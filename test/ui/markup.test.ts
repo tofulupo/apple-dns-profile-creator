@@ -7,7 +7,12 @@ import { expect } from "@std/expect";
 import { dirname, join, resolve } from "@std/path";
 
 import { PAGES, SITE_URL } from "../../pages/pages.ts";
-import { pageHref, pageUrl, renderPage } from "../../scripts/build.ts";
+import {
+  inlineScript,
+  pageHref,
+  pageUrl,
+  renderPage,
+} from "../../scripts/build.ts";
 import { THEME_KEY } from "../../src/ui/theme.ts";
 import { appConfig } from "../../src/config.ts";
 
@@ -53,11 +58,23 @@ const rendered = await Promise.all(
     page,
     html: await renderPage(page, {
       stylesheet: "app.css",
-      script: page.script,
+      script: `/* page script: ${page.script} */`,
       version: "0.0.0-test",
     }),
   })),
 );
+
+describe("inlineScript", () => {
+  it("wraps the code in a classic script element", () => {
+    expect(inlineScript("init()")).toBe("<script>init()</script>");
+  });
+
+  it("refuses code that would end or reparse the element", () => {
+    for (const code of ['"</script>"', '"</SCRIPT "', '"<script>"']) {
+      expect(() => inlineScript(code)).toThrow();
+    }
+  });
+});
 
 describe("page titles", () => {
   it("differ between pages", () => {
@@ -86,6 +103,17 @@ for (const { page, html } of rendered) {
     it("fills every placeholder", () => {
       expect(html).not.toContain("{{");
       expect(html).toContain(">v0.0.0-test</a>");
+    });
+
+    // A module script runs after parsing, and browsers may paint before
+    // that, so whatever it builds from stored data appeared a frame late.
+    it("runs its page script inline, after all of the page", () => {
+      expect(html).not.toMatch(/<script[^>]*\b(src|type="module")/);
+      expect(html).toMatch(
+        new RegExp(
+          `</footer>\\s*</div>\\s*<script>/\\* page script: ${page.script} \\*/</script>\\s*</body>`,
+        ),
+      );
     });
 
     it("applies a saved theme before first paint with the module's key", () => {

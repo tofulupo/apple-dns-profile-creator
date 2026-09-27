@@ -308,7 +308,11 @@ function init(): void {
   render();
 }
 
-// Before anything reads storage; does nothing outside the desktop app.
-await restoreDesktopStorage();
-init();
-signalPageReady();
+// Before anything reads storage; does nothing outside the desktop app. Not a
+// top-level await: the build inlines this page as a classic script, which runs
+// before first paint, and a browser resolves this within the same microtask
+// checkpoint, so the page is built by the time it is first drawn.
+void restoreDesktopStorage().then(() => {
+  init();
+  signalPageReady();
+});

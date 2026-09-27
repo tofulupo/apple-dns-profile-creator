@@ -1,14 +1,7 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run
 // Builds the static site into dist/.
 import { copy } from "@std/fs/copy";
-import {
-  dirname,
-  fromFileUrl,
-  join,
-  relative,
-  resolve,
-  SEPARATOR,
-} from "@std/path";
+import { dirname, fromFileUrl, join, resolve } from "@std/path";
 import { type Page, PAGES, SITE_URL } from "../pages/pages.ts";
 import { appConfig } from "../src/config.ts";
 
@@ -18,17 +11,13 @@ const PAGES_DIR = join(ROOT, "pages");
 const LAYOUT = "pages/_layout.html";
 /** Rendered with the site's address into dist/llms.txt. */
 const LLMS = "pages/llms.txt";
-// Rendered pages are staged inside dist/ so their script paths resolve from a
-// fixed location. The bundler writes them flat into dist/, and the stage is
-// removed afterwards.
-const STAGE = join(DIST, ".pages");
 const STYLESHEET = "css/app.css";
 const REPOSITORY_URL = "https://github.com/tofulupo/apple-dns-profile-creator";
 
 export interface PageAssets {
   /** Stylesheet URL, relative to the page. */
   readonly stylesheet: string;
-  /** Entry module path, relative to the page. */
+  /** The page's script, bundled into one classic script (see inlineScript). */
   readonly script: string;
   /** Shown next to the page heading. */
   readonly version: string;
@@ -57,6 +46,45 @@ async function bundle(
   if (!success) {
     throw new Error(`deno bundle failed for ${entrypoints.join(", ")}`);
   }
+}
+
+/** Bundles `entrypoint` and its imports into one classic script. */
+async function bundleScript(entrypoint: string): Promise<string> {
+  const { success, stdout } = await new Deno.Command(Deno.execPath(), {
+    args: [
+      "bundle",
+      "--platform",
+      "browser",
+      "--minify",
+      "--format",
+      "iife",
+      entrypoint,
+    ],
+    cwd: ROOT,
+    stdout: "piped",
+    stderr: "inherit",
+  }).output();
+
+  if (!success) throw new Error(`deno bundle failed for ${entrypoint}`);
+  return new TextDecoder().decode(stdout).trim();
+}
+
+/**
+ * The page script as an inline `<script>` at the end of the body. There it
+ * runs while the page is parsed, before the first paint, so everything it
+ * builds from stored data (the configuration list, the Profile tab's count)
+ * is in place when the page is first drawn. As a module script, even from
+ * cache, it ran after parsing, and browsers may paint before that: those parts
+ * then appeared a frame late, on some reloads in Chromium and on every reload
+ * in WebKit.
+ */
+export function inlineScript(code: string): string {
+  // `</script` ends the element early. `<script` after a `<!--` (which the
+  // plist parser has) would make the parser skip the real end tag.
+  if (/<\/?script/i.test(code)) {
+    throw new Error("The page script contains markup that breaks inlining");
+  }
+  return `<script>${code}</script>`;
 }
 
 /**
@@ -212,7 +240,7 @@ export async function renderPage(
     canonical: escape(pageUrl(page)),
     structuredData: jsonLd,
     stylesheet: escape(assets.stylesheet),
-    script: escape(assets.script),
+    script: inlineScript(assets.script),
     version: escape(assets.version),
     nav: navigation(page),
     content: fill(content.trim(), { presets: presetChips() }, page.file),
@@ -414,26 +442,15 @@ export async function build(): Promise<void> {
   await Deno.writeTextFile(join(DIST, stylesheet), css);
 
   const version = await readVersion();
-  await Deno.mkdir(STAGE);
-  try {
-    const staged: string[] = [];
-    for (const page of PAGES) {
-      const path = join(STAGE, page.file);
-      const script = relative(STAGE, join(ROOT, page.script))
-        .replaceAll(SEPARATOR, "/");
-      await Deno.writeTextFile(
-        path,
-        await renderPage(page, {
-          stylesheet: `./${stylesheet}`,
-          script,
-          version,
-        }),
-      );
-      staged.push(path);
-    }
-    await bundle(staged);
-  } finally {
-    await Deno.remove(STAGE, { recursive: true });
+  for (const page of PAGES) {
+    await Deno.writeTextFile(
+      join(DIST, page.file),
+      await renderPage(page, {
+        stylesheet: `./${stylesheet}`,
+        script: await bundleScript(page.script),
+        version,
+      }),
+    );
   }
 
   for await (const entry of Deno.readDir(join(ROOT, "public"))) {
