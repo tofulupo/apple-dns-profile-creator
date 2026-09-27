@@ -111,6 +111,13 @@ describe("configuration list", () => {
     expect(store.takeEditTarget()).toBeUndefined();
     expect(store.takeImportWarnings()).toEqual([]);
   });
+
+  it("tells whether an equal entry is stored", () => {
+    const stored = config({ name: "Stored" });
+    store.add(stored);
+    expect(store.has(config({ name: "Stored" }))).toBe(true);
+    expect(store.has(config({ name: "Other" }))).toBe(false);
+  });
 });
 
 describe("changes made in another tab meanwhile", () => {

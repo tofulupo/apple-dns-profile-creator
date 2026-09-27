@@ -61,6 +61,8 @@ export function persist(write: () => void): boolean {
  */
 export interface ConfigStore {
   list(): DnsConfig[];
+  /** Whether an entry equal to `config` is stored. */
+  has(config: DnsConfig): boolean;
   /** Appends in one write, so a refused write leaves none of them behind. */
   add(...configs: readonly DnsConfig[]): void;
   /** Replaces the entry equal to `original`; appends when it has gone. */
@@ -196,6 +198,10 @@ export function createConfigStore(storage: StorageArea): ConfigStore {
 
   return {
     list: read,
+
+    has(target) {
+      return read().some((config) => sameConfig(config, target));
+    },
 
     add(...configs) {
       write([...read(), ...configs]);

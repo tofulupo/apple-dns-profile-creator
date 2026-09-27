@@ -27,9 +27,15 @@ const uploadNotice = element<HTMLUListElement>("uploadNotice");
 const serverCheck = element("serverCheck");
 const serverCheckText = element("serverCheckText");
 const presetList = element("presets");
+const submitLabel = submit.value;
 
 /** The stored configuration the form is editing, if any. */
 let editing: DnsConfig | undefined;
+/**
+ * Whether `editing` came from a loaded file rather than from "Fix" on the
+ * profile page. Only then does a preset start a new configuration.
+ */
+let editingLoaded = false;
 
 function readForm(): DnsConfig {
   const supplementalMatchDomains = parseList(input("matchDomains").value);
@@ -153,6 +159,13 @@ function applyPreset(preset: DnsPreset): void {
   }
   setFieldError(element("field-provName"), null);
   setFieldError(element("field-serverAddresses"), null);
+  // A preset means a new configuration, so it is added next to the loaded
+  // file, which stays in the profile as it was, instead of replacing it.
+  if (editingLoaded) {
+    editing = undefined;
+    editingLoaded = false;
+    submit.value = submitLabel;
+  }
   applyProtocol();
 }
 
@@ -208,11 +221,16 @@ function validate(config: DnsConfig): boolean {
   return !hasProblems(problems);
 }
 
+/** What happened to a loaded file's configuration. */
+type LoadOutcome = "added" | "duplicate" | "unsaved";
+
 /**
  * Confirms which file filled the form, or restores the hint when `name` is
  * null. `#uploadStatus` is a live region, so the change is also announced.
  */
-function showLoaded(name: string | null): void {
+function showLoaded(name: null): void;
+function showLoaded(name: string, outcome: LoadOutcome): void;
+function showLoaded(name: string | null, outcome?: LoadOutcome): void {
   dropzone.classList.toggle("zone--loaded", name !== null);
   if (name === null) {
     uploadStatus.textContent = uploadHint;
@@ -221,9 +239,20 @@ function showLoaded(name: string | null): void {
   const file = document.createElement("strong");
   file.textContent = name;
   file.title = name;
-  // The status row is a flex line spaced by `gap`, which collapses this space
-  // visually; it is kept so assistive tech does not read "Loadedfoo".
-  uploadStatus.replaceChildren("Loaded ", file);
+  // The status row is a flex line spaced by `gap`, which collapses these
+  // spaces visually; they are kept so assistive tech does not run words
+  // together.
+  switch (outcome) {
+    case "added":
+      uploadStatus.replaceChildren("Added ", file, " to profile");
+      break;
+    case "duplicate":
+      uploadStatus.replaceChildren("Already in profile: ", file);
+      break;
+    case "unsaved":
+      uploadStatus.replaceChildren("Loaded ", file);
+      break;
+  }
 }
 
 async function handleUpload(file: File): Promise<void> {
@@ -243,8 +272,19 @@ async function handleUpload(file: File): Promise<void> {
 
   const [only] = configs;
   if (configs.length === 1 && only !== undefined) {
+    // Saved at once, so switching to the profile page does not lose it, and
+    // then edited like an entry opened from there: changes update it. The
+    // profile page flags it if it needs fixing, and holds back the download.
+    const duplicate = store.has(only);
+    const saved = duplicate || persist(() => store.add(only));
+    editing = saved ? only : undefined;
+    editingLoaded = saved;
+    submit.value = saved ? "Save changes" : submitLabel;
     writeForm(only);
-    showLoaded(file.name);
+    showLoaded(
+      file.name,
+      duplicate ? "duplicate" : saved ? "added" : "unsaved",
+    );
     showNotices(uploadNotice, warnings);
     // Point at anything the profile got wrong now, not on the first submit.
     validate(readForm());
