@@ -12,16 +12,11 @@ Apple has supported DNS-over-HTTPS and DNS-over-TLS since iOS 14 and macOS 11,
 but exposes no way to use them without an app or a configuration profile. This
 tool builds those profiles.
 
-## Which way to run it
+> [!NOTE]
+> The profiles it produces are **unsigned**, iOS and macOS label them "Not
+> Signed"and will ask for confirmation. Use the Desktop app for local signing
 
-| You want to                           | Use                    | Notes                              |
-| ------------------------------------- | ---------------------- | ---------------------------------- |
-| Install a profile on an iPhone / iPad | LAN server/Deno Deploy | The device must download it itself |
-| Install a profile on a Mac            | Desktop app (macOS)    | Saves and opens System Settings    |
-| Host it for your household/company    | `dist/` on any server  | Static files, no runtime needed    |
-| Work on the code                      | `deno task dev`        | Rebuilds on save                   |
-
-## first steps
+## First steps
 
 ### check out the code
 
@@ -190,25 +185,6 @@ the file instead, opening it from Files should start the same flow.
 
 For a permanent install, `deno task build` produces a static `dist/` that any
 web server can host, over HTTP or HTTPS. Nothing server-side is required.
-
-### Deno Deploy
-
-The public instance at <https://apple.mobileconfig.deno.net> runs on
-[Deno Deploy](https://deno.com/deploy), which builds and publishes on every push
-to `main`. Its settings live in the `deploy` block of `deno.json`: run
-`deno task build`, then serve `dist/` as static files, with unknown paths
-answered by a 404 rather than the tool page.
-
-The site's address is `SITE_URL` in `pages/pages.ts`. The build derives
-`sitemap.xml`, `robots.txt` and `llms.txt` from it, so moving the site to
-another domain is that one line.
-
-A hosted instance stays entirely client-side - nothing is uploaded.
-
-> [!NOTE]
-> The profiles it produces are **unsigned**, so iOS and macOS label them "Not
-> Signed" during installation and ask for confirmation. The download page states
-> this.
 
 ### Desktop app
 
