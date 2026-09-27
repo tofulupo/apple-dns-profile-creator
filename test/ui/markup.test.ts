@@ -7,7 +7,7 @@ import { expect } from "@std/expect";
 import { dirname, join, resolve } from "@std/path";
 
 import { PAGES, SITE_URL } from "../../pages/pages.ts";
-import { pageUrl, renderPage } from "../../scripts/build.ts";
+import { pageHref, pageUrl, renderPage } from "../../scripts/build.ts";
 import { THEME_KEY } from "../../src/ui/theme.ts";
 import { appConfig } from "../../src/config.ts";
 
@@ -133,7 +133,11 @@ for (const { page, html } of rendered) {
       const current = [
         ...html.matchAll(/<a href="([^"]+)"[^>]*aria-current="page"/g),
       ].map((match) => match[1]);
-      expect(current).toEqual([page.file]);
+      expect(current).toEqual([pageHref(page)]);
+    });
+
+    it("links the start page by its canonical address, not index.html", () => {
+      expect(html).not.toMatch(/href="(?:\.\/)?index\.html"/);
     });
   });
 }

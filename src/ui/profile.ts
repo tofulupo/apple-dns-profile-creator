@@ -107,7 +107,8 @@ function card(config: DnsConfig): HTMLElement {
       "btn btn--icon",
       () => {
         if (persist(() => store.startEdit(config))) {
-          location.href = "index.html";
+          // The tool page's canonical address, not index.html.
+          location.href = "./";
         }
       },
       `${problems.length > 0 ? "Fix" : "Edit"} ${label}`,

@@ -1,14 +1,16 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run=xcode-select,xcrun,plutil,codesign
 /**
- * Gives the packaged macOS app an icon that follows light and dark mode.
+ * Finishes the macOS app that `deno desktop` packaged, then re-signs it, since
+ * changing the bundle breaks the signature `deno desktop` applied:
  *
- * `deno desktop` only takes a single image, baked into AppIcon.icns. This runs
- * after it and compiles `desktop/AppIcon.icon` (an Icon Composer document)
- * with Xcode's `actool` into the bundle, then re-signs it, since changing the
- * bundle breaks the signature `deno desktop` applied.
- *
- * Without Xcode it changes nothing: the app keeps the single icon rendered
- * from `desktop/AppIcon.png`.
+ * - Removes the camera, microphone and Bluetooth permission texts that
+ *   `deno desktop` adds to every app. This one uses none of them, and they
+ *   would suggest otherwise to anyone reading the bundle.
+ * - Gives it an icon that follows light and dark mode. `deno desktop` only
+ *   takes a single image, baked into AppIcon.icns; this compiles
+ *   `desktop/AppIcon.icon` (an Icon Composer document) with Xcode's `actool`
+ *   into the bundle. Without Xcode the app keeps the single icon rendered
+ *   from `desktop/AppIcon.png`.
  *
  *   deno task desktop           runs this after packaging
  *   deno task desktop:icon      re-renders desktop/AppIcon.png from the .icon;
@@ -108,16 +110,32 @@ async function renderFallback(): Promise<void> {
   console.log(`app icon: rendered ${FALLBACK_PNG}`);
 }
 
-async function installIcon(): Promise<void> {
-  if (Deno.build.os !== "darwin" || !await actoolAvailable()) return;
+/**
+ * Removes every `NS…UsageDescription` key from the bundle's Info.plist. macOS
+ * shows these texts when an app asks for camera, microphone, Bluetooth and
+ * similar access; this app never asks. Returns the keys it removed.
+ */
+export async function removeUsageDescriptions(
+  plist: string,
+): Promise<string[]> {
+  const { success, output } = await run("plutil", [
+    "-convert",
+    "json",
+    "-o",
+    "-",
+    plist,
+  ]);
+  if (!success) throw new Error(`plutil could not read ${plist}:\n${output}`);
+  const keys = Object.keys(JSON.parse(output) as Record<string, unknown>)
+    .filter((key) => /^NS\w+UsageDescription$/.test(key));
+  for (const key of keys) await must("plutil", ["-remove", key, plist]);
+  return keys;
+}
 
-  const manifest = JSON.parse(
-    await Deno.readTextFile(join(ROOT, "deno.json")),
-  ) as Manifest;
-  // `deno desktop` appends .app to the configured output path.
-  const app = `${resolve(ROOT, manifest.desktop.output.macos)}.app`;
+/** Compiles the light, dark and tinted icon into the bundle. */
+async function installIcon(app: string): Promise<boolean> {
+  if (!await actoolAvailable()) return false;
   const resources = join(app, "Contents", "Resources");
-  const identity = manifest.desktop.macos?.codesignIdentity ?? "-";
 
   const compiled = await Deno.makeTempDir({ prefix: "dns-app-icon-" });
   try {
@@ -159,19 +177,41 @@ async function installIcon(): Promise<void> {
     "AppIcon",
     plist,
   ]);
+  return true;
+}
+
+async function finishApp(): Promise<void> {
+  if (Deno.build.os !== "darwin") return;
+
+  const manifest = JSON.parse(
+    await Deno.readTextFile(join(ROOT, "deno.json")),
+  ) as Manifest;
+  // `deno desktop` appends .app to the configured output path.
+  const app = `${resolve(ROOT, manifest.desktop.output.macos)}.app`;
+  const identity = manifest.desktop.macos?.codesignIdentity ?? "-";
+
+  const removed = await removeUsageDescriptions(
+    join(app, "Contents", "Info.plist"),
+  );
+  const iconInstalled = await installIcon(app);
 
   // The nested binaries are untouched and keep deno desktop's signatures;
   // only the bundle itself needs signing again.
   await must("codesign", ["--force", "--sign", identity, app]);
   await must("codesign", ["--verify", "--strict", app]);
 
-  // Nudges Finder and the Dock to drop the cached icon.
-  const now = new Date();
-  await Deno.utime(app, now, now);
-  console.log(`app icon: installed light and dark icon in ${app}`);
+  if (removed.length > 0) {
+    console.log(`app: removed ${removed.length} unused permission texts`);
+  }
+  if (iconInstalled) {
+    // Nudges Finder and the Dock to drop the cached icon.
+    const now = new Date();
+    await Deno.utime(app, now, now);
+    console.log(`app icon: installed light and dark icon in ${app}`);
+  }
 }
 
 if (import.meta.main) {
   if (Deno.args.includes("--render-fallback")) await renderFallback();
-  else await installIcon();
+  else await finishApp();
 }

@@ -59,6 +59,42 @@ async function bundle(
   }
 }
 
+/**
+ * An SVG as a CSS `url()` data URI. Only the characters that would break the
+ * URI or the quoted string are escaped, which keeps it far smaller than
+ * encoding everything.
+ */
+export function svgDataUri(svg: string): string {
+  if (svg.includes("'")) {
+    throw new Error("SVG uses single quotes, which the data URI relies on");
+  }
+  const compact = svg.replace(/\s+/g, " ").replaceAll("> <", "><").trim()
+    .replaceAll('"', "'")
+    .replace(/[%#<>{}]/g, (character) => encodeURIComponent(character));
+  return `url("data:image/svg+xml,${compact}")`;
+}
+
+/**
+ * Replaces the stylesheet's `url(icons/…svg)` references with the icons
+ * themselves. As separate files they only load after the page has painted,
+ * so every page change drew the tabs, the theme switch and the zone icon
+ * empty for a frame: a visible flicker. Inlined, they are there from the
+ * first paint, since the stylesheet itself blocks it.
+ */
+export async function inlineIcons(
+  css: string,
+  read: (file: string) => Promise<string>,
+): Promise<string> {
+  const reference = /url\(\s*(["']?)(icons\/[\w.-]+\.svg)\1\s*\)/g;
+  const files = new Set([...css.matchAll(reference)].map((match) => match[2]!));
+  const uris = new Map<string, string>();
+  for (const file of files) uris.set(file, svgDataUri(await read(file)));
+  return css.replace(
+    reference,
+    (_match, _quote, file: string) => uris.get(file)!,
+  );
+}
+
 async function fingerprint(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
   return Array.from(
@@ -103,7 +139,7 @@ function navigation(current: Page): string {
       : `<span class="tab__count" id="${
         escape(page.countId)
       }" aria-hidden="true" hidden></span>`;
-    return `<a href="${escape(page.file)}" class="tab"${state}>${icon}${
+    return `<a href="${escape(pageHref(page))}" class="tab"${state}>${icon}${
       escape(page.nav)
     }${count}</a>`;
   }).join("\n");
@@ -297,9 +333,17 @@ async function lastCommitDate(paths: string[]): Promise<string | undefined> {
 
 /** A page's public URL; the start page is the site root itself. */
 export function pageUrl(page: Page): string {
-  return page.file === "index.html"
-    ? SITE_URL
-    : new URL(page.file, SITE_URL).href;
+  return new URL(pageHref(page), SITE_URL).href;
+}
+
+/**
+ * The page's address relative to the site root, as internal links use it.
+ * The start page is the root itself rather than `index.html`: that is its
+ * canonical URL, and a link to `index.html` would send visitors and crawlers
+ * to a second address for the same page.
+ */
+export function pageHref(page: Page): string {
+  return page.file === "index.html" ? "./" : page.file;
 }
 
 /**
@@ -353,17 +397,21 @@ export async function build(): Promise<void> {
   }
   await Deno.mkdir(DIST, { recursive: true });
 
-  // Icons are copied from public/ unchanged. Marked external, their url()s stay
-  // relative to the stylesheet, which lands next to icons/ in dist/.
-  // The `=` form matters: `--external` takes several values and would
-  // otherwise swallow the entrypoint after it.
+  // Marked external, the icons' url()s are left alone by the bundler and
+  // inlined afterwards (see inlineIcons). The `=` form matters: `--external`
+  // takes several values and would otherwise swallow the entrypoint after it.
   await bundle([STYLESHEET], ["--external=icons/*"]);
 
   const bundled = join(DIST, "app.css");
+  const css = await inlineIcons(
+    await Deno.readTextFile(bundled),
+    (file) => Deno.readTextFile(join(ROOT, "public", file)),
+  );
   const stylesheet = `app-${await fingerprint(
-    await Deno.readFile(bundled),
+    new TextEncoder().encode(css),
   )}.css`;
-  await Deno.rename(bundled, join(DIST, stylesheet));
+  await Deno.remove(bundled);
+  await Deno.writeTextFile(join(DIST, stylesheet), css);
 
   const version = await readVersion();
   await Deno.mkdir(STAGE);
