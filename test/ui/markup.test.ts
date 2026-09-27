@@ -97,6 +97,19 @@ for (const { page, html } of rendered) {
       }
     });
 
+    // Which of these shows depends on the stored list, which only the page
+    // script reads. Shown by default, one would flash on every load, such as
+    // "No config yet" while there are configurations.
+    if (page.file === "finalize.html") {
+      it("starts with everything that depends on the list hidden", () => {
+        for (const id of ["emptyState", "configList", "downloadPanel"]) {
+          const tag = new RegExp(`<[a-z]+[^>]*\\bid="${id}"[^>]*>`).exec(html);
+          expect({ id, hidden: /\shidden[\s>]/.test(tag?.[0] ?? "") })
+            .toEqual({ id, hidden: true });
+        }
+      });
+    }
+
     it("renders one preset chip per preset, in order", () => {
       const chips = [
         ...html.matchAll(/<button type="button" class="chip"[^>]*>([^<]*)</g),
