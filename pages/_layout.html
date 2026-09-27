@@ -29,9 +29,11 @@
       media="(prefers-color-scheme: dark)">
     <script>
     // Applies a chosen theme before first paint, so it never flashes the
-    // other one. Key and values must match src/ui/theme.ts.
+    // other one. Key and values must match src/ui/storage.ts and theme.ts.
+    // The desktop app keeps it in sessionStorage, browsers in localStorage.
     try {
-      const theme = localStorage.getItem("dns-mobileconfig:theme");
+      const theme = sessionStorage.getItem("dns-mobileconfig:theme") ??
+        localStorage.getItem("dns-mobileconfig:theme");
       if (theme === "light" || theme === "dark") {
         document.documentElement.dataset.theme = theme;
       }

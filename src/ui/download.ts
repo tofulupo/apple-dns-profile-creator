@@ -2,16 +2,9 @@
  * Local file download.
  */
 import type { DesktopBindings } from "../desktop/bindings.ts";
+import { desktopBindings } from "./desktop.ts";
 
 const MOBILECONFIG_MIME = "application/x-apple-aspen-config";
-
-/**
- * The desktop app's bindings, or undefined in a browser. `deno desktop`
- * exposes Deno-side handlers on a `bindings` global.
- */
-export function desktopBindings(): Partial<DesktopBindings> | undefined {
-  return (globalThis as { bindings?: Partial<DesktopBindings> }).bindings;
-}
 
 function desktopSave(): DesktopBindings["saveProfile"] | undefined {
   const bindings = desktopBindings();

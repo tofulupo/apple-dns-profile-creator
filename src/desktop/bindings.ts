@@ -33,4 +33,19 @@ export interface DesktopBindings {
 
   /** Identities in the Keychain that can sign, expired ones left out. */
   listSigningIdentities(): Promise<SigningIdentity[]>;
+
+  /**
+   * The page's stored data from the last launch. The webview's own storage
+   * starts empty on each launch, since the app's origin changes.
+   */
+  loadStorage(): Promise<Record<string, string>>;
+
+  /** Replaces the stored data kept for the next launch. */
+  saveStorage(data: Record<string, string>): Promise<void>;
+
+  /**
+   * Called by each page once it has painted. The window starts hidden, since
+   * until then it shows an empty white webview, even in dark mode.
+   */
+  pageReady(): Promise<void>;
 }

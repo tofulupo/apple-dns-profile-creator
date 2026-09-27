@@ -8,6 +8,8 @@ import type { DnsConfig } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
 import { configProblems } from "../lib/validate.ts";
 import { element, input, setFieldError, showNotices } from "./dom.ts";
+import { restoreDesktopStorage } from "./desktop_storage.ts";
+import { signalPageReady } from "./page_ready.ts";
 import { downloadProfile } from "./download.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { enableSigning, type Signing } from "./signing.ts";
@@ -296,4 +298,7 @@ function init(): void {
   render();
 }
 
+// Before anything reads storage; does nothing outside the desktop app.
+await restoreDesktopStorage();
 init();
+signalPageReady();

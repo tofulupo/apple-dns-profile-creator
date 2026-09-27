@@ -89,9 +89,12 @@ for (const { page, html } of rendered) {
     });
 
     it("applies a saved theme before first paint with the module's key", () => {
-      expect(html).toContain(
-        `localStorage.getItem(${JSON.stringify(THEME_KEY)})`,
-      );
+      // sessionStorage in the desktop app, localStorage in browsers.
+      for (const area of ["sessionStorage", "localStorage"]) {
+        expect(html).toContain(
+          `${area}.getItem(${JSON.stringify(THEME_KEY)})`,
+        );
+      }
     });
 
     it("renders one preset chip per preset, in order", () => {

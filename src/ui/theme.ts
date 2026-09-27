@@ -6,12 +6,11 @@
  * storage key; this module only handles switching and the toolbar colour.
  */
 
-import { browserStorage, type StorageArea } from "./storage.ts";
+import { browserStorage, type StorageArea, THEME_KEY } from "./storage.ts";
+
+export { THEME_KEY };
 
 export type Theme = "system" | "light" | "dark";
-
-/** Also hardcoded in the layout's inline script; the markup test checks both. */
-export const THEME_KEY = "dns-mobileconfig:theme";
 
 const ORDER: readonly Theme[] = ["system", "light", "dark"];
 

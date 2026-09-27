@@ -18,6 +18,8 @@ declare namespace Deno {
     bind(name: string, handler: (...args: never[]) => unknown): void;
     unbind(name: string): void;
     close(): void;
+    hide(): void;
+    show(): void;
     setTitle(title: string): void;
     /** Width and height in logical pixels. */
     getSize(): [width: number, height: number];

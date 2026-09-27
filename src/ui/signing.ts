@@ -6,7 +6,7 @@
 
 import type { SigningIdentity } from "../desktop/bindings.ts";
 import { element } from "./dom.ts";
-import { desktopBindings } from "./download.ts";
+import { desktopBindings } from "./desktop.ts";
 import { browserStorage } from "./storage.ts";
 
 /** The identity id last signed with; absent means unsigned. */

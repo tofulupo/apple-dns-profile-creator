@@ -12,6 +12,8 @@ import {
 } from "../lib/validate.ts";
 import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
 import { element, input, setFieldError, showNotices, textarea } from "./dom.ts";
+import { restoreDesktopStorage } from "./desktop_storage.ts";
+import { signalPageReady } from "./page_ready.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
@@ -350,4 +352,7 @@ function init(): void {
   applyProtocol();
 }
 
+// Before anything reads storage; does nothing outside the desktop app.
+await restoreDesktopStorage();
 init();
+signalPageReady();

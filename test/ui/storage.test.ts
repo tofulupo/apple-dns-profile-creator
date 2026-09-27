@@ -6,6 +6,7 @@ import { expect } from "@std/expect";
 
 import {
   createConfigStore,
+  isLastingKey,
   StorageUnavailableError,
 } from "../../src/ui/storage.ts";
 import type { ConfigStore, StorageArea } from "../../src/ui/storage.ts";
@@ -117,6 +118,18 @@ describe("configuration list", () => {
     store.add(stored);
     expect(store.has(config({ name: "Stored" }))).toBe(true);
     expect(store.has(config({ name: "Other" }))).toBe(false);
+  });
+});
+
+describe("isLastingKey", () => {
+  it("keeps the list and signing choice, not the session-only keys", () => {
+    expect(isLastingKey(CONFIGS_KEY)).toBe(true);
+    expect(isLastingKey("dns-mobileconfig:sign-with")).toBe(true);
+    expect(isLastingKey("dns-mobileconfig:theme")).toBe(false);
+    expect(isLastingKey("dns-mobileconfig:restored")).toBe(false);
+    expect(isLastingKey("dns-mobileconfig:edit-target")).toBe(false);
+    expect(isLastingKey("dns-mobileconfig:import-warnings")).toBe(false);
+    expect(isLastingKey("another-app:configs")).toBe(false);
   });
 });
 

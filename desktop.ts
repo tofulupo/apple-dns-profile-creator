@@ -12,7 +12,14 @@ import manifest from "./deno.json" with { type: "json" };
 import type { DesktopBindings } from "./src/desktop/bindings.ts";
 import { saveWithoutOverwrite } from "./src/desktop/save.ts";
 import { createKeychain } from "./src/desktop/signing.ts";
-import { loadWindowSize, saveWindowSize } from "./src/desktop/window_state.ts";
+import {
+  createStoredDataSaver,
+  loadStoredData,
+  loadWindowSize,
+  removeLeftoverTemporaryFiles,
+  removeOldWebsiteData,
+  saveWindowSize,
+} from "./src/desktop/app_state.ts";
 
 if (typeof Deno.BrowserWindow !== "function") {
   console.error("desktop.ts runs only inside deno desktop: deno task desktop");
@@ -34,20 +41,55 @@ function homeDirectory(): string {
 }
 
 // Where macOS expects per-app settings, keyed by the bundle identifier.
-const WINDOW_STATE = join(
+const APP_SUPPORT = join(
   homeDirectory(),
   "Library",
   "Application Support",
   APP.identifier,
-  "window.json",
+);
+const WINDOW_STATE = join(APP_SUPPORT, "window.json");
+const STORED_DATA = join(APP_SUPPORT, "storage.json");
+const WEBSITE_DATA_CLEANED = join(APP_SUPPORT, "website-data-cleaned");
+// WebKit's data for this app's webview, one folder per origin.
+const WEBSITE_DATA = join(
+  homeDirectory(),
+  "Library",
+  "WebKit",
+  APP.identifier,
+  "WebsiteData",
+  "Default",
 );
 
-Deno.serve((request) => serveDir(request, { fsRoot: DIST, quiet: true }));
+// First thing: the window is already open, empty and white, until the server
+// listens and the page loads.
+Deno.serve(async (request) => {
+  const response = await serveDir(request, { fsRoot: DIST, quiet: true });
+  // The files are already on disk in the app bundle, and each launch is a
+  // new origin, so a cached copy would never be used again.
+  response.headers.set("cache-control", "no-store");
+  return response;
+});
+
+// Housekeeping, off the startup path. Neither call throws.
+void removeLeftoverTemporaryFiles(APP_SUPPORT);
+void removeOldWebsiteData(WEBSITE_DATA, WEBSITE_DATA_CLEANED);
 
 const main = new Deno.BrowserWindow({
   title: APP.name,
   ...await loadWindowSize(WINDOW_STATE),
 });
+
+// Hidden until the page has painted (see the pageReady binding), so the empty
+// white webview never shows. Shown anyway after a while, in case the page
+// fails before it can say so.
+main.hide();
+const showAnyway = setTimeout(() => main.show(), 3000);
+
+const pageReady: DesktopBindings["pageReady"] = () => {
+  clearTimeout(showAnyway);
+  main.show();
+  return Promise.resolve();
+};
 
 // Resizing fires continuously, so the size is written once it settles, and
 // on close in case the window is shut before that.
@@ -132,5 +174,16 @@ const saveProfile: DesktopBindings["saveProfile"] = async (
 const listSigningIdentities: DesktopBindings["listSigningIdentities"] = () =>
   keychain.list();
 
+const loadStorage: DesktopBindings["loadStorage"] = () =>
+  loadStoredData(STORED_DATA);
+
+// Checked in saveStoredData, since the argument comes from the webview.
+const saveStorage: DesktopBindings["saveStorage"] = createStoredDataSaver(
+  STORED_DATA,
+);
+
 main.bind("saveProfile", saveProfile);
 main.bind("listSigningIdentities", listSigningIdentities);
+main.bind("loadStorage", loadStorage);
+main.bind("saveStorage", saveStorage);
+main.bind("pageReady", pageReady);
