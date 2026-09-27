@@ -10,24 +10,31 @@
      picker), which the old stylesheet hand-patched per input. */
   color-scheme: light dark;
 
-  --bg: light-dark(#f4f6f9, #14171c);
-  --surface: light-dark(#ffffff, #1c2027);
-  --surface-sunken: light-dark(#eef1f5, #23282f);
-  --border: light-dark(#dde2e9, #2e343d);
-  --border-strong: light-dark(#c6cdd8, #3c444f);
-  --text: light-dark(#1b1f26, #e4e8ee);
-  --muted: light-dark(#5e6672, #98a1ad);
-  --accent: light-dark(#2f6feb, #4c8dff);
-  --accent-hover: light-dark(#2458c9, #6ba1ff);
-  --accent-contrast: light-dark(#ffffff, #0f1319);
-  /* Accent as text on the sunken surface of a selected tab or option; plain
-     --accent falls just short of 4.5:1 there in the light theme. */
-  --accent-text: light-dark(#2458c9, #6ba1ff);
+  /* Light: Tailwind's slate greys. Dark: near-black greys with only a hint
+     of blue, so the blue accent stands out rather than tinting everything.
+     Both use Tailwind's blue; dark keeps a light blue with dark text on it,
+     since white on blue 600 barely stands out from the dark surfaces. */
+  --bg: light-dark(#f8fafc, #0e1013);
+  --surface: light-dark(#ffffff, #171a1f);
+  --surface-sunken: light-dark(#f1f5f9, #1f2329);
+  --border: light-dark(#e2e8f0, #2a2e35);
+  --border-strong: light-dark(#cbd5e1, #3b414b);
+  --text: light-dark(#0f172a, #e5e7eb);
+  --muted: light-dark(#475569, #9ca3af);
+  --accent: light-dark(#2563eb, #60a5fa);
+  --accent-hover: light-dark(#1d4ed8, #93c5fd);
+  /* Text and icons on an accent fill: primary buttons and selected pills. */
+  --accent-contrast: light-dark(#ffffff, #0e1013);
+  /* Accent as text on the sunken and tinted surfaces (section icons, the
+     profile cards' flags), where plain --accent gets close to or below 4.5:1. */
+  --accent-text: light-dark(#1d4ed8, #93c5fd);
+  /* The upload zone's dashed outline. */
+  --zone-border: light-dark(#94a3b8, #6b7280);
   --success: light-dark(#1a7f37, #3fb950);
   --warning: light-dark(#9a6700, #d29922);
-  --danger: light-dark(#cf3c3c, #e75c5c);
-  --danger-hover: light-dark(#b23232, #f07272);
-  --focus: light-dark(#2f6feb, #6ba1ff);
+  --danger: light-dark(#cf3c3c, #f87171);
+  --danger-hover: light-dark(#b23232, #fca5a5);
+  --focus: light-dark(#2563eb, #60a5fa);
 
   --radius: 10px;
   --radius-sm: 7px;
@@ -35,6 +42,8 @@
     0 1px 2px light-dark(rgb(16 24 40 / 6%), rgb(0 0 0 / 30%)),
     0 1px 3px light-dark(rgb(16 24 40 / 8%), rgb(0 0 0 / 25%));
   --gap: 1rem;
+  /* Inset of a profile card's content; the list footer lines up with it. */
+  --card-padding: 1.1rem;
 
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
@@ -291,13 +300,13 @@ code {
   font-variant-numeric: tabular-nums;
 }
 
-/* Selected tabs and protocol options share one look: a raised segment with
-   only the icon and label in the accent colour. */
+/* Selected tabs, protocol options and preset chips share one look: a solid
+   accent pill. Declared after the hover rules, which must not recolour it. */
 .tab[aria-current="page"],
 .segmented__option:has(input:checked) {
-  background: var(--surface-sunken);
-  border-color: var(--border-strong);
-  color: var(--accent-text);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
 }
 
 .panel {
@@ -558,9 +567,16 @@ textarea::placeholder {
 }
 
 /* No weight change here: bolder text widens the chip, and on narrow phones
-   that wrapped the chip row and shifted everything below it. The profile
-   cards' flags list only options that are on, so they share the look. */
-.chip[aria-pressed="true"],
+   that wrapped the chip row and shifted everything below it. */
+.chip[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* The profile cards' flags list only options that are on. Tinted rather than
+   filled: they describe a card, they are not a choice to make, and a row of
+   solid pills on every card would outshout the Edit buttons. */
 .profile-card__flags .badge {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-sunken));
   border-color: var(--accent);
@@ -585,8 +601,7 @@ textarea::placeholder {
   margin: 0;
   padding: 2rem 1.5rem;
   background: var(--surface);
-  border: 1.5px dashed
-    color-mix(in srgb, var(--muted) 40%, var(--border-strong));
+  border: 1.5px dashed var(--zone-border);
   border-radius: var(--radius);
   color: var(--muted);
   font-size: 1rem;
@@ -951,6 +966,8 @@ textarea::placeholder {
   margin-bottom: 0.5rem;
 }
 
+/* Inset like the cards' content, border included, so the count lines up with
+   the provider names and Delete all with the cards' buttons. */
 .list-footer {
   display: flex;
   flex-wrap: wrap;
@@ -958,6 +975,7 @@ textarea::placeholder {
   justify-content: space-between;
   gap: 0.5rem 1rem;
   min-height: 2.25rem;
+  padding-inline: calc(var(--card-padding) + 1px);
 }
 
 .list-footer__count {
@@ -972,9 +990,9 @@ textarea::placeholder {
   font-variant-numeric: tabular-nums;
 }
 
+/* The cards' icon buttons' side padding, so both right edges match. */
 .list-footer .btn--danger {
-  /* Lines the label up with the cards' right edge, not the hover fill's. */
-  margin-right: -0.7rem;
+  padding-inline: 0.6rem;
 }
 
 .list-footer .icon {
@@ -1215,7 +1233,7 @@ textarea::placeholder {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.8rem 1.1rem;
+  padding: 0.8rem var(--card-padding);
   background: var(--surface-sunken);
   border-bottom: 1px solid var(--border);
 }
@@ -1235,7 +1253,7 @@ textarea::placeholder {
 /* What stops an imported or stored entry from being downloaded. */
 .profile-card__problems {
   margin: 0;
-  padding: 0.8rem 1.1rem 0 2.3rem;
+  padding: 0.8rem var(--card-padding) 0 2.3rem;
   color: var(--danger);
   font-size: 0.85rem;
   text-wrap: pretty;
@@ -1252,7 +1270,7 @@ textarea::placeholder {
   grid-template-columns: max-content 1fr;
   gap: 0.3rem 1rem;
   margin: 0;
-  padding: 1rem 1.1rem;
+  padding: 1rem var(--card-padding);
   font-size: 0.9rem;
 }
 
@@ -1276,7 +1294,7 @@ textarea::placeholder {
   flex-wrap: wrap;
   gap: 0.4rem;
   margin: 0;
-  padding: 0 1.1rem 1.1rem;
+  padding: 0 var(--card-padding) var(--card-padding);
 }
 
 .badge {
