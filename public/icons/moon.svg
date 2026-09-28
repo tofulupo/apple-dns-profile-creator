@@ -1,6 +1,22 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-  viewBox="0 0 24 24" fill="none">
-  <path fill-rule="evenodd" clip-rule="evenodd"
-    d="M11.0174 2.80157C6.37072 3.29221 2.75 7.22328 2.75 12C2.75 17.1086 6.89137 21.25 12 21.25C16.7767 21.25 20.7078 17.6293 21.1984 12.9826C19.8717 14.6669 17.8126 15.75 15.5 15.75C11.4959 15.75 8.25 12.5041 8.25 8.5C8.25 6.18738 9.33315 4.1283 11.0174 2.80157ZM1.25 12C1.25 6.06294 6.06294 1.25 12 1.25C12.7166 1.25 13.0754 1.82126 13.1368 2.27627C13.196 2.71398 13.0342 3.27065 12.531 3.57467C10.8627 4.5828 9.75 6.41182 9.75 8.5C9.75 11.6756 12.3244 14.25 15.5 14.25C17.5882 14.25 19.4172 13.1373 20.4253 11.469C20.7293 10.9658 21.286 10.804 21.7237 10.8632C22.1787 10.9246 22.75 11.2834 22.75 12C22.75 17.9371 17.9371 22.75 12 22.75C6.06294 22.75 1.25 17.9371 1.25 12Z"
-    fill="currentColor" />
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+  viewBox="0 0 24 24">
+  <metadata>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+      xmlns:dc="http://purl.org/dc/elements/1.1/"
+      xmlns:cc="http://creativecommons.org/ns#">
+      <cc:Work rdf:about="">
+        <dc:title>Moon</dc:title>
+        <dc:creator>REICON</dc:creator>
+        <dc:rights>Copyright (c) 2025 REICON. SPDX-License-Identifier: MIT</dc:rights>
+        <dc:date>2025</dc:date>
+        <dc:source
+          rdf:resource="https://github.com/tofulupo/apple-dns-profile-creator" />
+        <dc:relation>apple-dns-profile-creator</dc:relation>
+        <cc:license rdf:resource="https://opensource.org/license/mit" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <path fill="currentColor" fill-rule="evenodd"
+    d="M11.02 2.8A9.25 9.25 0 1 0 21.2 12.98 7.24 7.24 0 0 1 8.25 8.5a7.2 7.2 0 0 1 2.77-5.7M1.25 12C1.25 6.06 6.06 1.25 12 1.25c.72 0 1.08.57 1.14 1.03.06.43-.1 1-.6 1.3a5.75 5.75 0 1 0 7.89 7.89c.3-.5.86-.67 1.3-.6.45.05 1.02.41 1.02 1.13a10.75 10.75 0 1 1-21.5 0"
+    clip-rule="evenodd" />
 </svg>

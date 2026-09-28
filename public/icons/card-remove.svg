@@ -1,13 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-  viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
-  stroke-linecap="round" stroke-linejoin="round">
-  <path d="M1.89844 10.0303H21.8984" stroke-miterlimit="10" />
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none"
+  stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+  stroke-width="1.5" viewBox="0 0 24 24">
+  <metadata>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+      xmlns:dc="http://purl.org/dc/elements/1.1/"
+      xmlns:cc="http://creativecommons.org/ns#">
+      <cc:Work rdf:about="">
+        <dc:title>Card remove</dc:title>
+        <dc:creator>REICON</dc:creator>
+        <dc:rights>Copyright (c) 2025 REICON. SPDX-License-Identifier: MIT</dc:rights>
+        <dc:date>2025</dc:date>
+        <dc:source
+          rdf:resource="https://github.com/tofulupo/apple-dns-profile-creator" />
+        <dc:relation>apple-dns-profile-creator</dc:relation>
+        <cc:license rdf:resource="https://opensource.org/license/mit" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <path stroke-miterlimit="10" d="M1.9 10.03h20" />
   <path
-    d="M11.4584 20.53H6.34839C2.79839 20.53 1.89844 19.65 1.89844 16.14V7.92004C1.89844 4.74004 2.63841 3.72004 5.42841 3.56004C5.70841 3.55004 6.01839 3.54004 6.34839 3.54004H17.4584C21.0084 3.54004 21.9084 4.42004 21.9084 7.93004V12.34" />
-  <path
-    d="M17.8984 22.0303C20.1076 22.0303 21.8984 20.2394 21.8984 18.0303C21.8984 15.8211 20.1076 14.0303 17.8984 14.0303C15.6893 14.0303 13.8984 15.8211 13.8984 18.0303C13.8984 20.2394 15.6893 22.0303 17.8984 22.0303Z"
-    stroke-miterlimit="10" />
-  <path d="M18.9694 19.1503L16.8594 17.0303" stroke-miterlimit="10" />
-  <path d="M18.9481 17.0603L16.8281 19.1703" stroke-miterlimit="10" />
-  <path d="M5.89844 16.0303H9.89844" stroke-miterlimit="10" />
+    d="M11.46 20.53H6.35c-3.55 0-4.45-.88-4.45-4.39V7.92c0-3.18.74-4.2 3.53-4.36l.92-.02h11.1c3.56 0 4.46.88 4.46 4.39v4.41" />
+  <path stroke-miterlimit="10"
+    d="M17.9 22.03a4 4 0 1 0 0-8 4 4 0 0 0 0 8m1.07-2.88-2.11-2.12m2.09.03-2.12 2.11M5.9 16.03h4" />
 </svg>
