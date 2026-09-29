@@ -111,7 +111,7 @@ for (const { page, html } of rendered) {
       expect(html).not.toMatch(/<script[^>]*\b(src|type="module")/);
       expect(html).toMatch(
         new RegExp(
-          `</footer>\\s*</div>\\s*<script>/\\* page script: ${page.script} \\*/</script>\\s*</body>`,
+          `</div>\\s*<script>/\\* page script: ${page.script} \\*/</script>\\s*</body>`,
         ),
       );
     });

@@ -3,7 +3,7 @@
 Re-fetch everything with `deno task fixtures:fetch`.
 Validate with `deno task fixtures:lint` (uses Apple's `plutil`, macOS only).
 
-## `upstream/paulmillr/` — committed
+## `upstream/paulmillr/` - committed
 
 Source: <https://github.com/paulmillr/encrypted-dns> (`profiles/`)
 License: **The Unlicense** (public domain).
@@ -19,7 +19,7 @@ License: **The Unlicense** (public domain).
 | `360-default-https` | non-ASCII content (encoding round-trip) |
 | `template-on-demand-default-https` | **the only upstream file with `OnDemandRules`** |
 
-## `upstream/mullvad/` — gitignored, fetch on demand
+## `upstream/mullvad/` - gitignored, fetch on demand
 
 Source: <https://github.com/mullvad/encrypted-dns-profiles>
 License: **none declared** - therefore *not* redistributed in this repo.

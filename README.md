@@ -8,7 +8,7 @@ hosting on a home network.
 **[Try it out](https://apple.mobileconfig.deno.net)** - no install, no sign-up,
 nothing leaves your device.
 
-Apple has supported DNS-over-HTTPS and DNS-over-TLS since iOS 14 and macOS 11,
+Apple has supported DNS over HTTPS and DNS over TLS since iOS 14 and macOS 11,
 but exposes no way to use them without an app or a configuration profile. This
 tool builds those profiles.
 
@@ -109,7 +109,7 @@ src/ui/        browser layer - DOM wiring only, no profile semantics
 pages/         HTML sources
   pages.ts       page table: nav order, descriptions, entry modules,
                  SITE_URL (the deployed address)
-  _layout.html   shared shell: head, header, tabs, footer
+  _layout.html   shared shell: head, header, tabs
   index.html     <main> content of the tool page
   finalize.html  <main> content of the profile page
   llms.txt       template for dist/llms.txt; {{ site }} becomes SITE_URL
@@ -150,21 +150,21 @@ Each page is only its `<main>` content in `pages/`. The build renders it into
 from `deno.json`. To add a page, add a fragment to `pages/` and an entry to
 `PAGES` in `pages/pages.ts`. The tabs and `sitemap.xml` follow automatically.
 
-### Excluded domains vs. limited domains
+### Disable on domains vs. enable on domains
 
 Two fields under **Advanced** both take a list of domains, and they are
 opposites rather than duplicates.
 
-| Field                | Effect                                                                |
-| -------------------- | --------------------------------------------------------------------- |
-| **Excluded domains** | A deny list. Encrypted DNS is used everywhere _except_ these domains. |
-| **Limit to domains** | An allow list. Encrypted DNS is used _only_ for these domains.        |
+| Field                  | Effect                                                                |
+| ---------------------- | --------------------------------------------------------------------- |
+| **Disable on domains** | A deny list. Encrypted DNS is used everywhere _except_ these domains. |
+| **Enable on domains**  | An allow list. Encrypted DNS is used _only_ for these domains.        |
 
 Leaving both empty - **the default** - sends every query through the encrypted
 resolver, which is usually what you want.
 
 > [!NOTE]
-> "Limit to domains" is for split DNS, where an internal resolver should answer
+> "Enable on domains" is for split DNS, where an internal resolver should answer
 > for one zone and the network's own resolver for everything else. A single
 > leading `*` is allowed, so `*.example.com` and `example.com` both match
 > `mail.example.com`.
@@ -237,14 +237,14 @@ profile yourself:
 - In the menu bar: Keychain Access → Certificate Assistant → Create
   Certificate...
 - Fill in:
-  - Name: e.g. MDM Signing Cert (remember this — you'll use it as the signing
+  - Name: e.g. MDM Signing Cert (remember this, you'll use it as the signing
     identity)
   - Identity Type: Self-Signed Root
   - Certificate Type: Code Signing
   - Check "Let me override defaults" if you want to extend the validity period
     (default is ~1 year; 10 years is common for this)
 - Click Continue through the prompts (you can skip entering an email address)
-- When done, the certificate is created directly in your login keychain — no
+- When done, the certificate is created directly in your login keychain, no
   separate import needed
 
 ### HTTP or HTTPS

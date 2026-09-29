@@ -65,8 +65,19 @@ function badge(label: string): HTMLSpanElement {
   return span;
 }
 
+/**
+ * An SVG icon from the stylesheet's `.icon--<name>`, rather than a character
+ * whose size and shape would depend on the font the system falls back to.
+ */
+function icon(name: string): HTMLSpanElement {
+  const span = document.createElement("span");
+  span.className = `icon icon--${name}`;
+  span.setAttribute("aria-hidden", "true");
+  return span;
+}
+
 function button(
-  label: string,
+  content: string | Node,
   className: string,
   onClick: () => void,
   ariaLabel?: string,
@@ -74,7 +85,7 @@ function button(
   const element = document.createElement("button");
   element.type = "button";
   element.className = className;
-  element.textContent = label;
+  element.replaceChildren(content);
   if (ariaLabel !== undefined) element.setAttribute("aria-label", ariaLabel);
   element.addEventListener("click", onClick);
   return element;
@@ -114,7 +125,7 @@ function card(config: DnsConfig): HTMLElement {
       `${problems.length > 0 ? "Fix" : "Edit"} ${label}`,
     ),
     button(
-      "\u2715",
+      icon("close"),
       "btn btn--danger btn--icon",
       () => {
         persist(() => store.remove(config));
@@ -148,7 +159,7 @@ function card(config: DnsConfig): HTMLElement {
   body.append(
     row(
       "Connection",
-      config.protocol === "HTTPS" ? "DNS-over-HTTPS" : "DNS-over-TLS",
+      config.protocol === "HTTPS" ? "DNS over HTTPS" : "DNS over TLS",
     ),
     row("Server", config.serverUrl, true),
   );
@@ -159,17 +170,17 @@ function card(config: DnsConfig): HTMLElement {
     // Quoted, since a network name can contain the comma between them.
     body.append(
       row(
-        "Excluded Wi-Fi",
+        "Disable on Wi-Fi",
         config.excludedWifi.map((ssid) => `“${ssid}”`).join(", "),
       ),
     );
   }
   if (config.excludedDomains.length > 0) {
-    body.append(row("Excluded domains", config.excludedDomains.join(", ")));
+    body.append(row("Disable on domains", config.excludedDomains.join(", ")));
   }
   const matchDomains = config.supplementalMatchDomains ?? [];
   if (matchDomains.length > 0) {
-    body.append(row("Limited to domains", matchDomains.join(", ")));
+    body.append(row("Enable on domains", matchDomains.join(", ")));
   }
 
   const flags = document.createElement("p");
@@ -177,8 +188,9 @@ function card(config: DnsConfig): HTMLElement {
   if (config.useWifi) flags.append(badge("Wi-Fi"));
   if (config.useCellular) flags.append(badge("Cellular"));
   if (config.useEthernet) flags.append(badge("Ethernet"));
-  if (config.allowFailover === true) flags.append(badge("Failover allowed"));
-  if (config.prohibitDisablement) flags.append(badge("Disablement prohibited"));
+  // The same names as the options on the tool page.
+  if (config.allowFailover === true) flags.append(badge("Failover"));
+  if (config.prohibitDisablement) flags.append(badge("Lock profile"));
 
   article.append(body);
   if (flags.childElementCount > 0) article.append(flags);

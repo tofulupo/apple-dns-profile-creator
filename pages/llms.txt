@@ -1,14 +1,14 @@
 # Apple DNS Profile Creator
 
 > A client-side tool that generates encrypted-DNS (DoH and DoT) configuration
-> profiles for iOS and macOS (iOS27 and MacOS27). Everything happens in the browser: no data is
+> profiles for iOS and macOS (iOS 27 and macOS 27). Everything happens in the browser: no data is
 > uploaded, and the tool works fully offline, making it suitable for hosting
-> on a home network. Apple has supported DNS-over-HTTPS and DNS-over-TLS
+> on a home network. Apple has supported DNS over HTTPS and DNS over TLS
 > since iOS 14 and macOS 11, but exposes no way to use them without an app
-> or a configuration profile — this tool builds those profiles.
+> or a configuration profile, this tool builds those profiles.
 
 On the tool page, resolver addresses may be entered one per line or
-comma-separated, in any mix of IPv4 and IPv6 (tried in the order given).
+comma separated, in any mix of IPv4 and IPv6 (tried in the order given).
 Advanced settings include disabling encrypted DNS on specified Wi-Fi SSIDs or
 domains, restricting encrypted DNS to listed domains only, falling back to the
 network's resolver when the encrypted server is unreachable
@@ -24,7 +24,7 @@ certificate from the user's Keychain.
 
 - [The Tool]({{ site }}): Create or import encrypted-DNS configuration
   profiles. Enter resolver settings by hand, or upload an existing
-  .mobileconfig (signed profiles work too — embedded settings are read
+  .mobileconfig (signed profiles work too, embedded settings are read
   directly).
 - [Finalize / Download]({{ site }}finalize.html): Review the collected
   configurations and download the finished profile.

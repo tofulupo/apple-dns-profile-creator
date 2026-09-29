@@ -12,6 +12,8 @@ const LAYOUT = "pages/_layout.html";
 /** Rendered with the site's address into dist/llms.txt. */
 const LLMS = "pages/llms.txt";
 const STYLESHEET = "css/app.css";
+/** Lilex and its licence, served under dist/fonts/. */
+const FONTS = join(ROOT, "fonts");
 const REPOSITORY_URL = "https://github.com/tofulupo/apple-dns-profile-creator";
 
 export interface PageAssets {
@@ -121,6 +123,56 @@ export async function inlineIcons(
     reference,
     (_match, _quote, file: string) => uris.get(file)!,
   );
+}
+
+/**
+ * A font file's name as served: ASCII only, so the stylesheet's url() always
+ * matches it. Names with umlauts may be stored with the umlaut as a separate
+ * combining mark, which a url() written with the single character does not
+ * match.
+ */
+export function servedFontName(name: string): string {
+  const ascii = name.normalize("NFC")
+    .replaceAll("ä", "ae").replaceAll("ö", "oe").replaceAll("ü", "ue")
+    .replaceAll("Ä", "Ae").replaceAll("Ö", "Oe").replaceAll("Ü", "Ue")
+    .replaceAll("ß", "ss");
+  if (!/^[\w.-]+$/.test(ascii)) {
+    throw new Error(`Font file name has characters to rename: ${name}`);
+  }
+  return ascii;
+}
+
+const FONT_FILE = /\.(woff2|ttf|txt)$/;
+
+/**
+ * Copies the font files and their licences from `from` into `to` under their
+ * served names, and returns those names. A missing `from` copies nothing.
+ */
+export async function copyFonts(
+  from: string,
+  to: string,
+): Promise<string[]> {
+  await Deno.mkdir(to, { recursive: true });
+  const copied: string[] = [];
+  try {
+    for await (const entry of Deno.readDir(from)) {
+      if (!entry.isFile || !FONT_FILE.test(entry.name)) continue;
+      const name = servedFontName(entry.name);
+      await Deno.copyFile(join(from, entry.name), join(to, name));
+      copied.push(name);
+    }
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) throw error;
+  }
+  return copied.sort();
+}
+
+/** The files the stylesheet's `url("fonts/…")` references point at. */
+export function fontUrls(css: string): string[] {
+  return [
+    ...new Set([...css.matchAll(/url\(\s*["']?fonts\/([^"')]+)/g)]
+      .map((match) => match[1]!)),
+  ].sort();
 }
 
 async function fingerprint(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
@@ -426,9 +478,10 @@ export async function build(): Promise<void> {
   await Deno.mkdir(DIST, { recursive: true });
 
   // Marked external, the icons' url()s are left alone by the bundler and
-  // inlined afterwards (see inlineIcons). The `=` form matters: `--external`
+  // inlined afterwards (see inlineIcons), and the fonts' url()s point at the
+  // copies in dist/fonts/ (see below). The `=` form matters: `--external`
   // takes several values and would otherwise swallow the entrypoint after it.
-  await bundle([STYLESHEET], ["--external=icons/*"]);
+  await bundle([STYLESHEET], ["--external=icons/*", "--external=fonts/*"]);
 
   const bundled = join(DIST, "app.css");
   const css = await inlineIcons(
@@ -460,6 +513,8 @@ export async function build(): Promise<void> {
       overwrite: true,
     });
   }
+
+  await copyFonts(FONTS, join(DIST, "fonts"));
 
   // Generated rather than copied from public/, so the site's address lives
   // only in SITE_URL.

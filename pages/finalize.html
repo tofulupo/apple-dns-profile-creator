@@ -40,26 +40,12 @@
           <span class="switch-row__title" id="systemLabel">Use system
             scope</span>
           <span class="switch-row__hint" id="systemHint">Required on macOS 26
-            and later.</span>
+            & later.</span>
         </span>
         <input type="checkbox" role="switch" class="switch" id="systemChk"
           checked aria-labelledby="systemLabel" aria-describedby="systemHint">
       </label>
     </div>
-    <details class="help">
-      <summary>What is the system scope?</summary>
-      <div class="help__body">
-        <p>Marks the profile with a scope of <code>System</code>. The exact
-          effect depends on the application.</p>
-        <p><strong>This option is required on macOS 26 and above.</strong> See
-          <a href="https://github.com/mullvad/encrypted-dns-profiles/issues/18"
-            target="_blank" rel="noopener">this Mullvad issue</a> for
-          confirmation, and
-          <a href="https://github.com/paulmillr/encrypted-dns/issues/22"
-            target="_blank" rel="noopener">this discussion</a> for
-          background.</p>
-      </div>
-    </details>
   </div>
 
   <fieldset class="field signing" id="signing" hidden>
@@ -97,21 +83,6 @@
         <p class="identity__status" id="identityStatus"></p>
       </div>
     </div>
-
-    <details class="help">
-      <summary>Requirements for Keychain signing</summary>
-      <div class="help__body">
-        <p>A certificate together with its private key in your Keychain: from
-          your organisation, from an Apple Developer account, or made yourself
-          in Keychain Access &rsaquo; Certificate Assistant. Expired
-          certificates are not listed.</p>
-        <p>Devices show the profile as &ldquo;Verified&rdquo; only if they
-          trust the certificate&rsquo;s issuer.</p>
-        <p>The first time you sign, macOS asks whether <code>security</code>
-          may use the key. Choose Allow, or Always Allow to not be asked
-          again.</p>
-      </div>
-    </details>
   </fieldset>
 
   <button id="downloadBtn" class="btn btn--primary btn--block"
@@ -123,17 +94,14 @@
   <div class="note" id="noteSigned" hidden>
     <span class="icon icon--info" aria-hidden="true"></span>
     <div class="note__body">
-      <p>The profile is signed with a certificate from your Keychain; its
-        private key never leaves it. Whether iOS and macOS show it as
-        &ldquo;Verified&rdquo; depends on whether they trust that certificate.</p>
+      <p>Signed with a Keychain certificate. Trust determines if iOS/macOS show &ldquo;Verified&rdquo;.</p>
     </div>
   </div>
 
   <div class="note" id="noteUnsigned">
     <span class="icon icon--info" aria-hidden="true"></span>
     <div class="note__body">
-      <p>When unsigned, iOS and macOS label it &ldquo;Not
-        Signed&rdquo; and ask you to confirm. Use Desktop App for local signing.</p>
+      <p>Unsigned = &ldquo;Not Signed&rdquo; on iOS/macOS. Desktop App enables local signing.</p>
     </div>
   </div>
 </section>

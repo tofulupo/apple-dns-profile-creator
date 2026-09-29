@@ -13,6 +13,11 @@
     <meta property="og:url" content="{{ canonical }}">
     {{ structuredData }}
     <link rel="stylesheet" href="{{ stylesheet }}">
+    <!-- Lilex shows on every page (the version badge), so it is fetched
+      alongside the stylesheet rather than after it. Fonts are always
+      requested in CORS mode, hence crossorigin even on the same origin. -->
+    <link rel="preload" href="fonts/Lilex-Latin.woff2" as="font"
+      type="font/woff2" crossorigin>
 
     <link rel="icon" type="image/png" sizes="96x96"
       href="icons/favicon-96x96.png" />
@@ -44,7 +49,7 @@
     <div class="page">
       <header class="site-header">
         <div class="site-header__top">
-          <h1>DNS profile creator</h1>
+          <h1>DNS Profile Creator</h1>
           <div class="site-header__actions">
             <a class="version"
               href="https://github.com/tofulupo/apple-dns-profile-creator"
@@ -67,15 +72,6 @@
       <main>
         {{ content }}
       </main>
-
-      <footer class="site-footer">
-        <a href="https://adguard-dns.io/kb/general/dns-providers/"
-          target="_blank"
-          rel="noopener">Find a DNS provider</a>
-        <a href="https://github.com/tofulupo/apple-dns-profile-creator"
-          target="_blank"
-          rel="noopener">Source Code</a>
-      </footer>
     </div>
     {{ script }}
   </body>

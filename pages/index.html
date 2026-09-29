@@ -79,11 +79,10 @@
       <div class="field" id="field-serverAddresses">
         <label for="serverAddresses"
           class="optional">IP addresses</label>
-        <textarea id="serverAddresses" rows="4"
+        <textarea id="serverAddresses" class="mono" rows="4"
           placeholder="2001:db8::1&#10;2001:db8::2&#10;192.0.2.1"></textarea>
         <span
-          class="hint">One per line, or comma separated. IPv4 and IPv6
-                addresses. They are tried in the order given.</span>
+          class="hint">IPv4/IPv6 addresses, one per line or comma separated. Tried in order.</span>
         <p class="field__error" hidden></p>
       </div>
     </div>
@@ -96,37 +95,36 @@
 
       <div class="field" id="field-exclWifi">
         <label for="exclWifi"
-          class="optional">Excluded Wi-Fi networks</label>
+          class="optional">Disable on Wi-Fi</label>
         <textarea id="exclWifi" rows="3" spellcheck="false"
           autocapitalize="off" autocomplete="off"
           placeholder="MyHomeNetwork&#10;Silence of the LANs"></textarea>
-        <span class="hint">One per line. Encrypted DNS will be
-          disabled.</span>
+        <span class="hint">One SSID per line.</span>
         <p class="field__error" hidden></p>
       </div>
 
       <div class="field">
         <label for="exclDomains"
-          class="optional">Excluded domains</label>
+          class="optional">Disable on domains</label>
         <input type="text" id="exclDomains"
           placeholder="example.com, internal.lan">
         <span
-          class="hint">Comma-separated, encrypted DNS will be disabled.</span>
+          class="hint">Comma separated.</span>
       </div>
 
       <div class="field">
         <label for="matchDomains"
-          class="optional">Limit to domains</label>
+          class="optional">Enable on domains</label>
         <input type="text" id="matchDomains"
           placeholder="*.example.com, internal.lan">
-        <span class="hint">Comma-separated, encrypted DNS will be enabled.
-            One leading <code>*.</code> allowed.</span>
+        <span class="hint">Comma separated. Each may start
+            with <code>*.</code></span>
       </div>
 
       <h4 class="subheading">Behavior</h4>
 
       <fieldset class="field">
-        <legend>Interfaces to use encrypted DNS on</legend>
+        <legend>Choose interfaces</legend>
         <div class="switch-list">
           <label class="switch-row">
             <span class="switch-row__title">Wi-Fi</span>
@@ -146,14 +144,15 @@
         </div>
       </fieldset>
 
+      <h4 class="subheading">Robustness</h4>
+
       <div class="field switch-list">
         <label class="switch-row">
           <span class="switch-row__text">
-            <span class="switch-row__title" id="allowFailoverLabel">Allow
-              failover</span>
-            <span class="switch-row__hint" id="allowFailoverHint">Fallback
-              to the network-resolver when the encrypted server cannot
-              be reached.</span>
+            <span class="switch-row__title"
+              id="allowFailoverLabel">Failover</span>
+            <span class="switch-row__hint"
+              id="allowFailoverHint">Uses network resolver as fallback if encrypted server fails.</span>
           </span>
           <input type="checkbox" role="switch" class="switch" id="allowFailover"
             aria-labelledby="allowFailoverLabel"
@@ -161,11 +160,10 @@
         </label>
         <label class="switch-row">
           <span class="switch-row__text">
-            <span class="switch-row__title" id="lockProfileLabel">Prohibit
-              disablement</span>
+            <span class="switch-row__title"
+              id="lockProfileLabel">Lock profile</span>
             <span class="switch-row__hint"
-              id="lockProfileHint">Prevents removing the profile
-                on supervised devices.</span>
+              id="lockProfileHint">Prevents profile removal on supervised devices.</span>
           </span>
           <input type="checkbox" role="switch" class="switch" id="lockProfile"
             aria-labelledby="lockProfileLabel"
