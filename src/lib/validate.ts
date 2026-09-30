@@ -30,6 +30,45 @@ export function isIPv6(value: string): boolean {
 /** A DNS name, or an IPv4 address written the same way. No port, no path. */
 const HOST_NAME_PATTERN = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+\.?$/i;
 
+declare const brand: unique symbol;
+
+/** A string `isDohUrl` has accepted. */
+export type DohUrl = string & { readonly [brand]: "DohUrl" };
+
+/** RFC 8484's URI template ending: `{?dns}`, or `{&dns}` after a query. */
+const TEMPLATE_RE = /\{([?&])([^}]*)\}$/;
+
+/**
+ * Whether `input` is a DoH server URL as RFC 8484 defines it: https, a host,
+ * no credentials or fragment, optionally ending in the `{?dns}` template
+ * (`{&dns}` when it already has a query), and never a `dns` parameter of its
+ * own. Judges the URL as parsed; `serverError` adds the checks on how it is
+ * written.
+ */
+export function isDohUrl(input: string): input is DohUrl {
+  const match = TEMPLATE_RE.exec(input);
+  if (match ? match[2] !== "dns" : /[{}]/.test(input)) return false;
+
+  const raw = match ? input.slice(0, -match[0].length) : input;
+  if (raw.includes("#")) return false;
+
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return false;
+  }
+
+  return (
+    url.protocol === "https:" &&
+    url.hostname !== "" &&
+    url.username === "" &&
+    url.password === "" &&
+    !url.searchParams.has("dns") &&
+    (!match || (match[1] === "?") !== (url.search !== ""))
+  );
+}
+
 /**
  * Why `server` cannot be used with `protocol`, or null when it can. The
  * form reports the message on submit, and shows a check mark while it is null.
@@ -41,13 +80,14 @@ export function serverError(
   if (server === "") return "A server address is required.";
 
   if (protocol === "HTTPS") {
-    let url: URL;
-    try {
-      url = new URL(server);
-    } catch {
-      return "A DoH server must be an https:// URL.";
-    }
-    if (url.protocol !== "https:" || url.hostname === "" || /\s/.test(server)) {
+    // Checked as written as well as parsed. The URL parser (WHATWG) repairs
+    // `https:/host`, `https:///host`, backslashes and spaces into a valid
+    // URL, which `isDohUrl` then accepts; RFC 3986 allows none of them in an
+    // https URI, and the profile carries the text exactly as typed.
+    if (
+      !/^https:\/\/[^/\\]/i.test(server) || /[\s\\]/.test(server) ||
+      !isDohUrl(server)
+    ) {
       return "A DoH server must be an https:// URL.";
     }
     return null;
@@ -60,6 +100,47 @@ export function serverError(
     return "A DoT server must be a host name such as dot.example.com.";
   }
   return null;
+}
+
+/**
+ * `server` without a `tls://`, `https://` or `http://` in front, for the DoT
+ * field: provider docs often write DoT servers as `tls://dns.example.com`,
+ * while a profile takes the bare host name. Drops what follows the host too,
+ * and the default DoT port 853, which would only fail the check. Anything
+ * without such a scheme comes back as it was.
+ */
+export function stripDotScheme(server: string): string {
+  const match = /^\s*(?:tls|https?):\/\/([^/?#]*)/i.exec(server);
+  if (match === null) return server;
+  return (match[1] ?? "").replace(/:853$/, "");
+}
+
+/**
+ * A scheme at the start of a typed or pasted server, even one missing a
+ * slash (`https:/`), so the quick inserts can replace it rather than stack
+ * a second one in front.
+ */
+const TYPED_SCHEME = /^(?:https?|tls):\/*/i;
+
+/** `server` with `https://` in front, replacing any scheme it had. */
+export function withHttpsScheme(server: string): string {
+  return "https://" + server.trim().replace(TYPED_SCHEME, "");
+}
+
+/**
+ * `server` ending in `/dns-query`, the path most DoH servers use. Unchanged
+ * when it already does, or when there is no host yet to put the path after:
+ * appending to a bare `https://` would only make `https:///dns-query`.
+ */
+export function withDnsQueryPath(server: string): string {
+  const trimmed = server.trim();
+  // A template such as `{?dns}` has to stay last, so the path cannot follow.
+  if (/\/dns-query$/i.test(trimmed) || TEMPLATE_RE.test(trimmed)) {
+    return server;
+  }
+  const host = trimmed.replace(TYPED_SCHEME, "").replace(/\/+$/, "");
+  if (host === "") return server;
+  return trimmed.replace(/\/+$/, "") + "/dns-query";
 }
 
 export function parseList(value: string): string[] {

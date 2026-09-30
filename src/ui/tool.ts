@@ -4,11 +4,20 @@
 
 import { appConfig, type DnsPreset } from "../config.ts";
 import {
+  orderServerAddresses,
+  splitServerAddresses,
+} from "../lib/addresses.ts";
+import {
   configProblems,
   hasProblems,
+  isIPv4,
+  isIPv6,
   parseLines,
   parseList,
   serverError,
+  stripDotScheme,
+  withDnsQueryPath,
+  withHttpsScheme,
 } from "../lib/validate.ts";
 import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
 import { element, input, setFieldError, showNotices, textarea } from "./dom.ts";
@@ -30,7 +39,34 @@ const uploadHint = uploadStatus.textContent;
 const uploadNotice = element<HTMLUListElement>("uploadNotice");
 const serverCheck = element("serverCheck");
 const serverCheckText = element("serverCheckText");
-const presetList = element("presets");
+const nameField = element("field-provName");
+const presetToggle = element<HTMLButtonElement>("presetToggle");
+const presetMenu = element<HTMLUListElement>("presetMenu");
+const presetButtons = [
+  ...presetMenu.querySelectorAll<HTMLButtonElement>("button.preset"),
+];
+const quickInsert = element("quickInsert");
+const insertScheme = element<HTMLButtonElement>("insertScheme");
+const insertPath = element<HTMLButtonElement>("insertPath");
+const addressDisclosure = element<HTMLDetailsElement>(
+  "disclosure-serverAddresses",
+);
+const addressCount = element("addressCount");
+const rulesDisclosure = element<HTMLDetailsElement>("disclosure-rules");
+const rulesSummary = element("rulesSummary");
+const wifiSummary = element("wifiSummary");
+const domainSummary = element("domainSummary");
+const interfacesWarning = element("interfacesWarning");
+const interfaceChecks = [
+  input("useWifi"),
+  input("useCell"),
+  input("useEthernet"),
+];
+const addressNotice = element<HTMLUListElement>("addressNotice");
+/** The resolver address fields, in the order their addresses are stored. */
+const ipv4Fields = [input("ipv4a"), input("ipv4b")];
+const ipv6Fields = [input("ipv6a"), input("ipv6b")];
+const addressFields = [...ipv4Fields, ...ipv6Fields];
 const submitLabel = submit.value;
 
 /** The stored configuration the form is editing, if any. */
@@ -47,7 +83,7 @@ function readForm(): DnsConfig {
     name: input("provName").value.trim(),
     protocol: selectedProtocol(),
     serverUrl: input("serverUrl").value.trim(),
-    serverAddresses: parseList(textarea("serverAddresses").value),
+    serverAddresses: formAddresses(),
     excludedWifi: parseLines(textarea("exclWifi").value),
     excludedDomains: parseList(input("exclDomains").value),
     useWifi: input("useWifi").checked,
@@ -63,11 +99,9 @@ function writeForm(config: DnsConfig): void {
   input("provName").value = config.name;
   input(config.protocol === "HTTPS" ? "doh" : "dot").checked = true;
   input("serverUrl").value = config.serverUrl;
-  textarea("serverAddresses").value = config.serverAddresses.join("\n");
-  // Reveal imported addresses rather than hiding them in the collapsed section.
-  if (config.serverAddresses.length > 0) {
-    element<HTMLDetailsElement>("disclosure-serverAddresses").open = true;
-  }
+  // Imports are already cut down to what the fields hold; what is left to
+  // drop here comes from entries stored before that.
+  showAddressNotice(writeAddresses(config.serverAddresses));
   textarea("exclWifi").value = config.excludedWifi.join("\n");
   input("exclDomains").value = config.excludedDomains.join(", ");
   input("matchDomains").value = (config.supplementalMatchDomains ?? [])
@@ -77,7 +111,72 @@ function writeForm(config: DnsConfig): void {
   input("useEthernet").checked = config.useEthernet;
   input("allowFailover").checked = config.allowFailover === true;
   input("lockProfile").checked = config.prohibitDisablement;
+  // Like the addresses: settings that differ from a new configuration's are
+  // shown rather than left in the closed section.
+  if (updateRules() > 0) rulesDisclosure.open = true;
   applyProtocol();
+}
+
+function countLabel(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+/**
+ * Brings the summaries of Behavior & rules up to date, and warns when no
+ * interface is left on, which would keep encrypted DNS off everywhere.
+ * Returns how many of its rows differ from a new configuration's.
+ */
+function updateRules(): number {
+  const networks = parseLines(textarea("exclWifi").value).length;
+  wifiSummary.textContent = networks === 0
+    ? "None"
+    : countLabel(networks, "network", "networks");
+
+  const skipped = parseList(input("exclDomains").value).length;
+  const only = parseList(input("matchDomains").value).length;
+  const domainParts = [
+    ...(skipped > 0 ? [`Skip ${skipped}`] : []),
+    ...(only > 0 ? [`Only ${only}`] : []),
+  ];
+  domainSummary.textContent = domainParts.length === 0
+    ? "None"
+    : domainParts.join(" · ");
+
+  const interfacesOn = interfaceChecks.filter((check) => check.checked).length;
+  const noInterface = interfacesOn === 0;
+  interfacesWarning.hidden = !noInterface;
+
+  const changed = [
+    networks > 0,
+    skipped + only > 0,
+    interfacesOn < interfaceChecks.length,
+    input("allowFailover").checked,
+    input("lockProfile").checked,
+  ].filter((differs) => differs).length;
+  // The warning also shows on the closed section, where the row cannot.
+  rulesSummary.classList.toggle("panel-disclosure__meta--warning", noInterface);
+  rulesSummary.textContent = noInterface
+    ? "No interface on"
+    : changed === 0
+    ? "Defaults"
+    : `${changed} changed`;
+  return changed;
+}
+
+function bindRules(): void {
+  for (const id of ["exclDomains", "matchDomains"]) {
+    input(id).addEventListener("input", updateRules);
+  }
+  textarea("exclWifi").addEventListener("input", updateRules);
+  for (
+    const check of [
+      ...interfaceChecks,
+      input("allowFailover"),
+      input("lockProfile"),
+    ]
+  ) {
+    check.addEventListener("change", updateRules);
+  }
 }
 
 function selectedProtocol(): DnsProtocol {
@@ -91,7 +190,176 @@ function applyProtocol(): void {
     ? "https://example.com/dns-query"
     : "dot.example.com";
   updateServerCheck();
+  updateQuickInsert();
   syncPresets();
+}
+
+function onServerInput(): void {
+  const server = input("serverUrl");
+  if (selectedProtocol() === "TLS") {
+    const bare = stripDotScheme(server.value);
+    if (bare !== server.value) server.value = bare;
+  }
+  updateServerCheck();
+  updateQuickInsert();
+  syncPresets();
+}
+
+/**
+ * The quick inserts only make sense for a DoH URL; a DoT server is a bare
+ * host name. Each is disabled while it would change nothing: its part is
+ * already there, or, for the path, there is no host yet to follow.
+ */
+function updateQuickInsert(): void {
+  quickInsert.hidden = selectedProtocol() !== "HTTPS";
+  const server = input("serverUrl").value.trim();
+  insertScheme.disabled = withHttpsScheme(server) === server;
+  insertPath.disabled = withDnsQueryPath(server) === server;
+}
+
+function editServer(edit: (server: string) => string): void {
+  const server = input("serverUrl");
+  server.value = edit(server.value.trim());
+  server.focus();
+  server.setSelectionRange(server.value.length, server.value.length);
+  onServerInput();
+}
+
+function bindQuickInsert(): void {
+  for (const button of [insertScheme, insertPath]) {
+    // Keeps the focus, and with it the phone keyboard, in the URL field.
+    button.addEventListener("pointerdown", (event) => event.preventDefault());
+  }
+  insertScheme.addEventListener("click", () => editServer(withHttpsScheme));
+  insertPath.addEventListener("click", () => editServer(withDnsQueryPath));
+}
+
+/** The addresses in the fields, IPv4 first, blanks left out. */
+function formAddresses(): string[] {
+  return addressFields
+    .map((field) => field.value.trim())
+    .filter((address) => address !== "");
+}
+
+function addressFieldOf(field: HTMLInputElement): HTMLElement {
+  const wrapper = field.closest<HTMLElement>(".field");
+  if (wrapper === null) throw new Error(`#${field.id} is not in a .field`);
+  return wrapper;
+}
+
+/**
+ * Fills the address fields from `addresses`, replacing what they held.
+ * Returns what did not fit, for `showAddressNotice`.
+ */
+function writeAddresses(addresses: readonly string[]): string[] {
+  const { ipv4, ipv6, dropped } = splitServerAddresses(addresses);
+  ipv4Fields.forEach((field, i) => field.value = ipv4[i] ?? "");
+  ipv6Fields.forEach((field, i) => field.value = ipv6[i] ?? "");
+  for (const field of addressFields) {
+    setFieldError(addressFieldOf(field), null);
+  }
+  // Reveal filled-in addresses rather than hiding them in the closed section.
+  if (ipv4.length + ipv6.length > 0) addressDisclosure.open = true;
+  updateAddressCount();
+  return dropped;
+}
+
+function quoteList(values: readonly string[]): string {
+  return values.map((value) => `“${value}”`).join(", ");
+}
+
+function showAddressNotice(dropped: readonly string[]): void {
+  const isAddress = (entry: string) => isIPv4(entry) || isIPv6(entry);
+  const extra = dropped.filter(isAddress);
+  const invalid = dropped.filter((entry) => !isAddress(entry));
+  const messages: string[] = [];
+  if (extra.length > 0) {
+    messages.push(
+      `Left out ${
+        quoteList(extra)
+      }: there are fields for two IPv4 and two IPv6 addresses.`,
+    );
+  }
+  if (invalid.length > 0) {
+    messages.push(`Left out ${quoteList(invalid)}: not IP addresses.`);
+  }
+  showNotices(addressNotice, messages);
+  if (messages.length > 0) addressDisclosure.open = true;
+}
+
+function updateAddressCount(): void {
+  const count = formAddresses().length;
+  addressCount.textContent = count === 0
+    ? "None"
+    : count === 1
+    ? "1 address"
+    : `${count} addresses`;
+}
+
+/** Why the value of an address field does not belong there, or null. */
+function addressError(field: HTMLInputElement): string | null {
+  const address = field.value.trim();
+  if (address === "") return null;
+  if (ipv4Fields.includes(field)) {
+    if (isIPv4(address)) return null;
+    return isIPv6(address)
+      ? "This is an IPv6 address. It goes in an IPv6 field below."
+      : "Not an IPv4 address, such as 192.0.2.1.";
+  }
+  if (isIPv6(address)) return null;
+  return isIPv4(address)
+    ? "This is an IPv4 address. It goes in an IPv4 field above."
+    : "Not an IPv6 address, such as 2001:db8::1.";
+}
+
+/**
+ * A pasted list (“9.9.9.9, 149.112.112.112”, or one per line) is spread over
+ * the fields of its families instead of landing in one field.
+ */
+function pasteAddresses(event: ClipboardEvent): void {
+  const text = event.clipboardData?.getData("text") ?? "";
+  const entries = parseList(text.replace(/\s+/g, ","));
+  if (entries.length < 2) return;
+  const { ipv4, ipv6, dropped } = splitServerAddresses(entries);
+  if (ipv4.length + ipv6.length === 0) return;
+
+  event.preventDefault();
+  if (ipv4.length > 0) {
+    ipv4Fields.forEach((field, i) => field.value = ipv4[i] ?? "");
+  }
+  if (ipv6.length > 0) {
+    ipv6Fields.forEach((field, i) => field.value = ipv6[i] ?? "");
+  }
+  for (const field of addressFields) {
+    if (addressError(field) === null) {
+      setFieldError(addressFieldOf(field), null);
+    }
+  }
+  showAddressNotice(dropped);
+  updateAddressCount();
+  syncPresets();
+}
+
+function bindAddressFields(): void {
+  for (const field of addressFields) {
+    field.addEventListener("paste", pasteAddresses);
+    field.addEventListener("input", () => {
+      // The iOS number pad has a comma rather than a dot in many regions,
+      // and a comma never belongs in an IPv4 address.
+      if (ipv4Fields.includes(field) && field.value.includes(",")) {
+        const caret = field.selectionStart;
+        field.value = field.value.replaceAll(",", ".");
+        field.setSelectionRange(caret, caret);
+      }
+      // Mistakes are reported on submit, and cleared as soon as they are
+      // fixed.
+      if (addressError(field) === null) {
+        setFieldError(addressFieldOf(field), null);
+      }
+      updateAddressCount();
+      syncPresets();
+    });
+  }
 }
 
 /**
@@ -111,14 +379,14 @@ function updateServerCheck(): void {
 }
 
 /**
- * Whether the form holds exactly `preset`, addresses included: once the user
- * edits any of them, it is their configuration rather than the preset.
+ * Whether the form holds `preset`'s server and addresses: once the user edits
+ * any of them, it is their configuration rather than the preset. The name is
+ * left out, since renaming a preset is expected.
  */
 function matchesPreset(preset: DnsPreset): boolean {
-  const addresses = parseList(textarea("serverAddresses").value);
-  const expected = preset.serverAddresses ?? [];
-  return input("provName").value.trim() === preset.name &&
-    selectedProtocol() === preset.protocol &&
+  const addresses = formAddresses();
+  const expected = orderServerAddresses(preset.serverAddresses ?? []);
+  return selectedProtocol() === preset.protocol &&
     input("serverUrl").value.trim() === preset.serverUrl &&
     addresses.length === expected.length &&
     addresses.every((address, i) => address === expected[i]);
@@ -126,43 +394,44 @@ function matchesPreset(preset: DnsPreset): boolean {
 
 function syncPresets(): void {
   appConfig.presets.forEach((preset, index) => {
-    presetList.children[index]?.setAttribute(
+    presetButtons[index]?.setAttribute(
       "aria-pressed",
       String(matchesPreset(preset)),
     );
   });
 }
 
-async function applyPreset(preset: DnsPreset): Promise<void> {
-  const addresses = textarea("serverAddresses");
-  const hasAddresses = addresses.value.trim() !== "";
-  const blank = input("provName").value.trim() === "" &&
-    input("serverUrl").value.trim() === "" && !hasAddresses;
+/** Fills in `preset`. False when the user chose to keep what they had. */
+async function applyPreset(preset: DnsPreset): Promise<boolean> {
+  const name = input("provName");
+  const typedName = name.value.trim();
+  // A name the user typed stays; one a preset filled in is replaced.
+  const keepName = typedName !== "" &&
+    !appConfig.presets.some((other) => other.name === typedName);
+  const hasAddresses = formAddresses().length > 0;
+  const blank = input("serverUrl").value.trim() === "" && !hasAddresses;
   // Switching from one untouched preset to another loses nothing, so only
   // ask when the fields hold something the user entered.
   const untouched = blank || appConfig.presets.some(matchesPreset);
   if (
     !untouched &&
     !await ask(
-      `Replace the provider name and server with ${preset.name}?` +
+      (keepName
+        ? `Replace the server with ${preset.name}? The name you entered stays.`
+        : `Replace the provider name and server with ${preset.name}?`) +
         (hasAddresses ? " The resolver addresses will be replaced." : ""),
     )
   ) {
-    return;
+    return false;
   }
 
-  const presetAddresses = preset.serverAddresses ?? [];
-  input("provName").value = preset.name;
+  if (!keepName) name.value = preset.name;
   input(preset.protocol === "HTTPS" ? "doh" : "dot").checked = true;
   input("serverUrl").value = preset.serverUrl;
   // Always replaced, never kept: addresses from another provider would point
   // the profile at the wrong resolver.
-  addresses.value = presetAddresses.join("\n");
-  if (presetAddresses.length > 0) {
-    element<HTMLDetailsElement>("disclosure-serverAddresses").open = true;
-  }
-  setFieldError(element("field-provName"), null);
-  setFieldError(element("field-serverAddresses"), null);
+  showAddressNotice(writeAddresses(preset.serverAddresses ?? []));
+  setFieldError(nameField, null);
   // A preset means a new configuration, so it is added next to the loaded
   // file, which stays in the profile as it was, instead of replacing it.
   if (editingLoaded) {
@@ -171,6 +440,7 @@ async function applyPreset(preset: DnsPreset): Promise<void> {
     submit.value = submitLabel;
   }
   applyProtocol();
+  return true;
 }
 
 /**
@@ -179,10 +449,8 @@ async function applyPreset(preset: DnsPreset): Promise<void> {
  * and leaving the URL in place would just fail the DoT check.
  */
 function changeProtocol(): void {
-  const name = input("provName").value.trim();
   const server = input("serverUrl");
   const leftPreset = appConfig.presets.some((preset) =>
-    preset.name === name &&
     preset.serverUrl === server.value.trim() &&
     preset.protocol !== selectedProtocol()
   );
@@ -190,23 +458,50 @@ function changeProtocol(): void {
   applyProtocol();
 }
 
+function setPresetMenuOpen(open: boolean): void {
+  presetMenu.hidden = !open;
+  presetToggle.setAttribute("aria-expanded", String(open));
+}
+
+function closePresetMenu(): void {
+  const hadFocus = presetMenu.contains(document.activeElement);
+  setPresetMenuOpen(false);
+  // The focused entry just disappeared; the button that opened it is where
+  // the user was.
+  if (hadFocus) presetToggle.focus();
+}
+
 /**
- * The chips themselves are rendered by the build (`presetChips` in
+ * The menu entries themselves are rendered by the build (`presetOptions` in
  * `scripts/build.ts`), one per preset in the same order, so they are in
- * place at first paint instead of shifting the form down.
+ * place at first paint.
  */
 function bindPresets(): void {
   appConfig.presets.forEach((preset, index) => {
-    presetList.children[index]?.addEventListener(
-      "click",
-      () => void applyPreset(preset),
-    );
+    presetButtons[index]?.addEventListener("click", async () => {
+      if (await applyPreset(preset)) closePresetMenu();
+    });
   });
-  // An empty group would leave a stray label on the page.
-  presetList.closest<HTMLElement>(".field")?.toggleAttribute(
-    "hidden",
-    appConfig.presets.length === 0,
+  presetToggle.addEventListener(
+    "click",
+    () => setPresetMenuOpen(presetToggle.ariaExpanded !== "true"),
   );
+  nameField.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || presetMenu.hidden) return;
+    event.preventDefault();
+    closePresetMenu();
+  });
+  // Closed by a click or tap anywhere else. Not on focus loss: Safari does
+  // not focus buttons it taps, so that would close the menu mid-tap.
+  document.addEventListener("pointerdown", (event) => {
+    if (
+      !presetMenu.hidden && event.target instanceof Node &&
+      !nameField.contains(event.target)
+    ) {
+      setPresetMenuOpen(false);
+    }
+  });
+  presetToggle.hidden = appConfig.presets.length === 0;
 }
 
 /**
@@ -215,14 +510,18 @@ function bindPresets(): void {
  */
 function validate(config: DnsConfig): boolean {
   const problems = configProblems(config);
-  setFieldError(element("field-provName"), problems.name ?? null);
+  setFieldError(nameField, problems.name ?? null);
   setFieldError(element("field-serverUrl"), problems.serverUrl ?? null);
-  setFieldError(
-    element("field-serverAddresses"),
-    problems.serverAddresses ?? null,
-  );
+  // Stricter than `problems.serverAddresses`, which only knows the list: each
+  // field also has to hold its own family.
+  let addressesValid = true;
+  for (const field of addressFields) {
+    const message = addressError(field);
+    setFieldError(addressFieldOf(field), message);
+    if (message !== null) addressesValid = false;
+  }
   setFieldError(element("field-exclWifi"), problems.excludedWifi ?? null);
-  return !hasProblems(problems);
+  return !hasProblems(problems) && addressesValid;
 }
 
 /** What happened to a loaded file's configuration. */
@@ -314,16 +613,14 @@ async function handleUpload(file: File): Promise<void> {
 function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
   bindPresets();
+  bindQuickInsert();
+  bindAddressFields();
+  bindRules();
 
   for (const id of ["doh", "dot"]) {
     input(id).addEventListener("change", changeProtocol);
   }
-  input("provName").addEventListener("input", syncPresets);
-  textarea("serverAddresses").addEventListener("input", syncPresets);
-  input("serverUrl").addEventListener("input", () => {
-    updateServerCheck();
-    syncPresets();
-  });
+  input("serverUrl").addEventListener("input", onServerInput);
 
   const fileInput = input("fileupload");
   fileInput.addEventListener("change", () => {
@@ -349,6 +646,8 @@ function init(): void {
   });
 
   updateProfileCount();
+  updateAddressCount();
+  updateRules();
   store.subscribe(updateProfileCount);
 
   editing = store.takeEditTarget();

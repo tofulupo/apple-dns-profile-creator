@@ -162,24 +162,25 @@ Each page is only its `<main>` content in `pages/`. The build renders it into
 from `deno.json`. To add a page, add a fragment to `pages/` and an entry to
 `PAGES` in `pages/pages.ts`. The tabs and `sitemap.xml` follow automatically.
 
-### Disable on domains vs. enable on domains
+### Skip encrypted DNS for vs. use encrypted DNS only for
 
-Two fields under **Advanced** both take a list of domains, and they are
-opposites rather than duplicates.
+The **Domains** row under **Behavior & rules** has two fields that both take a
+list of domains. They are opposites rather than duplicates, and neither blocks
+anything: the domains they leave out go to the network's own DNS.
 
-| Field                  | Effect                                                                |
-| ---------------------- | --------------------------------------------------------------------- |
-| **Disable on domains** | A deny list. Encrypted DNS is used everywhere _except_ these domains. |
-| **Enable on domains**  | An allow list. Encrypted DNS is used _only_ for these domains.        |
+| Field                          | Effect                                                                |
+| ------------------------------ | --------------------------------------------------------------------- |
+| **Skip encrypted DNS for**     | A deny list. Encrypted DNS is used everywhere _except_ these domains. |
+| **Use encrypted DNS only for** | An allow list. Encrypted DNS is used _only_ for these domains.        |
 
 Leaving both empty - **the default** - sends every query through the encrypted
 resolver, which is usually what you want.
 
 > [!NOTE]
-> "Enable on domains" is for split DNS, where an internal resolver should answer
-> for one zone and the network's own resolver for everything else. A single
-> leading `*` is allowed, so `*.example.com` and `example.com` both match
-> `mail.example.com`.
+> "Use encrypted DNS only for" is for split DNS, where an internal resolver
+> should answer for one zone and the network's own resolver for everything else.
+> A single leading `*` is allowed, so `*.example.com` and `example.com` both
+> match `mail.example.com`.
 
 Under the hood they are different mechanisms: exclusions become `OnDemandRules`
 that switch the resolver off, while the limit becomes `SupplementalMatchDomains`
@@ -319,6 +320,8 @@ removed.
 - [Reicon](https://reicon.dev) for the server, shield, receipt, sun, moon,
   monitor, download, info and card-remove icons in `public/icons/` (MIT, see
   `public/icons/LICENSE-reicon.txt`)
+- [flag-icons](https://github.com/lipis/flag-icons) for the country flags in the
+  presets menu, in `flags/` (MIT, see `flags/LICENSE-flag-icons.txt`)
 
 [upstream]: https://code.diluvian.cc/fyr77/dns-mobileconfig
 

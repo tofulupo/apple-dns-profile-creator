@@ -47,6 +47,7 @@
     "exclude": [
       "dist/",
       "test/fixtures/",
+      "flags/",
       "desktop/AppIcon.icon/",
       "src-tauri/target/",
       "src-tauri/gen/"

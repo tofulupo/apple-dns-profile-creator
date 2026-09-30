@@ -2,7 +2,15 @@
  * Public surface of the pure core.
  */
 
-export { collectServerAddresses } from "./addresses.ts";
+export {
+  type AddressSlots,
+  collectServerAddresses,
+  type LimitedAddresses,
+  limitServerAddresses,
+  MAX_ADDRESSES_PER_FAMILY,
+  orderServerAddresses,
+  splitServerAddresses,
+} from "./addresses.ts";
 export { buildDnsSettings } from "./dnssettings.ts";
 export { buildOnDemandRules } from "./ondemand.ts";
 export {
@@ -43,14 +51,19 @@ export {
   type CheckedField,
   type ConfigProblems,
   configProblems,
+  type DohUrl,
   hasProblems,
   IPV4_PATTERN,
   IPV6_PATTERN,
+  isDohUrl,
   isIPv4,
   isIPv6,
   MAX_SSID_BYTES,
   parseLines,
   parseList,
   serverError,
+  stripDotScheme,
+  withDnsQueryPath,
+  withHttpsScheme,
 } from "./validate.ts";
 export { parseXml, type XmlElement, XmlParseError } from "./xml.ts";

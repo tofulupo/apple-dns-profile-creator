@@ -16,9 +16,132 @@ import {
   parseLines,
   parseList,
   serverError,
+  stripDotScheme,
+  withDnsQueryPath,
+  withHttpsScheme,
 } from "../../src/lib/validate.ts";
+import {
+  limitServerAddresses,
+  orderServerAddresses,
+  splitServerAddresses,
+} from "../../src/lib/addresses.ts";
 import { config, fullSurfaceConfigs } from "../helpers/configs.ts";
 import { extractedFixtures, plainXmlFixtures } from "../helpers/fixtures.ts";
+
+describe("quick inserts", () => {
+  it("put https:// in front, replacing any scheme, even a broken one", () => {
+    expect(withHttpsScheme("")).toBe("https://");
+    expect(withHttpsScheme("dns.quad9.net")).toBe("https://dns.quad9.net");
+    expect(withHttpsScheme("http://dns.quad9.net")).toBe(
+      "https://dns.quad9.net",
+    );
+    expect(withHttpsScheme("https:/dns.quad9.net")).toBe(
+      "https://dns.quad9.net",
+    );
+    expect(withHttpsScheme("https://dns.quad9.net")).toBe(
+      "https://dns.quad9.net",
+    );
+  });
+
+  it("append /dns-query after the host, keeping the scheme's slashes", () => {
+    expect(withDnsQueryPath("https://dns.quad9.net")).toBe(
+      "https://dns.quad9.net/dns-query",
+    );
+    expect(withDnsQueryPath("https://dns.quad9.net/")).toBe(
+      "https://dns.quad9.net/dns-query",
+    );
+    expect(withDnsQueryPath("dns.quad9.net")).toBe("dns.quad9.net/dns-query");
+  });
+
+  // The reported bug: https:// then /dns-query made "https:/dns-query".
+  it("leave a value without a host alone", () => {
+    for (const value of ["", "https://", "https:/", "https:"]) {
+      expect(withDnsQueryPath(value)).toBe(value);
+    }
+  });
+
+  it("leave a URI template, which must stay last, alone", () => {
+    expect(withDnsQueryPath("https://dns.example.com/q{?dns}")).toBe(
+      "https://dns.example.com/q{?dns}",
+    );
+  });
+
+  it("leave a path that is already there alone", () => {
+    expect(withDnsQueryPath("https://dns.quad9.net/dns-query")).toBe(
+      "https://dns.quad9.net/dns-query",
+    );
+  });
+
+  it("build a URL the server check accepts, in either order", () => {
+    const host = "dns.quad9.net";
+    const schemeFirst = withDnsQueryPath(withHttpsScheme(host));
+    const pathFirst = withHttpsScheme(withDnsQueryPath(host));
+    for (const url of [schemeFirst, pathFirst]) {
+      expect(url).toBe("https://dns.quad9.net/dns-query");
+      expect(serverError("HTTPS", url)).toBeNull();
+    }
+  });
+});
+
+describe("stripDotScheme", () => {
+  it("turns a tls:// server into a bare host name", () => {
+    expect(stripDotScheme("tls://dns.quad9.net")).toBe("dns.quad9.net");
+    expect(stripDotScheme("TLS://dns.quad9.net")).toBe("dns.quad9.net");
+  });
+
+  it("drops the default port, and the path of a pasted DoH URL", () => {
+    expect(stripDotScheme("tls://dns.quad9.net:853")).toBe("dns.quad9.net");
+    expect(stripDotScheme("https://dns.quad9.net/dns-query")).toBe(
+      "dns.quad9.net",
+    );
+  });
+
+  it("keeps other ports, for the server check to report", () => {
+    expect(stripDotScheme("tls://dns.example:8853")).toBe("dns.example:8853");
+  });
+
+  it("leaves a value without a scheme alone", () => {
+    for (const value of ["dns.quad9.net", "tls:/dns", "", "quic://x.test"]) {
+      expect(stripDotScheme(value)).toBe(value);
+    }
+  });
+});
+
+describe("resolver address slots", () => {
+  const mixed = [
+    "2001:db8::1",
+    "192.0.2.1",
+    "2001:db8::2",
+    "2001:db8::3",
+    "192.0.2.2",
+    "192.0.2.3",
+    "resolver.example",
+  ];
+
+  it("keep the first two of each family in their order", () => {
+    expect(limitServerAddresses(mixed)).toEqual({
+      kept: ["2001:db8::1", "192.0.2.1", "2001:db8::2", "192.0.2.2"],
+      dropped: ["2001:db8::3", "192.0.2.3", "resolver.example"],
+    });
+  });
+
+  it("split into the IPv4 and IPv6 fields", () => {
+    expect(splitServerAddresses(mixed)).toEqual({
+      ipv4: ["192.0.2.1", "192.0.2.2"],
+      ipv6: ["2001:db8::1", "2001:db8::2"],
+      dropped: ["2001:db8::3", "192.0.2.3", "resolver.example"],
+    });
+  });
+
+  it("are stored IPv4 first", () => {
+    expect(orderServerAddresses(mixed)).toEqual([
+      "192.0.2.1",
+      "192.0.2.2",
+      "2001:db8::1",
+      "2001:db8::2",
+    ]);
+  });
+});
 
 describe("isIPv4", () => {
   for (
@@ -99,6 +222,9 @@ describe("serverError", () => {
       "https://dns.example.com/dns-query/abc123",
       "https://[2606:4700::1111]/dns-query",
       "https://1.1.1.1/dns-query",
+      // RFC 8484 URI templates, which Apple's ServerURL also takes.
+      "https://dns.example.com/dns-query{?dns}",
+      "https://dns.example.com/q?key=1{&dns}",
     ]
   ) {
     it(`accepts DoH ${value}`, () =>
@@ -112,6 +238,21 @@ describe("serverError", () => {
       "https://",
       "https:// dns.example.com",
       "https://dns.example.com/dns query",
+      // The URL parser repairs these into valid URLs; the profile would not.
+      "https:/dns-query",
+      "https:/dns.example.com/dns-query",
+      "https:///dns-query",
+      "https:\\\\dns.example.com\\dns-query",
+      "https://dns.example.com\\dns-query",
+      " https://dns.example.com/dns-query",
+      // Refused by isDohUrl.
+      "https://user:secret@dns.example.com/dns-query",
+      "https://dns.example.com/dns-query#part",
+      "https://dns.example.com/dns-query?dns=AAAB",
+      "https://dns.example.com/dns-query{?name}",
+      "https://dns.example.com/q{&dns}",
+      "https://dns.example.com/q?key=1{?dns}",
+      "https://dns.example.com/{dns}",
     ]
   ) {
     it(`rejects DoH ${JSON.stringify(value)}`, () =>
@@ -119,6 +260,13 @@ describe("serverError", () => {
         "A DoH server must be an https:// URL.",
       ));
   }
+
+  // RFC 3986: path-abempty is *( "/" segment ), and a segment may be empty.
+  it("accepts empty path segments, which RFC 3986 allows", () => {
+    expect(
+      serverError("HTTPS", "https://hhh.01.com////////////////dns-query"),
+    ).toBeNull();
+  });
 
   for (const value of ["dns.quad9.net", "1.1.1.1", "dot.example.com."]) {
     it(`accepts DoT ${value}`, () =>

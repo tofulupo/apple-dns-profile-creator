@@ -46,9 +46,19 @@ export function setFieldError(
   }
 
   // A field inside a collapsed <details> would report its error invisibly,
-  // leaving the submit button looking inert for no stated reason.
-  if (message !== null) {
-    const disclosure = field.closest("details");
-    if (disclosure instanceof HTMLDetailsElement) disclosure.open = true;
+  // leaving the submit button looking inert for no stated reason. Every
+  // enclosing one is opened, since rows of Behavior & rules sit inside the
+  // section's own.
+  if (message !== null) openEnclosing(field);
+}
+
+/** Opens every `<details>` around `element`, so it can be seen. */
+export function openEnclosing(element: Element): void {
+  for (
+    let disclosure = element.closest("details");
+    disclosure !== null;
+    disclosure = disclosure.parentElement?.closest("details") ?? null
+  ) {
+    disclosure.open = true;
   }
 }

@@ -11,6 +11,7 @@ import {
   inlineScript,
   pageHref,
   pageUrl,
+  presetDetails,
   renderPage,
 } from "../../scripts/build.ts";
 import { THEME_KEY } from "../../src/ui/theme.ts";
@@ -73,6 +74,32 @@ describe("inlineScript", () => {
     for (const code of ['"</script>"', '"</SCRIPT "', '"<script>"']) {
       expect(() => inlineScript(code)).toThrow();
     }
+  });
+});
+
+describe("presetDetails", () => {
+  it("lists host, country, then features in menu order", () => {
+    expect(presetDetails({
+      name: "Example",
+      protocol: "HTTPS",
+      serverUrl: "https://doh.example.net/dns-query",
+      country: "SE",
+      features: ["no-logs", "dnssec", "blocking"],
+    })).toEqual([
+      "doh.example.net",
+      "Sweden",
+      "Malware blocking",
+      "DNSSEC",
+      "No logs",
+    ]);
+  });
+
+  it("shows a DoT server's host name as it is", () => {
+    expect(presetDetails({
+      name: "Example",
+      protocol: "TLS",
+      serverUrl: "dot.example.net",
+    })).toEqual(["dot.example.net"]);
   });
 });
 
@@ -142,15 +169,49 @@ for (const { page, html } of rendered) {
       });
     }
 
-    it("renders one preset chip per preset, in order", () => {
-      const chips = [
-        ...html.matchAll(/<button type="button" class="chip"[^>]*>([^<]*)</g),
+    it("renders one preset menu entry per preset, in order", () => {
+      const entries = [
+        ...html.matchAll(
+          /<button type="button" class="preset"[^>]*>(?:<img [^>]*>|<span class="icon[^"]*"[^>]*><\/span>)<span class="preset__name">([^<]*)</g,
+        ),
       ].map((match) => match[1]);
       const expected = page.file === "index.html"
         ? appConfig.presets.map((preset) => preset.name)
         : [];
-      expect(chips).toEqual(expected);
+      expect(entries).toEqual(expected);
     });
+
+    if (page.file === "index.html") {
+      // Derived from the presets, so editing them does not break the test.
+      it("shows each preset's details, one unit per detail", () => {
+        for (const preset of appConfig.presets) {
+          const details = presetDetails(preset)
+            .map((detail) => `<span>${detail}</span>`)
+            .join(" · ");
+          expect(html).toContain(
+            `<span class="preset__name">${preset.name}</span><span class="preset__details">${details}</span>`,
+          );
+        }
+      });
+
+      it("marks presets with their country's flag, or a globe", () => {
+        expect(html).toMatch(
+          /<img class="preset__mark preset__flag" src="data:image\/svg\+xml,[^"]+" alt=""[^>]*><span class="preset__name">njal\.la</,
+        );
+        expect(html).toContain(
+          '<span class="icon icon--globe preset__mark" aria-hidden="true"></span><span class="preset__name">Quad9<',
+        );
+      });
+
+      it("starts with the preset menu closed", () => {
+        expect(html).toMatch(
+          /<ul class="preset-menu" id="presetMenu"[^>]*hidden>/,
+        );
+        expect(html).toContain(
+          'aria-expanded="false" aria-controls="presetMenu"',
+        );
+      });
+    }
 
     it("has its own title, canonical URL and Open Graph tags", () => {
       const url = pageUrl(page);

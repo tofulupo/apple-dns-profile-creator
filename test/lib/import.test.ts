@@ -310,6 +310,26 @@ describe("import warnings", () => {
     ]);
   });
 
+  it("name resolver addresses beyond two per family", () => {
+    const xml = profileXml(dnsPayload()).replace(
+      "<key>DNSSettings</key><dict>",
+      `<key>DNSSettings</key><dict>
+        <key>ServerAddresses</key><array>
+          <string>192.0.2.1</string><string>2001:db8::1</string>
+          <string>192.0.2.2</string><string>192.0.2.3</string>
+        </array>`,
+    );
+    const result = importProfileXml(xml);
+    expect(result.configs[0]?.serverAddresses).toEqual([
+      "192.0.2.1",
+      "2001:db8::1",
+      "192.0.2.2",
+    ]);
+    expect(result.warnings).toEqual([
+      "Example: Left out resolver addresses beyond two IPv4 and two IPv6: “192.0.2.3”.",
+    ]);
+  });
+
   it("list each skipped payload type once", () => {
     const wifi = `<dict>
       <key>PayloadType</key><string>com.apple.wifi.managed</string>

@@ -2,7 +2,7 @@
  * Recovers DNS configurations from an uploaded `.mobileconfig`.
  */
 
-import { collectServerAddresses } from "./addresses.ts";
+import { collectServerAddresses, limitServerAddresses } from "./addresses.ts";
 import {
   asArray,
   asDict,
@@ -252,14 +252,25 @@ export function importProfile(plist: PlistValue): ProfileImport {
 
     const listedAddresses = asStringArray(dnsSettings?.["ServerAddresses"]) ??
       [];
-    const serverAddresses = collectServerAddresses(listedAddresses);
+    const validAddresses = collectServerAddresses(listedAddresses);
     const badAddresses = listedAddresses.filter((address) =>
-      !serverAddresses.includes(address)
+      !validAddresses.includes(address)
     );
     if (badAddresses.length > 0) {
       warn(
         `Left out resolver addresses that are not IP addresses: ${
           quoteList(badAddresses)
+        }.`,
+      );
+    }
+    // Cut down to what the tool page's address fields hold, so an imported
+    // configuration does not keep addresses nobody can see or edit.
+    const { kept: serverAddresses, dropped: extraAddresses } =
+      limitServerAddresses(validAddresses);
+    if (extraAddresses.length > 0) {
+      warn(
+        `Left out resolver addresses beyond two IPv4 and two IPv6: ${
+          quoteList(extraAddresses)
         }.`,
       );
     }

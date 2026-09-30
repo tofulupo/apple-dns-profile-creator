@@ -171,17 +171,17 @@ function card(config: DnsConfig): HTMLElement {
     // Quoted, since a network name can contain the comma between them.
     body.append(
       row(
-        "Disable on Wi-Fi",
+        "Skip on Wi-Fi",
         config.excludedWifi.map((ssid) => `“${ssid}”`).join(", "),
       ),
     );
   }
   if (config.excludedDomains.length > 0) {
-    body.append(row("Disable on domains", config.excludedDomains.join(", ")));
+    body.append(row("Skip for domains", config.excludedDomains.join(", ")));
   }
   const matchDomains = config.supplementalMatchDomains ?? [];
   if (matchDomains.length > 0) {
-    body.append(row("Enable on domains", matchDomains.join(", ")));
+    body.append(row("Only for domains", matchDomains.join(", ")));
   }
 
   const flags = document.createElement("p");

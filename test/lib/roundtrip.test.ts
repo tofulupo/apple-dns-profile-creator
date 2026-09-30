@@ -207,7 +207,9 @@ describe("multi-configuration profiles", () => {
 });
 
 describe("resolver address capacity", () => {
-  it("round-trips more than two addresses per family", () => {
+  // The tool page has fields for two addresses per family, so an import
+  // keeps the first two of each, in their order, and reports the rest.
+  it("keeps the first two addresses per family", () => {
     const serverAddresses = [
       "2001:db8::1",
       "2001:db8::2",
@@ -216,9 +218,12 @@ describe("resolver address capacity", () => {
       "192.0.2.2",
       "192.0.2.3",
     ];
-    expect(roundTrip(config({ serverAddresses })).serverAddresses).toEqual(
-      serverAddresses,
-    );
+    expect(roundTrip(config({ serverAddresses })).serverAddresses).toEqual([
+      "2001:db8::1",
+      "2001:db8::2",
+      "192.0.2.1",
+      "192.0.2.2",
+    ]);
   });
 
   it("round-trips an empty address list", () => {

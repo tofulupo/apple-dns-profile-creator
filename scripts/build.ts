@@ -3,7 +3,12 @@
 import { copy } from "@std/fs/copy";
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
 import { type Page, PAGES, SITE_URL } from "../pages/pages.ts";
-import { appConfig } from "../src/config.ts";
+import {
+  appConfig,
+  type DnsPreset,
+  PRESET_FEATURE_LABELS,
+  type PresetFeature,
+} from "../src/config.ts";
 import { FONT_SUBSET } from "./fonts.ts";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
@@ -15,6 +20,12 @@ const LLMS = "pages/llms.txt";
 const STYLESHEET = "css/app.css";
 /** Fonts both the website and the app ship: Lilex and its licence. */
 const FONTS = join(ROOT, "fonts");
+/**
+ * Country flags for the presets menu, from flag-icons (MIT, licence beside
+ * them), 4x3 variant. Only the countries the presets name are committed;
+ * `test/config.test.ts` names any that is missing.
+ */
+export const FLAGS = join(ROOT, "flags");
 const REPOSITORY_URL = "https://github.com/tofulupo/apple-dns-profile-creator";
 
 export interface PageAssets {
@@ -96,13 +107,18 @@ export function inlineScript(code: string): string {
  * encoding everything.
  */
 export function svgDataUri(svg: string): string {
+  return `url("${svgDataUrl(svg)}")`;
+}
+
+/** `svgDataUri` without the `url()`, for an `<img src>`. */
+export function svgDataUrl(svg: string): string {
   if (svg.includes("'")) {
     throw new Error("SVG uses single quotes, which the data URI relies on");
   }
   const compact = svg.replace(/\s+/g, " ").replaceAll("> <", "><").trim()
     .replaceAll('"', "'")
     .replace(/[%#<>{}]/g, (character) => encodeURIComponent(character));
-  return `url("data:image/svg+xml,${compact}")`;
+  return `data:image/svg+xml,${compact}`;
 }
 
 /**
@@ -246,16 +262,79 @@ export async function readVersion(): Promise<string> {
   return manifest.version;
 }
 
+const REGION_NAMES = new Intl.DisplayNames(["en"], { type: "region" });
+
 /**
- * The quick-preset buttons, in `appConfig.presets` order. Rendered here
- * rather than by the page script so the row is in place at first paint and
- * does not push the form down; `tool.ts` attaches the handlers by position.
+ * The English name of the country `code` stands for, or undefined when it is
+ * not a region code at all (`Intl.DisplayNames` hands those back unchanged).
  */
-export function presetChips(): string {
+export function countryName(code: string): string | undefined {
+  if (!/^[A-Z]{2}$/.test(code)) return undefined;
+  const name = REGION_NAMES.of(code);
+  return name === undefined || name === code ? undefined : name;
+}
+
+/**
+ * The muted line under a preset's name: its host, the country it runs in if
+ * it is not global, and what it offers.
+ */
+export function presetDetails(preset: DnsPreset): string[] {
+  const host = preset.protocol === "HTTPS"
+    ? new URL(preset.serverUrl).hostname
+    : preset.serverUrl;
+  const country = preset.country === undefined
+    ? []
+    : [countryName(preset.country) ?? preset.country];
+  const features = (Object.keys(PRESET_FEATURE_LABELS) as PresetFeature[])
+    .filter((feature) => preset.features?.includes(feature))
+    .map((feature) => PRESET_FEATURE_LABELS[feature]);
+  return [host, ...country, ...features];
+}
+
+/** The flag file for the country `code`, such as `flags/se.svg`. */
+export function flagFile(code: string): string {
+  return join(FLAGS, `${code.toLowerCase()}.svg`);
+}
+
+/**
+ * What stands in front of a preset's name: the flag of its country, embedded
+ * so it is there at first paint, or a globe for a global resolver. Both are
+ * decorative; the line under the name spells out the country.
+ */
+function presetMark(preset: DnsPreset): string {
+  if (preset.country === undefined) {
+    return `<span class="icon icon--globe preset__mark" aria-hidden="true"></span>`;
+  }
+  let svg: string;
+  try {
+    svg = Deno.readTextFileSync(flagFile(preset.country));
+  } catch (error) {
+    throw new Error(
+      `No flag for ${preset.name}'s country ${preset.country}: copy flags/4x3/${preset.country.toLowerCase()}.svg from flag-icons into flags/`,
+      { cause: error },
+    );
+  }
+  return `<img class="preset__mark preset__flag" src="${
+    escape(svgDataUrl(svg))
+  }" alt="" width="20" height="15">`;
+}
+
+/**
+ * The presets menu's entries, in `appConfig.presets` order. Rendered here
+ * rather than by the page script so they are in place at first paint;
+ * `tool.ts` attaches the handlers by position.
+ */
+export function presetOptions(): string {
   return appConfig.presets.map((preset) =>
-    `<button type="button" class="chip" aria-pressed="false">${
-      escape(preset.name)
-    }</button>`
+    `<li><button type="button" class="preset" aria-pressed="false">` +
+    presetMark(preset) +
+    `<span class="preset__name">${escape(preset.name)}</span>` +
+    `<span class="preset__details">${
+      presetDetails(preset).map((detail) => `<span>${escape(detail)}</span>`)
+        .join(" · ")
+    }</span>` +
+    `<span class="icon icon--check preset__check" aria-hidden="true"></span>` +
+    `</button></li>`
   ).join("\n");
 }
 
@@ -305,7 +384,7 @@ export async function renderPage(
     script: inlineScript(assets.script),
     version: escape(assets.version),
     nav: navigation(page),
-    content: fill(content.trim(), { presets: presetChips() }, page.file),
+    content: fill(content.trim(), { presets: presetOptions() }, page.file),
   }, LAYOUT);
 }
 

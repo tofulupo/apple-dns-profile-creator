@@ -60,6 +60,12 @@
   --gap: 1rem;
   /* Inset of a profile card's content; the list footer lines up with it. */
   --card-padding: 1.1rem;
+  --panel-padding-x: 1.35rem;
+  /* The button inside a field's right edge (Presets), and the upload zone's
+     Load button, which on phones matches it in size and right edge. */
+  --inline-btn-width: 6rem;
+  --inline-btn-height: 2.125rem;
+  --inline-btn-inset: 0.3rem;
 
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono: "Lilex", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
@@ -361,8 +367,8 @@ code {
   font-variant-numeric: tabular-nums;
 }
 
-/* Selected tabs, protocol options and preset chips share one look: a solid
-   accent pill. Declared after the hover rules, which must not recolour it. */
+/* Selected tabs and protocol options share one look: a solid accent pill.
+   Declared after the hover rules, which must not recolour it. */
 .tab[aria-current="page"],
 .segmented__option:has(input:checked) {
   background: var(--accent);
@@ -371,7 +377,7 @@ code {
 }
 
 .panel {
-  padding: 1.25rem 1.35rem;
+  padding: 1.25rem var(--panel-padding-x);
   margin-bottom: var(--gap);
   background: var(--surface);
   border: 1px solid var(--border);
@@ -483,9 +489,16 @@ textarea {
   font-size: 0.95rem;
 }
 
-textarea {
+/* Identifiers (IP addresses, domains, network names) are typed in monospace,
+   one size for inputs and textareas. Before the touch rules below, which
+   must still raise it to 16px. */
+textarea,
+input.mono {
   font-family: var(--font-mono);
   font-size: 0.875rem;
+}
+
+textarea {
   resize: vertical;
   min-height: 5.5rem;
 }
@@ -611,34 +624,444 @@ textarea::placeholder {
   outline-offset: 2px;
 }
 
-/* Provider presets. */
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+/* Provider name: typed, or taken from a preset with the button inside the
+   field's right edge, which opens the preset menu below it. */
+.name-picker {
+  position: relative;
 }
 
-.chip {
-  padding: 0.3rem 0.8rem;
-  background: var(--surface-sunken);
-  border: 1px solid var(--border);
-  border-radius: 999px;
+.name-picker input {
+  min-height: calc(var(--inline-btn-height) + 2 * var(--inline-btn-inset) +
+    2px);
+  padding-right: calc(var(--inline-btn-width) + var(--inline-btn-inset) +
+    0.5rem);
+}
+
+/* No presets configured, so no button to make room for. */
+.name-picker:has(> [hidden]) input {
+  padding-right: 0.75rem;
+}
+
+.name-picker__toggle {
+  position: absolute;
+  top: 50%;
+  right: var(--inline-btn-inset);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  min-width: var(--inline-btn-width);
+  height: var(--inline-btn-height);
+  padding: 0 0.6rem;
+  translate: 0 -50%;
+  background: var(--surface);
+  /* Border and hover as .btn, so it matches the upload zone's Load button. */
+  border: 1px solid var(--border-strong);
+  border-radius: calc(var(--radius-sm) - 2px);
   color: var(--text);
   font: inherit;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.name-picker__toggle:hover {
+  background: var(--surface-sunken);
+}
+
+.name-picker__toggle[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.icon--chevron {
+  --icon: url("icons/chevron-right.svg");
+
+  width: 0.9rem;
+  height: 0.9rem;
+  transform: rotate(90deg);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[aria-expanded="true"] > .icon--chevron {
+  transform: rotate(-90deg);
+}
+
+.icon--check {
+  --icon: url("icons/check.svg");
+}
+
+/* The presets, in the input's own well so the menu reads as part of the
+   field. Opens in the flow rather than floating, where the phone keyboard
+   would cover it. */
+.preset-menu {
+  display: grid;
+  gap: 0.125rem;
+  margin: 0.4rem 0 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--textinput-sunken);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  transition:
+    opacity 0.18s ease-out,
+    translate 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@starting-style {
+  .preset-menu {
+    opacity: 0;
+    translate: 0 -0.25rem;
+  }
+}
+
+.preset {
+  display: grid;
+  grid-template-areas: "mark name check" ". details check";
+  grid-template-columns: 1.25rem 1fr auto;
+  gap: 0.05rem 0.6rem;
+  align-items: center;
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.45rem 0.65rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: calc(var(--radius-sm) - 2px);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.35;
+  text-align: left;
   cursor: pointer;
 }
 
-.chip:hover {
+.preset:hover {
+  background: color-mix(in srgb, var(--text) 5%, var(--textinput-sunken));
+}
+
+.preset[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 8%, var(--textinput-sunken));
+  border-color: var(--accent);
+}
+
+/* A flag, or a globe for a resolver that answers from everywhere. Sized to
+   the name's line, where the eye starts reading. */
+.preset__mark {
+  grid-area: mark;
+  justify-self: center;
+}
+
+.preset__flag {
+  display: block;
+  width: 1.25rem;
+  height: 0.9375rem;
+  border-radius: 2px;
+  object-fit: cover;
+  /* A hairline edge, so white and pale flags keep their shape on the light
+     theme's well. */
+  outline: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  outline-offset: -1px;
+}
+
+.icon--globe {
+  --icon: url("icons/globe.svg");
+
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--muted);
+}
+
+.preset__name {
+  grid-area: name;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.preset__details {
+  grid-area: details;
+  color: var(--muted);
+  font-size: 0.8rem;
+  text-wrap: pretty;
+}
+
+/* Each detail wraps as one unit ("Ad blocking", not "Ad" then "blocking"),
+   so lines break at the dots between them. Only one longer than the line,
+   such as a long host name, breaks inside. */
+.preset__details > span {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.preset__check {
+  grid-area: check;
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--accent-text);
+  visibility: hidden;
+}
+
+.preset[aria-pressed="true"] .preset__check {
+  visibility: visible;
+}
+
+/* The parts of a DoH URL that are tedious to type on a phone. */
+.quick-insert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.quick-insert__label {
+  margin-right: 0.15rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.quick-insert__btn {
+  min-height: 2rem;
+  padding: 0.2rem 0.65rem;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    opacity 0.15s ease,
+    transform 0.1s ease;
+}
+
+.quick-insert__btn:hover:not(:disabled) {
   border-color: var(--border-strong);
 }
 
-/* No weight change here: bolder text widens the chip, and on narrow phones
-   that wrapped the chip row and shifted everything below it. */
-.chip[aria-pressed="true"] {
-  background: var(--accent);
+.quick-insert__btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+/* Already in the URL. */
+.quick-insert__btn:disabled {
+  color: var(--muted);
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* A collapsible part of a panel: a row under a hairline rather than a card
+   of its own, which inside the panel would be a card in a card. */
+.panel-disclosure {
+  border-top: 1px solid var(--border);
+}
+
+.panel-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding-top: 0.85rem;
+  font-weight: 500;
+  font-size: 0.95rem;
+  line-height: 1.8;
+  cursor: pointer;
+  list-style: none;
+}
+
+.panel-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* An icon rather than the › character, whose size and shape change with the
+   font: tiny in Söhne, and different again on Windows and Android. Narrower
+   than the icon and centred on it, so opening rotates it in place. */
+.panel-disclosure > summary::before {
+  content: "";
+  flex: none;
+  width: 0.625rem;
+  height: 1rem;
+  background-color: var(--muted);
+  -webkit-mask: url("icons/chevron-right.svg") center / 1rem 1rem no-repeat;
+  mask: url("icons/chevron-right.svg") center / 1rem 1rem no-repeat;
+  transition: transform 0.15s ease;
+}
+
+.panel-disclosure[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.panel-disclosure__meta {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel-disclosure__meta--warning {
+  color: var(--warning);
+}
+
+.panel-disclosure__body {
+  padding-top: 0.9rem;
+}
+
+.panel-disclosure + .panel-disclosure {
+  margin-top: 0.85rem;
+}
+
+/* Behavior & rules: one grouped list. Each row shows its current state at a
+   glance; list rows open in place, interfaces and switches work right in
+   the row. */
+.rule-list {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.rule-list > * + * {
+  border-top: 1px solid var(--border);
+}
+
+.rule__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  min-height: 3rem;
+  padding: 0.7rem 0.9rem;
+}
+
+/* Interfaces: the chips move under the title when the row is too narrow. */
+.rule__head--wrap {
+  flex-wrap: wrap;
+}
+
+summary.rule__head {
+  cursor: pointer;
+  list-style: none;
+}
+
+summary.rule__head::-webkit-details-marker {
+  display: none;
+}
+
+.rule__title {
+  flex: 1 0 auto;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.rule__meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.rule__head .icon--chevron {
+  color: var(--muted);
+}
+
+.rule[open] > summary > .icon--chevron {
+  transform: rotate(-90deg);
+}
+
+.rule__body {
+  padding: 0 0.9rem 0.9rem;
+}
+
+.rule__warning {
+  margin: 0;
+  padding: 0 0.9rem 0.8rem;
+  color: var(--warning);
+  font-size: 0.85rem;
+  text-wrap: pretty;
+}
+
+.toggle-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+/* An on/off chip: a real checkbox inside, visually hidden. On shows the
+   accent and a check, so the state is not told by colour alone; the check's
+   space is kept when off, so switching does not shift the row. */
+.toggle-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 2rem;
+  margin: 0;
+  padding: 0 0.7rem 0 0.5rem;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  border-radius: calc(var(--radius-sm) - 2px);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.toggle-chip::before {
+  content: "";
+  flex: none;
+  width: 0.85rem;
+  height: 0.85rem;
+  background-color: currentColor;
+  -webkit-mask: url("icons/check.svg") center / contain no-repeat;
+  mask: url("icons/check.svg") center / contain no-repeat;
+  opacity: 0;
+}
+
+.toggle-chip:hover {
+  color: var(--text);
+}
+
+.toggle-chip:has(input:checked) {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
   border-color: var(--accent);
-  color: var(--accent-contrast);
+  color: var(--accent-text);
+}
+
+.toggle-chip:has(input:checked)::before {
+  opacity: 1;
+}
+
+.toggle-chip:has(input:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.panel-disclosure__body > fieldset:last-of-type {
+  margin-bottom: 0.5rem;
+}
+
+/* Two IPv4 and two IPv6 fields: side by side where an IPv6 address fits in
+   half the panel, stacked on phones. */
+.address-grid {
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: 1fr;
+}
+
+.address-grid > .field {
+  margin-bottom: 0;
+}
+
+@media (min-width: 40rem) {
+  .address-grid {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* The profile cards' flags list only options that are on. Tinted rather than
@@ -803,7 +1226,13 @@ textarea::placeholder {
     align-items: center;
     justify-items: start;
     gap: 0.85rem;
-    padding: 0.9rem 1rem;
+    /* Lined up with the panel below: the icon with the panel's content, and
+       the Load button's right edge with the Presets button's (the panel's
+       border and padding plus the button's inset from the field's outer
+       edge). Each side less this zone's thicker border. */
+    padding: 0.9rem
+      calc(var(--panel-padding-x) + var(--inline-btn-inset) + 1px - 1.5px)
+      0.9rem calc(var(--panel-padding-x) + 1px - 1.5px);
     text-align: start;
   }
 
@@ -826,8 +1255,11 @@ textarea::placeholder {
   }
 
   .zone .btn {
-    padding: 0.5rem 0.8rem;
-    font-size: 0.875rem;
+    min-width: var(--inline-btn-width);
+    height: var(--inline-btn-height);
+    padding: 0 0.6rem;
+    border-radius: calc(var(--radius-sm) - 2px);
+    font-size: 0.85rem;
     white-space: nowrap;
   }
 }
@@ -846,7 +1278,11 @@ textarea::placeholder {
 
 @media (prefers-reduced-motion: reduce) {
   .zone,
-  .zone__icon {
+  .zone__icon,
+  .preset-menu,
+  .icon--chevron,
+  .quick-insert__btn,
+  .toggle-chip {
     transition: none;
   }
 
@@ -948,19 +1384,6 @@ textarea::placeholder {
   .switch {
     transition: none;
   }
-}
-
-/* Subsections of a disclosure (Advanced: Exceptions, Behavior). */
-.subheading {
-  margin: 0 0 0.9rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-.subheading:not(:first-child) {
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--border);
 }
 
 .btn {
@@ -1222,58 +1645,6 @@ textarea::placeholder {
 
 .note__body > p {
   margin: 0;
-}
-
-.disclosure {
-  margin-bottom: var(--gap);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-}
-
-.disclosure > summary {
-  padding: 0.75rem 1.35rem;
-  font-weight: 500;
-  font-size: 0.95rem;
-  /* The height the row had when the chevron was a larger › character. */
-  line-height: 1.8;
-  cursor: pointer;
-  list-style: none;
-}
-
-.disclosure > summary::-webkit-details-marker {
-  display: none;
-}
-
-/* An icon rather than the › character, whose size and shape change with the
-   font: tiny in Söhne, and different again on Windows and Android. */
-.disclosure > summary::before {
-  content: "";
-  display: inline-block;
-  /* Narrower than the icon and centred on the chevron, so opening rotates it
-     in place; the margin keeps the text where it was. */
-  width: 0.625rem;
-  height: 1rem;
-  margin-inline-end: 0.375rem;
-  vertical-align: -0.15em;
-  background-color: var(--muted);
-  -webkit-mask: url("icons/chevron-right.svg") center / 1rem 1rem no-repeat;
-  mask: url("icons/chevron-right.svg") center / 1rem 1rem no-repeat;
-  transition: transform 0.15s ease;
-}
-
-.disclosure[open] > summary::before {
-  transform: rotate(90deg);
-}
-
-.disclosure[open] > summary {
-  border-bottom: 1px solid var(--border);
-}
-
-.disclosure__body {
-  padding: 1.25rem 1.35rem;
 }
 
 .profile-card {

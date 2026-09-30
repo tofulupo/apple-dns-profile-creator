@@ -12,7 +12,7 @@
       <span class="zone__status" id="uploadStatus"
         role="status">signed or unsigned</span>
     </span>
-    <span class="btn" aria-hidden="true">Choose file</span>
+    <span class="btn" aria-hidden="true">Load</span>
   </label>
   <p class="field__error" hidden></p>
   <div role="status">
@@ -26,20 +26,23 @@
     <h3 class="panel__title">
       <span class="panel__icon" aria-hidden="true"><span
           class="icon icon--server"></span></span>
-      DNS Provider
+      DNS configuration
     </h3>
-
-    <div class="field" role="group" aria-labelledby="presetsLabel">
-      <span class="label" id="presetsLabel">Quick presets</span>
-      <div class="chips" id="presets">
-        {{ presets }}
-      </div>
-    </div>
 
     <div class="field" id="field-provName">
       <label for="provName">Choose a Name</label>
-      <input type="text" id="provName"
-        placeholder="My DNS Provider">
+      <div class="name-picker">
+        <input type="text" id="provName" autocomplete="off"
+          placeholder="My DNS Provider">
+        <button type="button" class="name-picker__toggle" id="presetToggle"
+          aria-expanded="false" aria-controls="presetMenu">
+          Presets
+          <span class="icon icon--chevron" aria-hidden="true"></span>
+        </button>
+      </div>
+      <ul class="preset-menu" id="presetMenu" aria-label="Presets" hidden>
+        {{ presets }}
+      </ul>
       <p class="field__error" hidden></p>
     </div>
 
@@ -63,115 +66,183 @@
       <label for="serverUrl"
         id="dohdotServerLabel">DoH URL</label>
       <div class="input-check" id="serverCheck">
-        <input type="text" id="serverUrl"
-          placeholder="https://example.com/dns-query"
+        <input type="text" id="serverUrl" inputmode="url"
+          autocapitalize="off" autocorrect="off" spellcheck="false"
+          autocomplete="off" placeholder="https://example.com/dns-query"
           aria-describedby="serverCheckText">
         <span class="icon input-check__icon" aria-hidden="true"></span>
         <span class="visually-hidden" id="serverCheckText"></span>
       </div>
+      <div class="quick-insert" id="quickInsert" role="group"
+        aria-labelledby="quickInsertLabel">
+        <span class="quick-insert__label"
+          id="quickInsertLabel">Quick insert</span>
+        <button type="button" class="quick-insert__btn"
+          id="insertScheme">https://</button>
+        <button type="button" class="quick-insert__btn"
+          id="insertPath">/dns-query</button>
+      </div>
       <p class="field__error" hidden></p>
     </div>
-  </section>
 
-  <details class="disclosure" id="disclosure-serverAddresses">
-    <summary>Resolver addresses</summary>
-    <div class="disclosure__body">
-      <div class="field" id="field-serverAddresses">
-        <label for="serverAddresses"
-          class="optional">IP addresses</label>
-        <textarea id="serverAddresses" class="mono" rows="4"
-          placeholder="2001:db8::1&#10;2001:db8::2&#10;192.0.2.1"></textarea>
-        <span
-          class="hint">IPv4/IPv6 addresses, one per line or comma separated. Tried in order.</span>
-        <p class="field__error" hidden></p>
+    <details class="panel-disclosure" id="disclosure-serverAddresses">
+      <summary>
+        <span class="panel-disclosure__title">Resolver addresses</span>
+        <span class="panel-disclosure__meta" id="addressCount">None</span>
+      </summary>
+      <div class="panel-disclosure__body">
+        <fieldset class="field">
+          <legend>IPv4</legend>
+          <div class="address-grid">
+            <div class="field" id="field-ipv4a">
+              <input type="text" id="ipv4a" class="mono" inputmode="decimal"
+                autocomplete="off" spellcheck="false"
+                aria-label="First IPv4 address" placeholder="192.0.2.1">
+              <p class="field__error" hidden></p>
+            </div>
+            <div class="field" id="field-ipv4b">
+              <input type="text" id="ipv4b" class="mono" inputmode="decimal"
+                autocomplete="off" spellcheck="false"
+                aria-label="Second IPv4 address" placeholder="192.0.2.2">
+              <p class="field__error" hidden></p>
+            </div>
+          </div>
+        </fieldset>
+        <fieldset class="field">
+          <legend>IPv6</legend>
+          <div class="address-grid">
+            <div class="field" id="field-ipv6a">
+              <input type="text" id="ipv6a" class="mono"
+                autocapitalize="off" autocorrect="off" spellcheck="false"
+                autocomplete="off" aria-label="First IPv6 address"
+                placeholder="2001:db8::1">
+              <p class="field__error" hidden></p>
+            </div>
+            <div class="field" id="field-ipv6b">
+              <input type="text" id="ipv6b" class="mono"
+                autocapitalize="off" autocorrect="off" spellcheck="false"
+                autocomplete="off" aria-label="Second IPv6 address"
+                placeholder="2001:db8::2">
+              <p class="field__error" hidden></p>
+            </div>
+          </div>
+        </fieldset>
+        <div role="status">
+          <ul class="notices" id="addressNotice"
+            aria-label="Addresses that were left out" hidden></ul>
+        </div>
+        <span class="hint">Optional. Tried in order, IPv4 first.</span>
       </div>
-    </div>
-  </details>
+    </details>
 
-  <details class="disclosure">
-    <summary>Advanced</summary>
-    <div class="disclosure__body">
-      <h4 class="subheading">Exceptions</h4>
+    <details class="panel-disclosure" id="disclosure-rules">
+      <summary>
+        <span class="panel-disclosure__title">Behavior &amp; rules</span>
+        <span class="panel-disclosure__meta" id="rulesSummary">Defaults</span>
+      </summary>
+      <div class="panel-disclosure__body">
+        <div class="rule-list">
+          <details class="rule">
+            <summary class="rule__head">
+              <span class="rule__title">Wi-Fi exceptions</span>
+              <span class="rule__meta" id="wifiSummary">None</span>
+              <span class="icon icon--chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="rule__body">
+              <div class="field" id="field-exclWifi">
+                <label for="exclWifi">Skip encrypted DNS on</label>
+                <textarea id="exclWifi" class="mono" rows="3"
+                  spellcheck="false"
+                  autocapitalize="off" autocomplete="off"
+                  placeholder="MyHomeNetwork&#10;Silence of the LANs"></textarea>
+                <span
+                  class="hint">One Wi-Fi network name (SSID) per line.</span>
+                <p class="field__error" hidden></p>
+              </div>
+            </div>
+          </details>
 
-      <div class="field" id="field-exclWifi">
-        <label for="exclWifi"
-          class="optional">Disable on Wi-Fi</label>
-        <textarea id="exclWifi" rows="3" spellcheck="false"
-          autocapitalize="off" autocomplete="off"
-          placeholder="MyHomeNetwork&#10;Silence of the LANs"></textarea>
-        <span class="hint">One SSID per line.</span>
-        <p class="field__error" hidden></p>
-      </div>
+          <details class="rule">
+            <summary class="rule__head">
+              <span class="rule__title">Domains</span>
+              <span class="rule__meta" id="domainSummary">None</span>
+              <span class="icon icon--chevron" aria-hidden="true"></span>
+            </summary>
+            <div class="rule__body">
+              <div class="field">
+                <label for="exclDomains">Skip encrypted DNS for</label>
+                <input type="text" id="exclDomains" class="mono"
+                  autocapitalize="off"
+                  autocorrect="off" spellcheck="false" autocomplete="off"
+                  placeholder="example.com, internal.lan">
+                <span class="hint">Comma separated. These use the
+                  network's own DNS.</span>
+              </div>
+              <div class="field">
+                <label for="matchDomains">Use encrypted DNS only for</label>
+                <input type="text" id="matchDomains" class="mono"
+                  autocapitalize="off"
+                  autocorrect="off" spellcheck="false" autocomplete="off"
+                  placeholder="*.example.com, internal.lan">
+                <span class="hint">Comma separated. Each may start
+                  with <code>*.</code> Leave empty for all domains.</span>
+              </div>
+            </div>
+          </details>
 
-      <div class="field">
-        <label for="exclDomains"
-          class="optional">Disable on domains</label>
-        <input type="text" id="exclDomains"
-          placeholder="example.com, internal.lan">
-        <span
-          class="hint">Comma separated.</span>
-      </div>
+          <div class="rule" role="group" aria-labelledby="interfacesLabel">
+            <div class="rule__head rule__head--wrap">
+              <span class="rule__title" id="interfacesLabel">Interfaces</span>
+              <span class="toggle-chips">
+                <label class="toggle-chip">
+                  <input type="checkbox" class="visually-hidden" id="useWifi"
+                    checked>
+                  Wi-Fi
+                </label>
+                <label class="toggle-chip">
+                  <input type="checkbox" class="visually-hidden" id="useCell"
+                    checked>
+                  Cellular
+                </label>
+                <label class="toggle-chip">
+                  <input type="checkbox" class="visually-hidden"
+                    id="useEthernet" checked>
+                  Ethernet
+                </label>
+              </span>
+            </div>
+            <div role="status">
+              <p class="rule__warning" id="interfacesWarning" hidden>With no
+                interface on, encrypted DNS never turns on.</p>
+            </div>
+          </div>
 
-      <div class="field">
-        <label for="matchDomains"
-          class="optional">Enable on domains</label>
-        <input type="text" id="matchDomains"
-          placeholder="*.example.com, internal.lan">
-        <span class="hint">Comma separated. Each may start
-            with <code>*.</code></span>
-      </div>
-
-      <h4 class="subheading">Behavior</h4>
-
-      <fieldset class="field">
-        <legend>Choose interfaces</legend>
-        <div class="switch-list">
           <label class="switch-row">
-            <span class="switch-row__title">Wi-Fi</span>
-            <input type="checkbox" role="switch" class="switch" id="useWifi"
-              checked>
-          </label>
-          <label class="switch-row">
-            <span class="switch-row__title">Cellular</span>
-            <input type="checkbox" role="switch" class="switch" id="useCell"
-              checked>
-          </label>
-          <label class="switch-row">
-            <span class="switch-row__title">Ethernet</span>
+            <span class="switch-row__text">
+              <span class="switch-row__title"
+                id="allowFailoverLabel">Failover</span>
+              <span class="switch-row__hint"
+                id="allowFailoverHint">Uses the network's DNS if the encrypted server fails.</span>
+            </span>
             <input type="checkbox" role="switch" class="switch"
-              id="useEthernet" checked>
+              id="allowFailover" aria-labelledby="allowFailoverLabel"
+              aria-describedby="allowFailoverHint">
+          </label>
+          <label class="switch-row">
+            <span class="switch-row__text">
+              <span class="switch-row__title"
+                id="lockProfileLabel">Lock profile</span>
+              <span class="switch-row__hint"
+                id="lockProfileHint">Prevents profile removal on supervised devices.</span>
+            </span>
+            <input type="checkbox" role="switch" class="switch" id="lockProfile"
+              aria-labelledby="lockProfileLabel"
+              aria-describedby="lockProfileHint">
           </label>
         </div>
-      </fieldset>
-
-      <h4 class="subheading">Robustness</h4>
-
-      <div class="field switch-list">
-        <label class="switch-row">
-          <span class="switch-row__text">
-            <span class="switch-row__title"
-              id="allowFailoverLabel">Failover</span>
-            <span class="switch-row__hint"
-              id="allowFailoverHint">Uses network resolver as fallback if encrypted server fails.</span>
-          </span>
-          <input type="checkbox" role="switch" class="switch" id="allowFailover"
-            aria-labelledby="allowFailoverLabel"
-            aria-describedby="allowFailoverHint">
-        </label>
-        <label class="switch-row">
-          <span class="switch-row__text">
-            <span class="switch-row__title"
-              id="lockProfileLabel">Lock profile</span>
-            <span class="switch-row__hint"
-              id="lockProfileHint">Prevents profile removal on supervised devices.</span>
-          </span>
-          <input type="checkbox" role="switch" class="switch" id="lockProfile"
-            aria-labelledby="lockProfileLabel"
-            aria-describedby="lockProfileHint">
-        </label>
       </div>
-    </div>
-  </details>
+    </details>
+  </section>
 
   <input id="btn_addToProfile" type="submit"
     class="btn btn--primary btn--block" value="Add to profile">
