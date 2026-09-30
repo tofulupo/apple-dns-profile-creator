@@ -8,6 +8,7 @@
     "preview": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts",
     "desktop": "deno task tauri build",
     "desktop:dev": "deno task tauri dev",
+    "desktop:release": "deno run --env-file=.env.release --allow-read --allow-write --allow-run --allow-env scripts/desktop_release.ts",
     "desktop:icon": "deno run --allow-read --allow-write --allow-run scripts/app_icon.ts",
     "tauri": "deno run -A npm:@tauri-apps/cli@^2.12",
     "test": "deno task test:web && deno task test:desktop",

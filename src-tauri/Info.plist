@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Merged by Tauri into the Info.plist it generates for the app.
+
+  NSPrefersDisplaySafeAreaCompatibilityMode: keeps the window's content clear
+  of the camera housing on Macs with a notch, which in full screen would
+  otherwise cover the top of the page. The default for Finder's matching Get
+  Info checkbox; each user can still turn it off there.
+-->
+<plist version="1.0">
+<dict>
+  <key>NSPrefersDisplaySafeAreaCompatibilityMode</key>
+  <true/>
+</dict>
+</plist>

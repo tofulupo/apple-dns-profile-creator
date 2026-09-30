@@ -2,8 +2,10 @@ dist/
 build/
 .DS_Store
 
-# Local secrets and settings, e.g. INDEXNOW_KEY for `deno task indexnow`.
+# Local secrets and settings, e.g. INDEXNOW_KEY for `deno task indexnow`, and
+# the signing and notarization settings for `deno task desktop:release`.
 .env
+.env.release
 
 # Packaged builds, e.g. dist/ tarred up to copy onto a device or server.
 *.tar.gz

@@ -81,6 +81,14 @@ describe("src-tauri/tauri.conf.json", () => {
     expect(window?.hiddenTitle).toBe(true);
   });
 
+  // Merged into the app's Info.plist by Tauri.
+  it("keeps the content clear of the camera housing by default", () => {
+    const plist = Deno.readTextFileSync(join(SRC_TAURI, "Info.plist"));
+    expect(plist).toMatch(
+      /<key>NSPrefersDisplaySafeAreaCompatibilityMode<\/key>\s*<true\/>/,
+    );
+  });
+
   it("allows only the app's own scripts and styles", () => {
     const csp = config.app.security.csp ?? "";
     const directives = new Map(
