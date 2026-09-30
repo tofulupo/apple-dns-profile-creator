@@ -4,15 +4,18 @@
 
 import type { DnsProtocol } from "./lib/types.ts";
 
-/** What a preset's resolver offers, listed under its name in the menu. */
+/** What a preset's resolver offers, shown as pills beside its name. */
 export type PresetFeature = "no-logs" | "ads" | "dnssec" | "blocking";
 
-/** How each feature reads in the preset menu, in the order shown there. */
+/**
+ * How each feature reads in the preset menu, in the order shown there for
+ * every preset, whatever order its `features` list them in.
+ */
 export const PRESET_FEATURE_LABELS: Readonly<Record<PresetFeature, string>> = {
-  blocking: "Malware blocking",
-  ads: "Ad blocking",
-  dnssec: "DNSSEC",
   "no-logs": "No logs",
+  dnssec: "DNSSEC",
+  ads: "Ad blocking",
+  blocking: "Malware blocking",
 };
 
 /** A provider the tool page offers as a one-click starting point. */

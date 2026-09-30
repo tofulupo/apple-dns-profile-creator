@@ -29,6 +29,57 @@ export function cacheControl(pathname: string): string {
   return "no-cache";
 }
 
+/**
+ * Browser features the pages may use: none. Pasting addresses is a plain paste
+ * event, downloads are blob: links and loading a file is a file input, none of
+ * which the policy governs. The header has no "everything else", so each
+ * feature is listed. Only names Chrome knows: it warns about any other in the
+ * console, so its retired advertising APIs (FLoC's interest-cohort, Protected
+ * Audience, Shared Storage, Attribution Reporting, Private Aggregation) and
+ * otp-credentials, which desktop Chrome does not have, are left out.
+ */
+export const DISABLED_FEATURES: readonly string[] = [
+  // Hardware and sensors.
+  "camera",
+  "microphone",
+  "geolocation",
+  "display-capture",
+  "accelerometer",
+  "gyroscope",
+  "magnetometer",
+  "usb",
+  "serial",
+  "hid",
+  "bluetooth",
+  "midi",
+  "xr-spatial-tracking",
+  "screen-wake-lock",
+  "idle-detection",
+  "local-fonts",
+  "window-management",
+  // Payments and credentials.
+  "payment",
+  "publickey-credentials-get",
+  "publickey-credentials-create",
+  "identity-credentials-get",
+  // Chrome's advertising and tracking APIs.
+  "browsing-topics",
+  "private-state-token-issuance",
+  "private-state-token-redemption",
+  // Page behaviour. The clipboard pair only covers scripts reading and
+  // writing it; the user's own copy and paste still work.
+  "clipboard-read",
+  "clipboard-write",
+  "fullscreen",
+  "picture-in-picture",
+  "autoplay",
+  "encrypted-media",
+  "web-share",
+  "gamepad",
+  "sync-xhr",
+  "unload",
+];
+
 /** Sent with every response. */
 const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   "Strict-Transport-Security": `max-age=${2 * YEAR}; includeSubDomains`,
@@ -36,6 +87,8 @@ const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": DISABLED_FEATURES.map((feature) => `${feature}=()`)
+    .join(", "),
 };
 
 async function sha256(text: string): Promise<string> {

@@ -10,6 +10,7 @@ import {
   cacheControl,
   contentSecurityPolicy,
   createHandler,
+  DISABLED_FEATURES,
 } from "../scripts/server.ts";
 
 const THEME = 'document.documentElement.dataset.theme="dark";';
@@ -70,6 +71,33 @@ describe("contentSecurityPolicy", () => {
   });
 });
 
+describe("DISABLED_FEATURES", () => {
+  it("lists each feature once, in the header's own syntax", () => {
+    expect(new Set(DISABLED_FEATURES).size).toBe(DISABLED_FEATURES.length);
+    for (const feature of DISABLED_FEATURES) {
+      expect(feature).toMatch(/^[a-z]+(-[a-z]+)*$/);
+    }
+  });
+
+  // Unknown to Chrome, which then warns in the console.
+  it("leaves out the features Chrome does not recognise", () => {
+    for (
+      const feature of [
+        "interest-cohort",
+        "otp-credentials",
+        "attribution-reporting",
+        "join-ad-interest-group",
+        "run-ad-auction",
+        "private-aggregation",
+        "shared-storage",
+        "shared-storage-select-url",
+      ]
+    ) {
+      expect(DISABLED_FEATURES).not.toContain(feature);
+    }
+  });
+});
+
 describe("createHandler", () => {
   let root = "";
   let handler: (request: Request) => Promise<Response>;
@@ -103,6 +131,9 @@ describe("createHandler", () => {
       "same-origin",
     );
     expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(response.headers.get("Permissions-Policy")).toBe(
+      DISABLED_FEATURES.map((feature) => `${feature}=()`).join(", "),
+    );
   });
 
   it("serves the stylesheet as immutable, without a page policy", async () => {
@@ -122,6 +153,7 @@ describe("createHandler", () => {
     );
     expect(response.status).toBe(304);
     expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(response.headers.get("Permissions-Policy")).toContain("camera=()");
   });
 
   it("does not cache a missing file", async () => {
