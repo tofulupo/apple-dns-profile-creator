@@ -120,11 +120,12 @@ pages/         HTML sources
   finalize.html  <main> content of the profile page
   llms.txt       template for dist/llms.txt; {{ site }} becomes SITE_URL
 
-scripts/       build, dev server and app icon
+scripts/       build, dev server, app icon and fonts
   build.ts       render pages into the layout, deno bundle -> dist/,
                  sitemap.xml, robots.txt and llms.txt from SITE_URL
   serve.ts       static file server, --watch rebuilds
   app_icon.ts    AppIcon.png and src-tauri/icons/ from desktop/AppIcon.icon
+  fonts.ts       fonts/source/ -> Latin-only fonts/subset/
 
 src/desktop/
   bindings.ts    the desktop app's commands as the pages call them

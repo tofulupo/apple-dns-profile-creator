@@ -4,6 +4,7 @@ import { copy } from "@std/fs/copy";
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
 import { type Page, PAGES, SITE_URL } from "../pages/pages.ts";
 import { appConfig } from "../src/config.ts";
+import { FONT_SUBSET } from "./fonts.ts";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
@@ -12,10 +13,8 @@ const LAYOUT = "pages/_layout.html";
 /** Rendered with the site's address into dist/llms.txt. */
 const LLMS = "pages/llms.txt";
 const STYLESHEET = "css/app.css";
-/** Lilex and its licence, served under dist/fonts/. */
+/** Fonts both the website and the app ship: Lilex and its licence. */
 const FONTS = join(ROOT, "fonts");
-/** Fonts only the desktop app ships (Söhne, not in the repository). */
-const DESKTOP_FONTS = join(ROOT, "desktop", "fonts");
 const REPOSITORY_URL = "https://github.com/tofulupo/apple-dns-profile-creator";
 
 export interface PageAssets {
@@ -149,8 +148,7 @@ const FONT_FILE = /\.(woff2|ttf|txt)$/;
 /**
  * Copies the font files and their licences from `from` into `to` under their
  * served names, and returns those names. A missing `from` copies nothing:
- * Söhne is not in the repository, so a fresh clone falls back to the system
- * font.
+ * fonts/subset/ only exists where the Söhne files are (see scripts/fonts.ts).
  */
 export async function copyFonts(
   from: string,
@@ -177,6 +175,14 @@ export function fontUrls(css: string): string[] {
     ...new Set([...css.matchAll(/url\(\s*["']?fonts\/([^"')]+)/g)]
       .map((match) => match[1]!)),
   ].sort();
+}
+
+/** Of the stylesheet's font files, those not among `shipped`. */
+export function missingFonts(
+  css: string,
+  shipped: readonly string[],
+): string[] {
+  return fontUrls(css).filter((file) => !shipped.includes(file));
 }
 
 async function fingerprint(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
@@ -483,7 +489,7 @@ export async function build(): Promise<void> {
 
   // Marked external, the icons' url()s are left alone by the bundler and
   // inlined afterwards (see inlineIcons), and the fonts' url()s point at the
-  // copies in dist/fonts/ (see below). The `=` form matters: `--external`
+  // desktop app's copies (see below). The `=` form matters: `--external`
   // takes several values and would otherwise swallow the entrypoint after it.
   await bundle([STYLESHEET], ["--external=icons/*", "--external=fonts/*"]);
 
@@ -518,12 +524,21 @@ export async function build(): Promise<void> {
     });
   }
 
-  await copyFonts(FONTS, join(DIST, "fonts"));
-  // Söhne only for the desktop app: the Tauri CLI sets TAURI_ENV_PLATFORM for
-  // its beforeBuildCommand and beforeDevCommand. The website must not serve
-  // it, since its licence covers the app only.
+  // Lilex everywhere. Söhne only in the desktop app: the Tauri CLI sets
+  // TAURI_ENV_PLATFORM for its beforeBuildCommand and beforeDevCommand. The
+  // website uses the system font instead, and never asks for Söhne's files.
+  const fonts = join(DIST, "fonts");
+  const shipped = await copyFonts(FONTS, fonts);
   if (Deno.env.get("TAURI_ENV_PLATFORM") !== undefined) {
-    await copyFonts(DESKTOP_FONTS, join(DIST, "fonts"));
+    shipped.push(...await copyFonts(FONT_SUBSET, fonts));
+    const missing = missingFonts(css, shipped);
+    if (missing.length > 0) {
+      const message = `Fonts missing from the app: ${missing.join(", ")}. ` +
+        "Put the Söhne .woff2 files in fonts/source/ and run `deno task fonts`.";
+      // A release must not quietly ship the system font; `desktop:dev` may.
+      if (Deno.env.get("TAURI_ENV_DEBUG") !== "true") throw new Error(message);
+      console.warn(`\n\u26a0 ${message}\n`);
+    }
   }
 
   // Generated rather than copied from public/, so the site's address lives

@@ -3,7 +3,8 @@
   "license": "MIT",
   "tasks": {
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
-    "build": "deno run --allow-read --allow-write --allow-run --allow-env=INDEXNOW_KEY,TAURI_ENV_PLATFORM scripts/build.ts",
+    "build": "deno run --allow-read --allow-write --allow-run --allow-env=INDEXNOW_KEY,TAURI_ENV_PLATFORM,TAURI_ENV_DEBUG scripts/build.ts",
+    "fonts": "deno run --allow-read --allow-write --allow-run scripts/fonts.ts",
     "preview": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts",
     "desktop": "deno task tauri build",
     "desktop:dev": "deno task tauri dev",
