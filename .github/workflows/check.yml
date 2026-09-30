@@ -18,8 +18,7 @@ jobs:
 
       - uses: denoland/setup-deno@v2
         with:
-          # Pinned to a minor: deno bundle and deno desktop are both
-          # experimental.
+          # Pinned to a minor: deno bundle is experimental.
           deno-version: ~2.9
 
       # Unlicensed upstream profiles, so they are not committed.

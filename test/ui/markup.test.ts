@@ -116,13 +116,17 @@ for (const { page, html } of rendered) {
       );
     });
 
+    // The desktop app's fonts (css/app.css) apply through data-app.
+    it("marks the desktop app before first paint", () => {
+      expect(html).toContain(
+        'if ("__TAURI__" in window) document.documentElement.dataset.app = "desktop";',
+      );
+    });
+
     it("applies a saved theme before first paint with the module's key", () => {
-      // sessionStorage in the desktop app, localStorage in browsers.
-      for (const area of ["sessionStorage", "localStorage"]) {
-        expect(html).toContain(
-          `${area}.getItem(${JSON.stringify(THEME_KEY)})`,
-        );
-      }
+      expect(html).toContain(
+        `localStorage.getItem(${JSON.stringify(THEME_KEY)})`,
+      );
     });
 
     // Which of these shows depends on the stored list, which only the page

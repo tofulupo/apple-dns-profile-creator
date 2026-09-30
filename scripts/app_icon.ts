@@ -1,86 +1,48 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write --allow-run=xcode-select,xcrun,plutil,codesign
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-run
 /**
- * Finishes the macOS app that `deno desktop` packaged, then re-signs it, since
- * changing the bundle breaks the signature `deno desktop` applied:
+ * Regenerates the app's single-image icons after `desktop/AppIcon.icon` (an
+ * Icon Composer document) changes. The app bundle gets the .icon itself,
+ * compiled by Tauri's bundler with Xcode's `actool`, for its light, dark and
+ * tinted looks; macOS before 26 cannot read that and uses these instead:
  *
- * - Removes the camera, microphone and Bluetooth permission texts that
- *   `deno desktop` adds to every app. This one uses none of them, and they
- *   would suggest otherwise to anyone reading the bundle.
- * - Gives it an icon that follows light and dark mode. `deno desktop` only
- *   takes a single image, baked into AppIcon.icns; this compiles
- *   `desktop/AppIcon.icon` (an Icon Composer document) with Xcode's `actool`
- *   into the bundle. Without Xcode the app keeps the single icon rendered
- *   from `desktop/AppIcon.png`.
+ * 1. Renders `desktop/AppIcon.png` from the .icon with Icon Composer's
+ *    `ictool`, which ships inside Xcode.
+ * 2. Generates the icons listed in `src-tauri/tauri.conf.json` from it with
+ *    `tauri icon`, leaving out the many others it makes for other platforms.
  *
- *   deno task desktop           runs this after packaging
- *   deno task desktop:icon      re-renders desktop/AppIcon.png from the .icon;
- *                               unscoped --allow-run, as ictool's path
- *                               depends on where Xcode is installed
+ *   deno task desktop:icon
+ *
+ * Unscoped --allow-run, as ictool's path depends on where Xcode is installed.
  */
-import { dirname, fromFileUrl, join, resolve } from "@std/path";
+import { dirname, fromFileUrl, join, relative, resolve } from "@std/path";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const ICON = join(ROOT, "desktop", "AppIcon.icon");
 const FALLBACK_PNG = join(ROOT, "desktop", "AppIcon.png");
-/** Icon Composer icons are read by macOS 26 and later; older ones use the .icns. */
-const MINIMUM_MACOS = "26.0";
+const SRC_TAURI = join(ROOT, "src-tauri");
+const ICONS = join(SRC_TAURI, "icons");
 
-interface Manifest {
-  readonly desktop: {
-    readonly output: { readonly macos: string };
-    readonly macos?: { readonly codesignIdentity?: string };
-  };
-}
-
-async function run(
-  command: string,
-  args: string[],
-): Promise<{ success: boolean; output: string }> {
-  try {
-    const { success, stdout, stderr } = await new Deno.Command(command, {
-      args,
-      stdout: "piped",
-      stderr: "piped",
-    }).output();
-    const decoder = new TextDecoder();
-    return {
-      success,
-      output: (decoder.decode(stdout) + decoder.decode(stderr)).trim(),
-    };
-  } catch (error) {
-    if (error instanceof Deno.errors.NotFound) {
-      return { success: false, output: `${command} not found` };
-    }
-    throw error;
+async function must(command: string, args: string[]): Promise<string> {
+  const { success, stdout, stderr } = await new Deno.Command(command, {
+    args,
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+  const decoder = new TextDecoder();
+  const output = (decoder.decode(stdout) + decoder.decode(stderr)).trim();
+  if (!success) {
+    throw new Error(`${command} ${args[0] ?? ""} failed:\n${output}`);
   }
-}
-
-async function must(command: string, args: string[]): Promise<void> {
-  const result = await run(command, args);
-  if (!result.success) {
-    throw new Error(`${command} ${args[0] ?? ""} failed:\n${result.output}`);
-  }
-}
-
-/** Xcode's `actool`, when it is installed and set up. */
-async function actoolAvailable(): Promise<boolean> {
-  const { success, output } = await run("xcrun", ["actool", "--version"]);
-  if (!success || output.includes("required plugin failed to load")) {
-    console.warn(
-      "app icon: Xcode's actool is not available, keeping the single icon." +
-        (output.includes("plugin") ? " Run: xcodebuild -runFirstLaunch" : ""),
-    );
-    return false;
-  }
-  return true;
+  return output;
 }
 
 /** Icon Composer's renderer, which ships inside Xcode. */
 async function ictoolPath(): Promise<string> {
-  const { success, output } = await run("xcode-select", ["-p"]);
-  if (!success) throw new Error("Xcode is needed to render the icon.");
+  const developer = await must("xcode-select", ["-p"]).catch(() => {
+    throw new Error("Xcode is needed to render the icon.");
+  });
   return join(
-    output,
+    developer,
     "..",
     "Applications",
     "Icon Composer.app",
@@ -107,111 +69,45 @@ async function renderFallback(): Promise<void> {
     "--scale",
     "1",
   ]);
-  console.log(`app icon: rendered ${FALLBACK_PNG}`);
+  console.log(`app icon: rendered ${relative(ROOT, FALLBACK_PNG)}`);
 }
 
-/**
- * Removes every `NS…UsageDescription` key from the bundle's Info.plist. macOS
- * shows these texts when an app asks for camera, microphone, Bluetooth and
- * similar access; this app never asks. Returns the keys it removed.
- */
-export async function removeUsageDescriptions(
-  plist: string,
-): Promise<string[]> {
-  const { success, output } = await run("plutil", [
-    "-convert",
-    "json",
-    "-o",
-    "-",
-    plist,
-  ]);
-  if (!success) throw new Error(`plutil could not read ${plist}:\n${output}`);
-  const keys = Object.keys(JSON.parse(output) as Record<string, unknown>)
-    .filter((key) => /^NS\w+UsageDescription$/.test(key));
-  for (const key of keys) await must("plutil", ["-remove", key, plist]);
-  return keys;
+/** The icon files in `src-tauri/icons/` that tauri.conf.json lists. */
+function listedIconFiles(config: unknown): string[] {
+  const icons = (config as { bundle?: { icon?: unknown } }).bundle?.icon;
+  if (!Array.isArray(icons)) return [];
+  return icons
+    .filter((icon): icon is string => typeof icon === "string")
+    .filter((icon) => icon.startsWith("icons/"))
+    .map((icon) => icon.slice("icons/".length));
 }
 
-/** Compiles the light, dark and tinted icon into the bundle. */
-async function installIcon(app: string): Promise<boolean> {
-  if (!await actoolAvailable()) return false;
-  const resources = join(app, "Contents", "Resources");
-
-  const compiled = await Deno.makeTempDir({ prefix: "dns-app-icon-" });
+async function generateTauriIcons(): Promise<void> {
+  const config: unknown = JSON.parse(
+    await Deno.readTextFile(join(SRC_TAURI, "tauri.conf.json")),
+  );
+  const files = listedIconFiles(config);
+  const generated = await Deno.makeTempDir({ prefix: "dns-app-icons-" });
   try {
-    await must("xcrun", [
-      "actool",
-      "--compile",
-      compiled,
-      "--platform",
-      "macosx",
-      "--minimum-deployment-target",
-      MINIMUM_MACOS,
-      "--app-icon",
-      "AppIcon",
-      "--output-partial-info-plist",
-      join(compiled, "partial.plist"),
-      ICON,
+    await must(Deno.execPath(), [
+      "run",
+      "-A",
+      "npm:@tauri-apps/cli@^2",
+      "icon",
+      FALLBACK_PNG,
+      "--output",
+      generated,
     ]);
-    // Assets.car carries the light, dark and tinted looks for macOS 26+;
-    // actool's AppIcon.icns replaces deno desktop's for older systems.
-    for (const file of ["Assets.car", "AppIcon.icns"]) {
-      await Deno.copyFile(join(compiled, file), join(resources, file));
+    for (const file of files) {
+      await Deno.copyFile(join(generated, file), join(ICONS, file));
     }
   } finally {
-    await Deno.remove(compiled, { recursive: true });
+    await Deno.remove(generated, { recursive: true });
   }
-
-  const plist = join(app, "Contents", "Info.plist");
-  await must("plutil", [
-    "-replace",
-    "CFBundleIconName",
-    "-string",
-    "AppIcon",
-    plist,
-  ]);
-  await must("plutil", [
-    "-replace",
-    "CFBundleIconFile",
-    "-string",
-    "AppIcon",
-    plist,
-  ]);
-  return true;
-}
-
-async function finishApp(): Promise<void> {
-  if (Deno.build.os !== "darwin") return;
-
-  const manifest = JSON.parse(
-    await Deno.readTextFile(join(ROOT, "deno.json")),
-  ) as Manifest;
-  // `deno desktop` appends .app to the configured output path.
-  const app = `${resolve(ROOT, manifest.desktop.output.macos)}.app`;
-  const identity = manifest.desktop.macos?.codesignIdentity ?? "-";
-
-  const removed = await removeUsageDescriptions(
-    join(app, "Contents", "Info.plist"),
-  );
-  const iconInstalled = await installIcon(app);
-
-  // The nested binaries are untouched and keep deno desktop's signatures;
-  // only the bundle itself needs signing again.
-  await must("codesign", ["--force", "--sign", identity, app]);
-  await must("codesign", ["--verify", "--strict", app]);
-
-  if (removed.length > 0) {
-    console.log(`app: removed ${removed.length} unused permission texts`);
-  }
-  if (iconInstalled) {
-    // Nudges Finder and the Dock to drop the cached icon.
-    const now = new Date();
-    await Deno.utime(app, now, now);
-    console.log(`app icon: installed light and dark icon in ${app}`);
-  }
+  console.log(`app icon: generated ${files.join(", ")} in src-tauri/icons/`);
 }
 
 if (import.meta.main) {
-  if (Deno.args.includes("--render-fallback")) await renderFallback();
-  else await finishApp();
+  await renderFallback();
+  await generateTauriIcons();
 }

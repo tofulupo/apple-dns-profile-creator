@@ -75,6 +75,42 @@
   font-display: swap;
 }
 
+/* Desktop app only, through data-app, which the inline script in
+   pages/_layout.html sets. The files come from desktop/fonts/ and are only
+   copied into the desktop app's build (scripts/build.ts), under ASCII names.
+   Söhne is not in the repository: without it, the system font shows. */
+@font-face {
+  font-family: "Söhne";
+  src: url("fonts/Soehne-Buch.ttf") format("truetype");
+  font-weight: 400;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Söhne";
+  src: url("fonts/Soehne-Kraeftig.ttf") format("truetype");
+  font-weight: 500;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Söhne";
+  src: url("fonts/Soehne-Halbfett.ttf") format("truetype");
+  font-weight: 600;
+  font-display: block;
+}
+
+@font-face {
+  font-family: "Söhne";
+  src: url("fonts/Soehne-Dreiviertelfett.ttf") format("truetype");
+  font-weight: 700;
+  font-display: block;
+}
+
+:root[data-app="desktop"] {
+  --font: "Söhne", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
+
 /* Set before first paint by the inline script in pages/_layout.html. */
 :root[data-theme="light"] {
   color-scheme: light;
@@ -1217,7 +1253,7 @@ textarea::placeholder {
 }
 
 /* An icon rather than the › character, whose size and shape change with the
-   font: different on macOS, Windows and Android. */
+   font: tiny in Söhne, and different again on Windows and Android. */
 .disclosure > summary::before {
   content: "";
   display: inline-block;

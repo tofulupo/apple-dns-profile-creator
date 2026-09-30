@@ -1,21 +1,21 @@
 /**
- * Tests for the fonts: how they are copied into the build, and that every
- * font the stylesheet asks for is in fonts/, with its licence.
+ * Tests for the desktop app's fonts: how they are copied into its build, and
+ * that the stylesheet refers to them by the names they are served under.
  */
 import { afterEach, beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join, resolve } from "@std/path";
 
-import { copyFonts, fontUrls, servedFontName } from "../scripts/build.ts";
+import { copyFonts, servedFontName } from "../../scripts/build.ts";
 
 const here = import.meta.dirname;
 if (here === undefined) throw new Error("Must be loaded from a file URL");
-const ROOT = resolve(here, "..");
+const ROOT = resolve(here, "..", "..");
 const FONTS = join(ROOT, "fonts");
-const CSS = Deno.readTextFileSync(join(ROOT, "css", "app.css"));
 
 describe("servedFontName", () => {
   it("spells out umlauts, however they are stored", () => {
+    // Composed, and as the Klim download stores them: o + combining diaeresis.
     for (const name of ["Söhne-Kräftig.ttf", "So\u0308hne-Kra\u0308ftig.ttf"]) {
       expect(servedFontName(name)).toBe("Soehne-Kraeftig.ttf");
     }
@@ -45,6 +45,7 @@ describe("copyFonts", () => {
   });
 
   it("copies fonts and licences under their served names only", async () => {
+    await Deno.writeTextFile(join(from, "So\u0308hne-Buch.ttf"), "ttf");
     await Deno.writeTextFile(join(from, "Lilex-Latin.woff2"), "woff2");
     await Deno.writeTextFile(join(from, "Lilex-OFL.txt"), "licence");
     await Deno.writeTextFile(join(from, "README.md"), "notes");
@@ -53,33 +54,31 @@ describe("copyFonts", () => {
     expect(await copyFonts(from, to)).toEqual([
       "Lilex-Latin.woff2",
       "Lilex-OFL.txt",
+      "Soehne-Buch.ttf",
     ]);
-    expect(await Deno.readTextFile(join(to, "Lilex-Latin.woff2"))).toBe(
-      "woff2",
-    );
+    expect(await Deno.readTextFile(join(to, "Soehne-Buch.ttf"))).toBe("ttf");
   });
 
-  it("copies nothing from a folder that does not exist", async () => {
-    expect(await copyFonts(join(from, "missing"), to)).toEqual([]);
+  it("copies nothing from an empty folder", async () => {
+    expect(await copyFonts(from, to)).toEqual([]);
   });
 });
 
-describe("the stylesheet's fonts", () => {
-  const urls = fontUrls(CSS);
+describe("desktop/fonts", () => {
+  const css = Deno.readTextFileSync(join(ROOT, "css", "app.css"));
+  const urls = [...css.matchAll(/url\("fonts\/([^"]+)"\)/g)].map((m) => m[1]!);
 
-  it("are referenced by their served names", () => {
+  it("is what the stylesheet's font urls point at", () => {
     expect(urls.length).toBeGreaterThan(0);
     for (const url of urls) expect(servedFontName(url)).toBe(url);
   });
 
-  it("are all in fonts/", () => {
-    for (const url of urls) {
-      expect(Deno.statSync(join(FONTS, url)).isFile).toBe(true);
-    }
-  });
-
-  it("include Lilex, with the licence the OFL requires to ship with it", () => {
+  // Söhne is licensed for the app only and kept out of the repository, so
+  // only Lilex has to be here.
+  it("has Lilex, with the licence the OFL requires to ship with it", () => {
     expect(urls).toContain("Lilex-Latin.woff2");
-    expect(Deno.statSync(join(FONTS, "Lilex-OFL.txt")).isFile).toBe(true);
+    for (const file of ["Lilex-Latin.woff2", "Lilex-OFL.txt"]) {
+      expect(Deno.statSync(join(FONTS, file)).isFile).toBe(true);
+    }
   });
 });

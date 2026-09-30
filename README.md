@@ -27,16 +27,19 @@ git clone git@github.com:tofulupo/apple-dns-profile-creator.git
 ### Tasks to run
 
 > [!NOTE]
-> Requires [Deno](https://deno.com) 2.9 or newer.
+> Requires [Deno](https://deno.com) 2.9 or newer. The desktop app also needs
+> [Rust](https://rustup.rs) and Xcode 26 or newer.
 
 ```sh
 deno task dev              # build, watch and serve on the LAN
 deno task build            # production bundle into dist/
 deno task preview          # build once, then serve
-deno task desktop          # build, then package the macOS app into build/
-deno task desktop:icon     # re-render desktop/AppIcon.png after editing the icon
+deno task desktop          # build, then package the macOS app with Tauri
+deno task desktop:dev      # build, then run the app without packaging it
+deno task desktop:icon     # regenerate the app's icon files after editing the icon
 
 deno task check            # type-check + lint + fmt --check + test
+deno task desktop:check    # the same for the app's Rust code
 deno task test             # test suite only
 deno fmt                   # format
 
@@ -104,6 +107,9 @@ src/ui/        browser layer - DOM wiring only, no profile semantics
   download.ts    Blob download, or the desktop binding when present
   signing.ts     desktop-only Signature choice on the profile page
   dropzone.ts    drag and drop onto either page's zone, reading the file
+  dialogs.ts     confirm() and alert(), native in the desktop app
+  page_ready.ts  tells the desktop app to show its window
+  desktop.ts     the desktop app's commands, as bindings
   dom.ts         typed DOM helpers
 
 pages/         HTML sources
@@ -114,19 +120,24 @@ pages/         HTML sources
   finalize.html  <main> content of the profile page
   llms.txt       template for dist/llms.txt; {{ site }} becomes SITE_URL
 
-scripts/       build and dev server
+scripts/       build, dev server and app icon
   build.ts       render pages into the layout, deno bundle -> dist/,
                  sitemap.xml, robots.txt and llms.txt from SITE_URL
   serve.ts       static file server, --watch rebuilds
+  app_icon.ts    AppIcon.png and src-tauri/icons/ from desktop/AppIcon.icon
 
-src/desktop/   macOS app helpers, used by desktop.ts
-  bindings.ts    the bindings' types, shared with src/ui/
-  save.ts        save to a folder without overwriting
-  signing.ts     Keychain signing through macOS's `security` tool
-  certificate.ts Subject Key Identifier from a DER certificate
-  app_state.ts   remembered window size and Profile state
+src/desktop/
+  bindings.ts    the desktop app's commands as the pages call them
 
-desktop.ts     deno desktop entry point: serves dist/, saves via a binding
+src-tauri/     macOS app (Tauri 2): shows dist/ in a native window
+  tauri.conf.json    window, bundle, icon and signing settings
+  src/lib.rs         the commands the pages call, window and app setup
+  src/save.rs        save to a folder without overwriting
+  src/signing.rs     Keychain signing through macOS's `security` tool
+  src/certificate.rs Subject Key Identifier from a DER certificate
+  src/window_size.rs remembered window size
+  src/dialog.rs      native alerts, for the pages and the commands
+
 desktop/       macOS app icon: AppIcon.icon (light + dark), AppIcon.png fallback
 public/        copied verbatim into the build, names unchanged
 ```
@@ -192,15 +203,20 @@ web server can host, over HTTP or HTTPS. Nothing server-side is required.
 deno task desktop
 ```
 
-Packages `dist/` and a small Deno server into a macOS application,
-`build/DNS Profile Creator.app`, using
-[`deno desktop`](https://docs.deno.com/runtime/desktop/) - about 66 MB, with the
-system's own webview. The server listens on a private `127.0.0.1` port only.
+Packages `dist/` into a macOS application,
+`src-tauri/target/release/bundle/macos/DNS Profile Creator.app`, using
+[Tauri 2](https://tauri.app) - about 7 MB, with the system's own webview. The
+pages load from inside the app; nothing listens on the network.
 
 **Download profile** saves straight to `~/Downloads`, never over an existing
 file (`encrypted-dns 2.mobileconfig` and so on), then offers to open it, which
 hands it to System Settings for installation. The window remembers its size,
-stored in `~/Library/Application Support/local.encrypted-dns.tool/`.
+stored in `~/Library/Application Support/local.encrypted-dns.tool/`. The icon
+follows light and dark mode on macOS 26 and later.
+
+Versions up to 3.7.4 were built with
+[`deno desktop`](https://docs.deno.com/runtime/desktop/); the `deno-desktop` tag
+marks the last of them.
 
 Only macOS is built for now: a `.mobileconfig` can only be installed on Apple
 devices.
@@ -220,8 +236,9 @@ issuer. A self-signed certificate shows as "Not Verified" unless it is installed
 and trusted on each device.
 
 **The bundle is only ad-hoc signed**, which is fine locally but not
-distributable. Set `desktop.macos.codesignIdentity` in `deno.json` to a
-Developer ID to produce something notarizable.
+distributable. Set `bundle.macOS.signingIdentity` in
+[`src-tauri/tauri.conf.json`](src-tauri/tauri.conf.json) to a Developer ID to
+produce something notarizable.
 
 ### Profile signing
 
@@ -282,8 +299,9 @@ is not a valid IP or appears twice.
 | `DNS_TOOL_TLS_CERT` | PEM certificate path - enables HTTPS   |
 | `DNS_TOOL_TLS_KEY`  | PEM private key path - enables HTTPS   |
 
-Desktop packaging settings (name, icons, identifier, output paths, signing) live
-in the `desktop` block of [`deno.json`](deno.json).
+Desktop app settings (name, identifier, window, icons, signing) live in
+[`src-tauri/tauri.conf.json`](src-tauri/tauri.conf.json); its version comes from
+`deno.json` too.
 
 ## History and thanks
 

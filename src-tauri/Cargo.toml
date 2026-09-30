@@ -1,0 +1,36 @@
+[package]
+name = "dns-profile-creator"
+# No version: the app takes its version from deno.json (see tauri.conf.json).
+description = "Creates encrypted DNS profiles for Apple devices"
+license = "BSD-3-Clause"
+edition = "2024"
+publish = false
+
+[lib]
+# The `_lib` suffix keeps the lib name distinct from the bin name, which
+# otherwise collide on Windows: https://github.com/rust-lang/cargo/issues/8519
+name = "dns_profile_creator_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+regex = "1"
+base64 = "0.22"
+
+# https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
+
+[dev-dependencies]
+tempfile = "3.27.0"

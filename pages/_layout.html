@@ -32,12 +32,13 @@
     <meta name="theme-color" content="#0e1013"
       media="(prefers-color-scheme: dark)">
     <script>
+    // Marks the desktop app, whose fonts differ (css/app.css). Tauri injects
+    // __TAURI__ before any of the page's scripts run.
+    if ("__TAURI__" in window) document.documentElement.dataset.app = "desktop";
     // Applies a chosen theme before first paint, so it never flashes the
     // other one. Key and values must match src/ui/storage.ts and theme.ts.
-    // The desktop app keeps it in sessionStorage, browsers in localStorage.
     try {
-      const theme = sessionStorage.getItem("dns-mobileconfig:theme") ??
-        localStorage.getItem("dns-mobileconfig:theme");
+      const theme = localStorage.getItem("dns-mobileconfig:theme");
       if (theme === "light" || theme === "dark") {
         document.documentElement.dataset.theme = theme;
       }

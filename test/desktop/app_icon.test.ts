@@ -76,7 +76,9 @@ describe("desktop/AppIcon.icon", () => {
     }
   });
 
-  it("has the fallback PNG deno desktop builds the .icns from", () => {
+  // src-tauri/icons/ is generated from it by `deno task desktop:icon`, for
+  // macOS before 26, which cannot read the .icon.
+  it("has the fallback PNG the app's older icon files come from", () => {
     expect(Deno.statSync(join(ROOT, "desktop", "AppIcon.png")).isFile).toBe(
       true,
     );

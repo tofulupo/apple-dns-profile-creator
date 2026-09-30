@@ -14,18 +14,12 @@ function desktopSave(): DesktopBindings["saveProfile"] | undefined {
 }
 
 /**
- * A binding's rejection arrives as a plain `{ name, message, stack }` object,
- * which would print as "[object Object]". Turned back into an `Error` here.
+ * A failed desktop command rejects with the Rust side's message as a plain
+ * string rather than an `Error`. Turned into one here, so callers can rely on
+ * `.message`.
  */
 export function asError(error: unknown): Error {
-  if (error instanceof Error) return error;
-  if (
-    typeof error === "object" && error !== null && "message" in error &&
-    typeof error.message === "string"
-  ) {
-    return new Error(error.message);
-  }
-  return new Error(String(error));
+  return error instanceof Error ? error : new Error(String(error));
 }
 
 /**

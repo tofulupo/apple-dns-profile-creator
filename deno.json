@@ -3,12 +3,15 @@
   "license": "MIT",
   "tasks": {
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
-    "build": "deno run --allow-read --allow-write --allow-run --allow-env=INDEXNOW_KEY scripts/build.ts",
+    "build": "deno run --allow-read --allow-write --allow-run --allow-env=INDEXNOW_KEY,TAURI_ENV_PLATFORM scripts/build.ts",
     "preview": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts",
-    "desktop": "deno task build && deno desktop --include dist --allow-read --allow-write --allow-env=HOME --allow-net=127.0.0.1 --allow-run=open,security desktop.ts && deno run --allow-read --allow-write --allow-run=xcode-select,xcrun,plutil,codesign scripts/app_icon.ts",
-    "desktop:icon": "deno run --allow-read --allow-write --allow-run scripts/app_icon.ts --render-fallback",
+    "desktop": "deno task tauri build",
+    "desktop:dev": "deno task tauri dev",
+    "desktop:icon": "deno run --allow-read --allow-write --allow-run scripts/app_icon.ts",
+    "desktop:check": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml",
+    "tauri": "deno run -A npm:@tauri-apps/cli@^2.12",
     "test": "deno test --allow-read --allow-write --allow-run",
-    "check": "deno check src pages test scripts desktop.ts && deno check --config src/lib/pure.deno.jsonc src/lib && deno lint && deno fmt --check && deno task test",
+    "check": "deno check src pages test scripts && deno check --config src/lib/pure.deno.jsonc src/lib && deno lint && deno fmt --check && deno task test",
     "indexnow": "deno run --env-file=.env --allow-env=INDEXNOW_KEY --allow-net=apple.mobileconfig.deno.net,api.indexnow.org scripts/indexnow.ts",
     "fixtures:fetch": "deno run --allow-net --allow-read --allow-write --allow-run scripts/fetch_fixtures.ts",
     "fixtures:lint": "deno run --allow-read --allow-run scripts/lint_fixtures.ts"
@@ -37,29 +40,24 @@
       "spa": false
     }
   },
-  "desktop": {
-    "app": {
-      "name": "DNS Profile Creator",
-      "identifier": "local.encrypted-dns.tool",
-      "icons": {
-        "macos": "./desktop/AppIcon.png"
-      }
-    },
-    "backend": "webview",
-    "output": {
-      "macos": "./build/DNS Profile Creator"
-    }
-  },
+
   "fmt": {
     "lineWidth": 80,
-    "exclude": ["dist/", "build/", "test/fixtures/", "desktop/AppIcon.icon/"]
+    "exclude": [
+      "dist/",
+      "test/fixtures/",
+      "desktop/AppIcon.icon/",
+      "src-tauri/target/",
+      "src-tauri/gen/"
+    ]
   },
   "lint": {
-    "exclude": ["dist/", "build/", "test/fixtures/"]
+    "exclude": ["dist/", "test/fixtures/"]
   },
   "exclude": [
     "dist/",
-    "build/",
-    "test/fixtures/"
+    "test/fixtures/",
+    "src-tauri/target/",
+    "src-tauri/gen/"
   ]
 }

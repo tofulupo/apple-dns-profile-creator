@@ -12,7 +12,8 @@ import {
 } from "../lib/validate.ts";
 import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
 import { element, input, setFieldError, showNotices, textarea } from "./dom.ts";
-import { restoreDesktopStorage } from "./desktop_storage.ts";
+
+import { ask } from "./dialogs.ts";
 import { signalPageReady } from "./page_ready.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { showProfileCount } from "./profile_count.ts";
@@ -132,7 +133,7 @@ function syncPresets(): void {
   });
 }
 
-function applyPreset(preset: DnsPreset): void {
+async function applyPreset(preset: DnsPreset): Promise<void> {
   const addresses = textarea("serverAddresses");
   const hasAddresses = addresses.value.trim() !== "";
   const blank = input("provName").value.trim() === "" &&
@@ -142,7 +143,7 @@ function applyPreset(preset: DnsPreset): void {
   const untouched = blank || appConfig.presets.some(matchesPreset);
   if (
     !untouched &&
-    !confirm(
+    !await ask(
       `Replace the provider name and server with ${preset.name}?` +
         (hasAddresses ? " The resolver addresses will be replaced." : ""),
     )
@@ -198,7 +199,7 @@ function bindPresets(): void {
   appConfig.presets.forEach((preset, index) => {
     presetList.children[index]?.addEventListener(
       "click",
-      () => applyPreset(preset),
+      () => void applyPreset(preset),
     );
   });
   // An empty group would leave a stray label on the page.
@@ -361,11 +362,5 @@ function init(): void {
   applyProtocol();
 }
 
-// Before anything reads storage; does nothing outside the desktop app. Not a
-// top-level await: the build inlines this page as a classic script, which runs
-// before first paint, and a browser resolves this within the same microtask
-// checkpoint, so the page is built by the time it is first drawn.
-void restoreDesktopStorage().then(() => {
-  init();
-  signalPageReady();
-});
+init();
+signalPageReady();

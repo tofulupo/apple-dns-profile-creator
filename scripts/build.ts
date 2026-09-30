@@ -14,6 +14,8 @@ const LLMS = "pages/llms.txt";
 const STYLESHEET = "css/app.css";
 /** Lilex and its licence, served under dist/fonts/. */
 const FONTS = join(ROOT, "fonts");
+/** Fonts only the desktop app ships (Söhne, not in the repository). */
+const DESKTOP_FONTS = join(ROOT, "desktop", "fonts");
 const REPOSITORY_URL = "https://github.com/tofulupo/apple-dns-profile-creator";
 
 export interface PageAssets {
@@ -127,9 +129,9 @@ export async function inlineIcons(
 
 /**
  * A font file's name as served: ASCII only, so the stylesheet's url() always
- * matches it. Names with umlauts may be stored with the umlaut as a separate
- * combining mark, which a url() written with the single character does not
- * match.
+ * matches it. Names with umlauts, like the Söhne files, may be stored with the
+ * umlaut as a separate combining mark, which a url() written with the single
+ * character does not match.
  */
 export function servedFontName(name: string): string {
   const ascii = name.normalize("NFC")
@@ -146,7 +148,9 @@ const FONT_FILE = /\.(woff2|ttf|txt)$/;
 
 /**
  * Copies the font files and their licences from `from` into `to` under their
- * served names, and returns those names. A missing `from` copies nothing.
+ * served names, and returns those names. A missing `from` copies nothing:
+ * Söhne is not in the repository, so a fresh clone falls back to the system
+ * font.
  */
 export async function copyFonts(
   from: string,
@@ -515,6 +519,12 @@ export async function build(): Promise<void> {
   }
 
   await copyFonts(FONTS, join(DIST, "fonts"));
+  // Söhne only for the desktop app: the Tauri CLI sets TAURI_ENV_PLATFORM for
+  // its beforeBuildCommand and beforeDevCommand. The website must not serve
+  // it, since its licence covers the app only.
+  if (Deno.env.get("TAURI_ENV_PLATFORM") !== undefined) {
+    await copyFonts(DESKTOP_FONTS, join(DIST, "fonts"));
+  }
 
   // Generated rather than copied from public/, so the site's address lives
   // only in SITE_URL.

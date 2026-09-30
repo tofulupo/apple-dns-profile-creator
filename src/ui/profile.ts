@@ -8,7 +8,8 @@ import type { DnsConfig } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
 import { configProblems } from "../lib/validate.ts";
 import { element, input, setFieldError, showNotices } from "./dom.ts";
-import { restoreDesktopStorage } from "./desktop_storage.ts";
+
+import { ask, tell } from "./dialogs.ts";
 import { signalPageReady } from "./page_ready.ts";
 import { downloadProfile } from "./download.ts";
 import { showProfileCount } from "./profile_count.ts";
@@ -251,8 +252,9 @@ async function importFile(file: File): Promise<void> {
 }
 
 /**
- * True while a download is in progress. In the desktop app that includes the
- * Deno-side dialogs, and a second click would queue a second save.
+ * True while a download is in progress. In the desktop app that includes
+ * signing and the native dialogs, and a second click would queue a second
+ * save.
  */
 let saving = false;
 
@@ -289,7 +291,7 @@ async function download(): Promise<void> {
       signWith,
     );
   } catch (error) {
-    alert(
+    await tell(
       `Could not save the profile: ${
         error instanceof Error ? error.message : String(error)
       }`,
@@ -306,8 +308,8 @@ function init(): void {
   signing = enableSigning(updateDownloadButton);
   downloadButton.addEventListener("click", () => void download());
   enableDrop(emptyZone, (file) => void importFile(file));
-  deleteAllButton.addEventListener("click", () => {
-    if (!confirm("Delete all configurations on this page?")) return;
+  deleteAllButton.addEventListener("click", async () => {
+    if (!await ask("Delete all configurations on this page?")) return;
     persist(() => store.clear());
     showNotices(importNotice, []);
     render();
@@ -320,11 +322,5 @@ function init(): void {
   render();
 }
 
-// Before anything reads storage; does nothing outside the desktop app. Not a
-// top-level await: the build inlines this page as a classic script, which runs
-// before first paint, and a browser resolves this within the same microtask
-// checkpoint, so the page is built by the time it is first drawn.
-void restoreDesktopStorage().then(() => {
-  init();
-  signalPageReady();
-});
+init();
+signalPageReady();

@@ -3,7 +3,7 @@
  */
 
 import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
-import { storageBindings } from "./desktop.ts";
+import { tell } from "./dialogs.ts";
 
 /** Every key this app stores starts with this. */
 export const KEY_PREFIX = "dns-mobileconfig:";
@@ -12,44 +12,9 @@ const EDIT_TARGET_KEY = `${KEY_PREFIX}edit-target`;
 const IMPORT_WARNINGS_KEY = `${KEY_PREFIX}import-warnings`;
 /** Also hardcoded in the layout's inline script; the markup test checks both. */
 export const THEME_KEY = `${KEY_PREFIX}theme`;
-/** Marks a desktop app window whose stored data has been restored. */
-export const RESTORED_KEY = `${KEY_PREFIX}restored`;
-
-/**
- * Not kept across desktop app launches: hand-overs from one page to the next,
- * read once; the theme, which starts on the system setting each launch; and
- * the restore marker itself.
- */
-const SESSION_KEYS: ReadonlySet<string> = new Set([
-  EDIT_TARGET_KEY,
-  IMPORT_WARNINGS_KEY,
-  THEME_KEY,
-  RESTORED_KEY,
-]);
-
-/** Whether the desktop app keeps `key` in its file between launches. */
-export function isLastingKey(key: string): boolean {
-  return key.startsWith(KEY_PREFIX) && !SESSION_KEYS.has(key);
-}
 
 /** The part of `Storage` the app uses, so tests and stand-ins stay small. */
 export type StorageArea = Pick<Storage, "getItem" | "setItem" | "removeItem">;
-
-const writeListeners = new Set<() => void>();
-
-/**
- * Calls `listener` after every successful write of a lasting key through
- * `browserStorage()`. The desktop app uses it to copy the stored data to a
- * file, which session-only keys never reach.
- */
-export function onStorageWrite(listener: () => void): void {
-  writeListeners.add(listener);
-}
-
-function notifyWrite(key: string): void {
-  if (!isLastingKey(key)) return;
-  for (const listener of writeListeners) listener();
-}
 
 /** A write the browser refused: storage disabled, blocked, or full. */
 export class StorageUnavailableError extends Error {
@@ -65,35 +30,17 @@ export class StorageUnavailableError extends Error {
 }
 
 /**
- * Where the page keeps its data: `localStorage` in a browser. The desktop app
- * serves each launch from a new origin, so WebKit would add a localStorage
- * database on disk every launch and never read it again; it uses in-memory
- * `sessionStorage` instead and keeps its data in a file of its own (see
- * desktop_storage.ts).
- */
-export function storageArea(): Storage {
-  return storageBindings() === undefined
-    ? globalThis.localStorage
-    : globalThis.sessionStorage;
-}
-
-/**
- * `storageArea()`, looked up on every call. Merely reading the global throws
+ * `localStorage`, looked up on every call. Merely reading the global throws
  * a SecurityError when the browser blocks storage, which at module level
  * would stop the whole page; deferred, it becomes an error the store handles.
+ * The desktop app serves the pages from a fixed origin, so its
+ * `localStorage` lasts between launches just as a browser's does.
  */
 export function browserStorage(): StorageArea {
-  const area = storageArea;
   return {
-    getItem: (key) => area().getItem(key),
-    setItem: (key, value) => {
-      area().setItem(key, value);
-      notifyWrite(key);
-    },
-    removeItem: (key) => {
-      area().removeItem(key);
-      notifyWrite(key);
-    },
+    getItem: (key) => globalThis.localStorage.getItem(key),
+    setItem: (key, value) => globalThis.localStorage.setItem(key, value),
+    removeItem: (key) => globalThis.localStorage.removeItem(key),
   };
 }
 
@@ -107,7 +54,7 @@ export function persist(write: () => void): boolean {
     return true;
   } catch (error) {
     if (!(error instanceof StorageUnavailableError)) throw error;
-    alert(error.message);
+    void tell(error.message);
     return false;
   }
 }
