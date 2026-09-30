@@ -67,7 +67,8 @@
   --inline-btn-height: 2.125rem;
   --inline-btn-inset: 0.3rem;
 
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
   --font-mono: "Lilex", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
     monospace;
 }
@@ -81,11 +82,23 @@
   font-display: swap;
 }
 
+/* Geist (OFL, committed in fonts/ with its licence): the website's text. A
+   Latin subset of the variable font from the `geist` npm package, 1.7.2,
+   made like the Söhne subsets (LATIN_UNICODES and tnum, scripts/fonts.ts).
+   One file for every weight. swap and preloaded, like Lilex; the desktop app
+   uses Söhne instead, and never requests it. */
+@font-face {
+  font-family: "Geist";
+  src: url("fonts/Geist-Latin.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
 /* Söhne: desktop app only, through data-app, which the inline script in
    pages/_layout.html sets. The files are Latin subsets made from the licensed
    webfonts by `deno task fonts` (fonts/source/ -> fonts/subset/), kept out of
    git and copied only into the app's build (scripts/build.ts), which fails a
-   release without them. The website keeps the system font and never requests
+   release without them. The website uses Geist instead and never requests
    these files. Three weights: 700 and up (the h1) resolve to Halbfett. */
 @font-face {
   font-family: "Söhne";

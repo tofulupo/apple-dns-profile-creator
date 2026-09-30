@@ -18,7 +18,10 @@ const LAYOUT = "pages/_layout.html";
 /** Rendered with the site's address into dist/llms.txt. */
 const LLMS = "pages/llms.txt";
 const STYLESHEET = "css/app.css";
-/** Fonts both the website and the app ship: Lilex and its licence. */
+/**
+ * Fonts both the website and the app ship, with their licences: Lilex, and
+ * Geist, which only the website uses.
+ */
 const FONTS = join(ROOT, "fonts");
 /**
  * Country flags for the presets menu, from flag-icons (MIT, licence beside
@@ -35,6 +38,22 @@ export interface PageAssets {
   readonly script: string;
   /** Shown next to the page heading. */
   readonly version: string;
+  /**
+   * Built for the desktop app, whose text is in Söhne rather than the
+   * website's Geist.
+   */
+  readonly desktop?: boolean;
+}
+
+/**
+ * The website's text font, fetched alongside the stylesheet like Lilex. Not
+ * in the app, which would load it for nothing and warn that it went unused.
+ */
+export function textFontPreload(desktop: boolean): string {
+  return desktop
+    ? ""
+    : `<link rel="preload" href="fonts/Geist-Latin.woff2" as="font"\n` +
+      `      type="font/woff2" crossorigin>`;
 }
 
 async function bundle(
@@ -381,6 +400,7 @@ export async function renderPage(
     canonical: escape(pageUrl(page)),
     structuredData: jsonLd,
     stylesheet: escape(assets.stylesheet),
+    textFontPreload: textFontPreload(assets.desktop ?? false),
     script: inlineScript(assets.script),
     version: escape(assets.version),
     nav: navigation(page),
@@ -583,6 +603,9 @@ export async function build(): Promise<void> {
   await Deno.remove(bundled);
   await Deno.writeTextFile(join(DIST, stylesheet), css);
 
+  // The Tauri CLI sets TAURI_ENV_PLATFORM for its beforeBuildCommand and
+  // beforeDevCommand.
+  const desktop = Deno.env.get("TAURI_ENV_PLATFORM") !== undefined;
   const version = await readVersion();
   for (const page of PAGES) {
     await Deno.writeTextFile(
@@ -591,6 +614,7 @@ export async function build(): Promise<void> {
         stylesheet: `./${stylesheet}`,
         script: await bundleScript(page.script),
         version,
+        desktop,
       }),
     );
   }
@@ -603,12 +627,11 @@ export async function build(): Promise<void> {
     });
   }
 
-  // Lilex everywhere. Söhne only in the desktop app: the Tauri CLI sets
-  // TAURI_ENV_PLATFORM for its beforeBuildCommand and beforeDevCommand. The
-  // website uses the system font instead, and never asks for Söhne's files.
+  // Lilex and Geist everywhere. Söhne only in the desktop app; the website
+  // uses Geist instead, and never asks for Söhne's files.
   const fonts = join(DIST, "fonts");
   const shipped = await copyFonts(FONTS, fonts);
-  if (Deno.env.get("TAURI_ENV_PLATFORM") !== undefined) {
+  if (desktop) {
     shipped.push(...await copyFonts(FONT_SUBSET, fonts));
     const missing = missingFonts(css, shipped);
     if (missing.length > 0) {

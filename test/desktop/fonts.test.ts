@@ -103,17 +103,31 @@ describe("the stylesheet's fonts", () => {
 
   // Exactly what `deno task fonts` produces, so a desktop release that ran
   // it has every face, and nothing is asked for that it does not make.
-  it("are Lilex plus the Söhne faces scripts/fonts.ts makes", () => {
+  it("are Lilex and Geist plus the Söhne faces scripts/fonts.ts makes", () => {
     expect(urls).toEqual(
-      ["Lilex-Latin.woff2", ...Object.values(SOEHNE_FACES)].sort(),
+      [
+        "Geist-Latin.woff2",
+        "Lilex-Latin.woff2",
+        ...Object.values(SOEHNE_FACES),
+      ].sort(),
     );
   });
 
-  // Söhne is licensed and kept out of the repository, so only Lilex has to
-  // be here.
-  it("include Lilex, with the licence the OFL requires to ship with it", () => {
-    for (const file of ["Lilex-Latin.woff2", "Lilex-OFL.txt"]) {
-      expect(Deno.statSync(join(FONTS, file)).isFile).toBe(true);
-    }
+  // Söhne is licensed and kept out of the repository, so only the OFL fonts
+  // have to be here.
+  for (const font of ["Lilex", "Geist"]) {
+    it(`include ${font}, with the licence the OFL requires to ship with it`, () => {
+      for (const file of [`${font}-Latin.woff2`, `${font}-OFL.txt`]) {
+        expect(Deno.statSync(join(FONTS, file)).isFile).toBe(true);
+      }
+    });
+  }
+
+  // The website's text, while the app's is Söhne.
+  it("set the website's text in Geist, and the app's in Söhne", () => {
+    expect(CSS).toMatch(/:root \{[^}]*--font: "Geist",/);
+    expect(CSS).toMatch(
+      /:root\[data-app="desktop"\] \{\s*--font: "Söhne",/,
+    );
   });
 });

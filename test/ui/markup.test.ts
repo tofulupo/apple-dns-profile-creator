@@ -13,6 +13,7 @@ import {
   pageUrl,
   presetDetails,
   renderPage,
+  textFontPreload,
 } from "../../scripts/build.ts";
 import { THEME_KEY } from "../../src/ui/theme.ts";
 import { appConfig } from "../../src/config.ts";
@@ -103,6 +104,22 @@ describe("presetDetails", () => {
   });
 });
 
+describe("textFontPreload", () => {
+  it("leaves Geist out of the desktop app, which uses Söhne", async () => {
+    const [page] = PAGES;
+    if (page === undefined) throw new Error("No pages");
+    const html = await renderPage(page, {
+      stylesheet: "app.css",
+      script: "",
+      version: "0.0.0-test",
+      desktop: true,
+    });
+    expect(textFontPreload(true)).toBe("");
+    expect(html).not.toContain("Geist-Latin.woff2");
+    expect(html).toContain('href="fonts/Lilex-Latin.woff2"');
+  });
+});
+
 describe("page titles", () => {
   it("differ between pages", () => {
     const titles = PAGES.map((page) => page.title);
@@ -148,6 +165,13 @@ for (const { page, html } of rendered) {
       expect(html).toContain(
         'if ("__TAURI__" in window) document.documentElement.dataset.app = "desktop";',
       );
+    });
+
+    it("preloads the website's text font, which the stylesheet names", () => {
+      expect(html).toContain(textFontPreload(false));
+      expect(html).toContain('href="fonts/Geist-Latin.woff2"');
+      const css = Deno.readTextFileSync(join(ROOT, "css", "app.css"));
+      expect(css).toContain('url("fonts/Geist-Latin.woff2")');
     });
 
     it("applies a saved theme before first paint with the module's key", () => {

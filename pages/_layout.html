@@ -13,11 +13,13 @@
     <meta property="og:url" content="{{ canonical }}">
     {{ structuredData }}
     <link rel="stylesheet" href="{{ stylesheet }}">
-    <!-- Lilex shows on every page (the version badge), so it is fetched
-      alongside the stylesheet rather than after it. Fonts are always
-      requested in CORS mode, hence crossorigin even on the same origin. -->
+    <!-- Lilex (the version badge) and, on the website, Geist show on every
+      page, so they are fetched alongside the stylesheet rather than after
+      it. Fonts are always requested in CORS mode, hence crossorigin even on
+      the same origin. -->
     <link rel="preload" href="fonts/Lilex-Latin.woff2" as="font"
       type="font/woff2" crossorigin>
+    {{ textFontPreload }}
 
     <link rel="icon" type="image/png" sizes="96x96"
       href="icons/favicon-96x96.png" />
