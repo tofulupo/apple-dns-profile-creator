@@ -58,6 +58,11 @@ describe("contentSecurityPolicy", () => {
     expect(csp).toContain("frame-ancestors 'none'");
   });
 
+  // Lighthouse fetches them from inside the page, under its policy.
+  it("lets the page fetch robots.txt and llms.txt from its own origin", async () => {
+    expect(await contentSecurityPolicy(HTML)).toContain("connect-src 'self'");
+  });
+
   it("allows no script where the page has none", async () => {
     expect(await contentSecurityPolicy("<p>hi</p>")).toContain(
       "script-src 'none';",

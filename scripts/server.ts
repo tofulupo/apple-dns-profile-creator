@@ -54,7 +54,10 @@ async function sha256(text: string): Promise<string> {
  * so a rebuild never leaves a stale one. JSON-LD is data, which CSP does not
  * govern. Icons and flags are data: URIs inside the stylesheet; downloads
  * are blob: links, which are navigations rather than fetches. The scripts
- * write no HTML, so Trusted Types can forbid it outright.
+ * fetch nothing, but tools auditing the page do so from inside it, under its
+ * policy: Lighthouse reads robots.txt and llms.txt that way, hence
+ * connect-src 'self'. The scripts write no HTML, so Trusted Types can forbid
+ * it outright.
  */
 export async function contentSecurityPolicy(html: string): Promise<string> {
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
@@ -68,6 +71,7 @@ export async function contentSecurityPolicy(html: string): Promise<string> {
     "style-src 'self'",
     "img-src 'self' data:",
     "font-src 'self'",
+    "connect-src 'self'",
     "manifest-src 'self'",
     "base-uri 'none'",
     "form-action 'none'",
