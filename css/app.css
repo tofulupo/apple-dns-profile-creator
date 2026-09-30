@@ -273,16 +273,20 @@ h3 {
   color: var(--text);
 }
 
+/* The version badge under the theme switch: side by side they left the name
+   too little room on phones. */
 .site-header__actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 0.4rem;
+  flex-shrink: 0;
   margin-left: auto;
   /* In line with the name's first line rather than the mark's top. */
   padding-top: 0.35rem;
 }
 
-/* Round icon button beside the version badge, matching its height. */
+/* Round icon button above the version badge. */
 .theme-switch {
   display: grid;
   place-items: center;
@@ -320,6 +324,8 @@ h3 {
   --icon: url("icons/moon.svg");
 }
 
+/* Panel titles (h2) and the cards' titles (h3, sized by their own class). */
+h2,
 h3 {
   font-size: 1.05rem;
 }
@@ -449,7 +455,7 @@ code {
   box-shadow: var(--shadow);
 }
 
-.panel > h3 {
+.panel > h2 {
   margin-bottom: 0.75rem;
 }
 

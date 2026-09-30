@@ -4,6 +4,7 @@ build/
 
 # Local secrets and settings, e.g. INDEXNOW_KEY for `deno task indexnow`.
 .env
+.env.release
 
 # Packaged builds, e.g. dist/ tarred up to copy onto a device or server.
 *.tar.gz

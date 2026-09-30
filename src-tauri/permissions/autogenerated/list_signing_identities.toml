@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-list-signing-identities"
+description = "Enables the list_signing_identities command without any pre-configured scope."
+commands.allow = ["list_signing_identities"]
+
+[[permission]]
+identifier = "deny-list-signing-identities"
+description = "Denies the list_signing_identities command without any pre-configured scope."
+commands.deny = ["list_signing_identities"]

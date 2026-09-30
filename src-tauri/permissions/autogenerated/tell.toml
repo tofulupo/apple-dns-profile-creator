@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-tell"
+description = "Enables the tell command without any pre-configured scope."
+commands.allow = ["tell"]
+
+[[permission]]
+identifier = "deny-tell"
+description = "Denies the tell command without any pre-configured scope."
+commands.deny = ["tell"]

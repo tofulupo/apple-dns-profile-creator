@@ -107,7 +107,7 @@ function card(config: DnsConfig): HTMLElement {
   header.className = "profile-card__head";
 
   // Cards sit under the list's own heading.
-  const title = document.createElement("h4");
+  const title = document.createElement("h3");
   title.className = "profile-card__title";
   title.textContent = label;
 

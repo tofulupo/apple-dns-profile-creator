@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-take-opened-profile"
+description = "Enables the take_opened_profile command without any pre-configured scope."
+commands.allow = ["take_opened_profile"]
+
+[[permission]]
+identifier = "deny-take-opened-profile"
+description = "Denies the take_opened_profile command without any pre-configured scope."
+commands.deny = ["take_opened_profile"]
