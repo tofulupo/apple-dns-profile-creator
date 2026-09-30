@@ -5,14 +5,25 @@
 import { afterEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { tauriBindings } from "../../src/ui/desktop.ts";
-import { ask, tell } from "../../src/ui/dialogs.ts";
+import {
+  APPEARANCE_EVENT,
+  CARD_MENU_EVENT,
+  type Invoke,
+  OPENED_EVENT,
+  SAVE_EVENT,
+  tauriBindings,
+  type TauriGlobal,
+} from "../../src/ui/desktop.ts";
+import { ask, dialogOpen, tell } from "../../src/ui/dialogs.ts";
 import { parseRgb } from "../../src/ui/page_ready.ts";
 
-type Invoke = (
-  command: string,
-  args?: Record<string, unknown>,
-) => Promise<unknown>;
+/** A `__TAURI__` whose event listening is never used. */
+function tauriWith(invoke: Invoke): TauriGlobal {
+  return {
+    core: { invoke },
+    event: { listen: () => Promise.resolve(() => {}) },
+  };
+}
 
 function recordingInvoke(result: unknown = undefined) {
   const calls: [string, Record<string, unknown> | undefined][] = [];
@@ -28,7 +39,7 @@ function recordingInvoke(result: unknown = undefined) {
 describe("tauriBindings", () => {
   it("passes arguments by the names the Rust commands take", async () => {
     const { calls, invoke } = recordingInvoke(true);
-    const bindings = tauriBindings(invoke);
+    const bindings = tauriBindings(tauriWith(invoke));
     await bindings.pageReady?.([14, 16, 19]);
     await bindings.pageReady?.();
     expect(await bindings.ask?.("Sure?")).toBe(true);
@@ -36,6 +47,10 @@ describe("tauriBindings", () => {
     await bindings.saveProfile?.("a.mobileconfig", "<x/>");
     await bindings.saveProfile?.("a.mobileconfig", "<x/>", "ABC");
     await bindings.listSigningIdentities?.();
+    await bindings.takeOpenedProfile?.();
+    await bindings.setSaveAction?.("Add to Profile", true);
+    await bindings.setAppearance?.("dark");
+    await bindings.showCardMenu?.(true);
     expect(calls).toEqual([
       ["page_ready", { background: [14, 16, 19] }],
       ["page_ready", { background: null }],
@@ -52,14 +67,82 @@ describe("tauriBindings", () => {
         signWith: "ABC",
       }],
       ["list_signing_identities", undefined],
+      ["take_opened_profile", undefined],
+      ["set_save_action", { label: "Add to Profile", enabled: true }],
+      ["set_appearance", { appearance: "dark" }],
+      ["show_card_menu", { fix: true }],
     ]);
+  });
+
+  it("hears the menu's events, passing on only what it knows", async () => {
+    const handlers = new Map<string, (event: unknown) => void>();
+    const bindings = tauriBindings({
+      core: { invoke: () => Promise.resolve() },
+      event: {
+        listen: (event, handler) => {
+          handlers.set(event, handler);
+          return Promise.resolve(() => {});
+        },
+      },
+    });
+    const heard: unknown[] = [];
+    await bindings.onSaveRequested?.(() => heard.push("save"));
+    await bindings.onAppearanceChosen?.((appearance) => heard.push(appearance));
+    await bindings.onCardMenuChosen?.((action) => heard.push(action));
+
+    handlers.get(SAVE_EVENT)?.({ payload: null });
+    handlers.get(APPEARANCE_EVENT)?.({ payload: "light" });
+    handlers.get(APPEARANCE_EVENT)?.({ payload: "sepia" });
+    handlers.get(CARD_MENU_EVENT)?.({ payload: "delete" });
+    handlers.get(CARD_MENU_EVENT)?.({ payload: "rename" });
+    handlers.get(CARD_MENU_EVENT)?.(null);
+    expect(heard).toEqual(["save", "light", "delete"]);
+
+    const rust = await Deno.readTextFile(
+      new URL("../../src-tauri/src/menu.rs", import.meta.url),
+    );
+    for (
+      const [name, value] of Object.entries({
+        SAVE_EVENT,
+        APPEARANCE_EVENT,
+        CARD_MENU_EVENT,
+      })
+    ) {
+      expect(rust).toContain(
+        `pub const ${name}: &str = ${JSON.stringify(value)};`,
+      );
+    }
+  });
+
+  it("listens for opened profiles under the event the app emits", async () => {
+    const handlers = new Map<string, (event: unknown) => void>();
+    const bindings = tauriBindings({
+      core: { invoke: () => Promise.resolve() },
+      event: {
+        listen: (event, handler) => {
+          handlers.set(event, handler);
+          return Promise.resolve(() => {});
+        },
+      },
+    });
+    let heard = 0;
+    await bindings.onProfilesOpened?.(() => heard++);
+    handlers.get(OPENED_EVENT)?.({ payload: null });
+    expect(heard).toBe(1);
+
+    const rust = await Deno.readTextFile(
+      new URL("../../src-tauri/src/opened.rs", import.meta.url),
+    );
+    expect(rust).toContain(
+      `pub const OPENED_EVENT: &str = ${JSON.stringify(OPENED_EVENT)};`,
+    );
   });
 });
 
 describe("ask and tell", () => {
   const global = globalThis as { __TAURI__?: unknown };
   const fakeTauri = (invoke: Invoke) => {
-    global.__TAURI__ = { core: { invoke } };
+    global.__TAURI__ = tauriWith(invoke);
   };
   afterEach(() => {
     delete global.__TAURI__;
@@ -74,6 +157,16 @@ describe("ask and tell", () => {
       ["ask", { message: "Delete?" }],
       ["tell", { message: "Saved." }],
     ]);
+  });
+
+  it("count as open until answered", async () => {
+    let answer: (ok: boolean) => void = () => {};
+    fakeTauri(() => new Promise((resolve) => answer = resolve));
+    const asked = ask("Delete?");
+    expect(dialogOpen()).toBe(true);
+    answer(true);
+    expect(await asked).toBe(true);
+    expect(dialogOpen()).toBe(false);
   });
 
   it("answer no when the dialog fails", async () => {

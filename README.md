@@ -38,9 +38,10 @@ deno task desktop          # build, then package the macOS app with Tauri
 deno task desktop:dev      # build, then run the app without packaging it
 deno task desktop:icon     # regenerate the app's icon files after editing the icon
 
-deno task check            # type-check + lint + fmt --check + test
-deno task desktop:check    # the same for the app's Rust code
-deno task test             # test suite only
+deno task check            # type-check + lint + fmt --check + all tests
+deno task test             # all tests: the site's and the desktop app's
+deno task test:web         # the site's tests only (Deno)
+deno task test:desktop     # the desktop app's tests only (Rust)
 deno fmt                   # format
 
 
@@ -62,10 +63,14 @@ refresh the page. Edits to `pages/pages.ts` itself need a restart.
 ### Tests
 
 ```sh
-deno task test             # the suite
+deno task test             # the suite: Deno tests, then the app's Rust tests
 deno task check            # type-check + lint + fmt --check + the suite
 deno task fixtures:fetch   # required once, for the Mullvad-dependent tests
 ```
+
+The desktop app's tests live next to its code in `src-tauri/src/`, as Rust
+`#[cfg(test)]` modules; `deno task test:desktop` builds `dist/` first, since the
+app embeds it.
 
 Expected behaviour is derived from Apple's payload documentation and from real
 profiles known to install on devices.

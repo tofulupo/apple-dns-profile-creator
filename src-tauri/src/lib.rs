@@ -5,6 +5,9 @@
 
 mod certificate;
 mod dialog;
+mod menu;
+mod navigation;
+mod opened;
 mod save;
 mod signing;
 mod window_size;
@@ -14,14 +17,22 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
+use tauri::webview::NewWindowResponse;
 use tauri::window::Color;
-use tauri::{AppHandle, Manager, PhysicalSize, RunEvent, WebviewWindow, WindowEvent};
+use tauri::{
+    AppHandle, Emitter, Manager, PhysicalSize, RunEvent, State, WebviewWindow,
+    WebviewWindowBuilder, WindowEvent,
+};
 use tauri_plugin_dialog::MessageDialogButtons;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::dialog::{alert, show};
+use crate::opened::{OPENED_EVENT, OpenedProfile, OpenedProfiles};
 use crate::signing::SigningIdentity;
 use crate::window_size::WindowSize;
+
+/// The app's one window, defined in tauri.conf.json and created in `run`.
+pub(crate) const MAIN_WINDOW: &str = "main";
 
 /// The window starts hidden (see tauri.conf.json) and is shown by the page's
 /// `page_ready`. After this long it is shown anyway, in case the page fails
@@ -152,6 +163,70 @@ async fn save_profile(
     Ok(())
 }
 
+/// The oldest profile opened with the app that the page has not taken yet.
+#[tauri::command]
+fn take_opened_profile(opened: State<'_, OpenedProfiles>) -> Option<OpenedProfile> {
+    opened.take()
+}
+
+/// Queues profiles opened with the app for the page, tells it, and brings the
+/// window forward. Reads on its own thread, off the main one; files that
+/// cannot be read are reported in an alert each.
+pub(crate) fn open_profiles(app: AppHandle, paths: Vec<PathBuf>) {
+    if paths.is_empty() {
+        return;
+    }
+    std::thread::spawn(move || {
+        let failures = app.state::<OpenedProfiles>().add(&paths);
+        if failures.len() < paths.len() {
+            if let Err(error) = app.emit(OPENED_EVENT, ()) {
+                eprintln!("Could not tell the page about opened profiles: {error}");
+            }
+            bring_to_front(&app);
+        }
+        for message in failures {
+            dialog::app_alert(&app, &message)
+                .buttons(MessageDialogButtons::Ok)
+                .blocking_show();
+        }
+    });
+}
+
+/// Unminimizes and focuses the window, unless it has not been shown yet: on a
+/// launch by opening a file, the page shows it once it is ready.
+fn bring_to_front(app: &AppHandle) {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
+        return;
+    };
+    if !window.state::<Shown>().0.load(Ordering::SeqCst) {
+        return;
+    }
+    if let Err(error) = window.unminimize().and_then(|()| window.set_focus()) {
+        eprintln!("Could not bring the window forward: {error}");
+    }
+}
+
+/// The window from tauri.conf.json, which only describes it (`"create":
+/// false`): the navigation handlers can only be given here.
+fn create_main_window(app: &AppHandle) -> Result<WebviewWindow, Box<dyn std::error::Error>> {
+    let config = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|window| window.label == MAIN_WINDOW)
+        .ok_or("tauri.conf.json defines no window labelled main")?;
+    let navigating = app.clone();
+    let opening = app.clone();
+    Ok(WebviewWindowBuilder::from_config(app, config)?
+        .on_navigation(move |url| navigation::allow(&navigating, url))
+        .on_new_window(move |url, _| {
+            navigation::open_outside(&opening, &url);
+            NewWindowResponse::Deny
+        })
+        .build()?)
+}
+
 fn window_size_path(app: &AppHandle) -> tauri::Result<PathBuf> {
     Ok(app.path().app_config_dir()?.join(window_size::FILENAME))
 }
@@ -186,13 +261,21 @@ fn save_last_size(app: &AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_opener::init())
+        // Its script for links would call the opener from the page, which is
+        // not allowed to (capabilities/default.json); `navigation` handles
+        // links instead.
+        .plugin(
+            tauri_plugin_opener::Builder::new()
+                .open_js_links_on_click(false)
+                .build(),
+        )
         .manage(Shown::default())
         .manage(LastSize::default())
+        .manage(OpenedProfiles::default())
+        .menu(menu::build)
+        .on_menu_event(|app, event| menu::handle(app, &event))
         .setup(|app| {
-            let window = app
-                .get_webview_window("main")
-                .ok_or("tauri.conf.json defines no window labelled main")?;
+            let window = create_main_window(app.handle())?;
             if let Some(size) = window_size::load(&window_size_path(app.handle())?) {
                 window.set_size(size.logical())?;
             }
@@ -213,15 +296,22 @@ pub fn run() {
             page_ready,
             list_signing_identities,
             save_profile,
+            take_opened_profile,
             dialog::ask,
-            dialog::tell
+            dialog::tell,
+            menu::set_save_action,
+            menu::set_appearance,
+            menu::show_card_menu
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app, event| {
+        .run(|app, event| match event {
             // Also after closing the window, since the app then quits.
-            if let RunEvent::Exit = event {
-                save_last_size(app);
-            }
+            RunEvent::Exit => save_last_size(app),
+            // Finder's Open With, or files dropped on the Dock icon; also what
+            // launched the app, if it was not running.
+            #[cfg(target_os = "macos")]
+            RunEvent::Opened { urls } => open_profiles(app.clone(), opened::file_paths(&urls)),
+            _ => {}
         });
 }

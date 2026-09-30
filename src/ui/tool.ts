@@ -23,9 +23,20 @@ import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
 import { element, input, setFieldError, showNotices, textarea } from "./dom.ts";
 
 import { ask } from "./dialogs.ts";
+import { desktopBindings } from "./desktop.ts";
+import {
+  enableEscapeRevert,
+  insertText,
+  isUndoOrRedo,
+  replaceText,
+} from "./editing.ts";
+import { receiveOpenedProfiles } from "./opened.ts";
+import { holdStillWhenFitting } from "./overscroll.ts";
+import { enablePixelMode } from "./pixel.ts";
 import { signalPageReady } from "./page_ready.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { showProfileCount } from "./profile_count.ts";
+import { enableSaveMenu, type UpdateSaveMenu } from "./save_menu.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
 
@@ -68,6 +79,14 @@ const ipv4Fields = [input("ipv4a"), input("ipv4b")];
 const ipv6Fields = [input("ipv6a"), input("ipv6b")];
 const addressFields = [...ipv4Fields, ...ipv6Fields];
 const submitLabel = submit.value;
+
+/** File > Save (⌘S) in the desktop app, named after the submit button. */
+let updateSaveMenu: UpdateSaveMenu = () => {};
+
+function setSubmitLabel(label: string): void {
+  submit.value = label;
+  updateSaveMenu(label, true);
+}
 
 /** The stored configuration the form is editing, if any. */
 let editing: DnsConfig | undefined;
@@ -194,11 +213,13 @@ function applyProtocol(): void {
   syncPresets();
 }
 
-function onServerInput(): void {
+function onServerInput(event?: Event): void {
   const server = input("serverUrl");
-  if (selectedProtocol() === "TLS") {
-    const bare = stripDotScheme(server.value);
-    if (bare !== server.value) server.value = bare;
+  if (
+    selectedProtocol() === "TLS" &&
+    (event === undefined || !isUndoOrRedo(event))
+  ) {
+    replaceText(server, stripDotScheme(server.value));
   }
   updateServerCheck();
   updateQuickInsert();
@@ -217,11 +238,11 @@ function updateQuickInsert(): void {
   insertPath.disabled = withDnsQueryPath(server) === server;
 }
 
+/** A quick insert, as an edit ⌘Z can undo. */
 function editServer(edit: (server: string) => string): void {
   const server = input("serverUrl");
-  server.value = edit(server.value.trim());
   server.focus();
-  server.setSelectionRange(server.value.length, server.value.length);
+  replaceText(server, edit(server.value.trim()));
   onServerInput();
 }
 
@@ -343,13 +364,23 @@ function pasteAddresses(event: ClipboardEvent): void {
 function bindAddressFields(): void {
   for (const field of addressFields) {
     field.addEventListener("paste", pasteAddresses);
-    field.addEventListener("input", () => {
-      // The iOS number pad has a comma rather than a dot in many regions,
-      // and a comma never belongs in an IPv4 address.
-      if (ipv4Fields.includes(field) && field.value.includes(",")) {
-        const caret = field.selectionStart;
-        field.value = field.value.replaceAll(",", ".");
-        field.setSelectionRange(caret, caret);
+    // The iOS number pad has a comma rather than a dot in many regions,
+    // and a comma never belongs in an IPv4 address. Typed, it becomes a dot
+    // before it lands, so ⌘Z undoes the dot in one step.
+    field.addEventListener("beforeinput", (event) => {
+      const typed = event.inputType === "insertText" ? event.data : null;
+      if (!ipv4Fields.includes(field) || !typed?.includes(",")) return;
+      event.preventDefault();
+      insertText(field, typed.replaceAll(",", "."));
+    });
+    field.addEventListener("input", (event) => {
+      // Commas that came some other way, such as dropped text.
+      if (
+        ipv4Fields.includes(field) && field.value.includes(",") &&
+        !isUndoOrRedo(event)
+      ) {
+        const caret = field.selectionStart ?? field.value.length;
+        replaceText(field, field.value.replaceAll(",", "."), caret);
       }
       // Mistakes are reported on submit, and cleared as soon as they are
       // fixed.
@@ -437,7 +468,7 @@ async function applyPreset(preset: DnsPreset): Promise<boolean> {
   if (editingLoaded) {
     editing = undefined;
     editingLoaded = false;
-    submit.value = submitLabel;
+    setSubmitLabel(submitLabel);
   }
   applyProtocol();
   return true;
@@ -562,7 +593,11 @@ function updateProfileCount(): void {
   showProfileCount(store.list().length);
 }
 
-async function handleUpload(file: File): Promise<void> {
+/**
+ * Loads a chosen, dropped or opened profile. Resolves with false when it
+ * leaves for the profile page, which happens for several configurations.
+ */
+async function handleUpload(file: File): Promise<boolean> {
   const uploadField = element("field-fileupload");
   let configs: DnsConfig[];
   let warnings: string[];
@@ -572,7 +607,7 @@ async function handleUpload(file: File): Promise<void> {
     showLoaded(null);
     showNotices(uploadNotice, []);
     setFieldError(uploadField, uploadError(error));
-    return;
+    return true;
   }
 
   setFieldError(uploadField, null);
@@ -587,7 +622,7 @@ async function handleUpload(file: File): Promise<void> {
     editing = saved ? only : undefined;
     editingLoaded = saved;
     updateProfileCount();
-    submit.value = saved ? "Save changes" : submitLabel;
+    setSubmitLabel(saved ? "Save changes" : submitLabel);
     writeForm(only);
     showLoaded(
       file.name,
@@ -596,7 +631,7 @@ async function handleUpload(file: File): Promise<void> {
     showNotices(uploadNotice, warnings);
     // Point at anything the profile got wrong now, not on the first submit.
     validate(readForm());
-    return;
+    return true;
   }
 
   // Several at once go straight to the list, where the profile page marks
@@ -607,11 +642,18 @@ async function handleUpload(file: File): Promise<void> {
     // Shown by the profile page, since this one is about to be left.
     store.setImportWarnings(warnings);
   });
-  if (saved) location.href = "finalize.html";
+  if (!saved) return true;
+  location.href = "finalize.html";
+  return false;
 }
 
 function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
+  enablePixelMode();
+  // Only in the app, where fields should behave like native ones; a browser
+  // page is expected to leave Escape alone.
+  if (desktopBindings() !== undefined) enableEscapeRevert();
+  updateSaveMenu = enableSaveMenu(() => form.requestSubmit(submit));
   bindPresets();
   bindQuickInsert();
   bindAddressFields();
@@ -653,13 +695,16 @@ function init(): void {
   editing = store.takeEditTarget();
   if (editing !== undefined) {
     writeForm(editing);
-    submit.value = "Save changes";
+    setSubmitLabel("Save changes");
     // Usually reached through "Fix" on a flagged card, so show why at once.
     validate(readForm());
   }
 
   applyProtocol();
+  updateSaveMenu(submit.value, true);
 }
 
 init();
+holdStillWhenFitting();
 signalPageReady();
+void receiveOpenedProfiles(handleUpload);

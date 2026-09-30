@@ -10,10 +10,15 @@ import { configProblems } from "../lib/validate.ts";
 import { element, input, setFieldError, showNotices } from "./dom.ts";
 
 import { ask, tell } from "./dialogs.ts";
+import { desktopBindings } from "./desktop.ts";
+import { receiveOpenedProfiles } from "./opened.ts";
+import { holdStillWhenFitting } from "./overscroll.ts";
+import { enablePixelMode } from "./pixel.ts";
 import { signalPageReady } from "./page_ready.ts";
 import { downloadProfile } from "./download.ts";
 import { showProfileCount } from "./profile_count.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
+import { enableSaveMenu, type UpdateSaveMenu } from "./save_menu.ts";
 import { enableSigning, type Signing } from "./signing.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
@@ -36,12 +41,23 @@ const downloadIcon = element("downloadIcon");
 
 let signing: Signing = { selected: () => undefined };
 
+/** File > Save (⌘S) in the desktop app: the Download button. */
+let updateSaveMenu: UpdateSaveMenu = () => {};
+
+function syncSaveMenu(): void {
+  updateSaveMenu(
+    downloadLabel.textContent ?? "",
+    !downloadPanel.hidden && !downloadButton.disabled,
+  );
+}
+
 function updateDownloadButton(): void {
   const signed = signing.selected() !== undefined;
   downloadLabel.textContent = signed
     ? "Download signed profile"
     : "Download profile";
   downloadIcon.hidden = !signed;
+  syncSaveMenu();
 }
 
 function problemsOf(config: DnsConfig): string[] {
@@ -92,6 +108,53 @@ function button(
   return element;
 }
 
+function editConfig(config: DnsConfig): void {
+  if (persist(() => store.startEdit(config))) {
+    // The tool page's canonical address, not index.html.
+    location.href = "./";
+  }
+}
+
+function deleteConfig(config: DnsConfig): void {
+  persist(() => store.remove(config));
+  render();
+}
+
+/** The card whose context menu is open, for the item chosen in it. */
+let cardMenuFor: DnsConfig | undefined;
+
+/**
+ * In the desktop app, a card's context menu offers its Edit (or Fix) and
+ * Delete buttons. Where text was already selected, the webview's own menu
+ * stays, for Copy and Look Up. A browser keeps its own menu throughout.
+ */
+function enableCardMenu(
+  article: HTMLElement,
+  config: DnsConfig,
+  fix: boolean,
+): void {
+  const showCardMenu = desktopBindings()?.showCardMenu;
+  if (typeof showCardMenu !== "function") return;
+  // Checked before the click: by the time of `contextmenu`, WebKit has
+  // already selected the word under the pointer.
+  let hadSelection = false;
+  article.addEventListener("mousedown", (event) => {
+    const selection = getSelection();
+    hadSelection = selection !== null && !selection.isCollapsed &&
+      event.target instanceof Node &&
+      selection.containsNode(event.target, true);
+  });
+  article.addEventListener("contextmenu", (event) => {
+    if (hadSelection) return;
+    event.preventDefault();
+    getSelection()?.removeAllRanges();
+    cardMenuFor = config;
+    showCardMenu(fix).catch((error) =>
+      console.error("Could not show the card's menu:", error)
+    );
+  });
+}
+
 function card(config: DnsConfig): HTMLElement {
   const problems = problemsOf(config);
   const label = config.name.trim() === ""
@@ -117,24 +180,17 @@ function card(config: DnsConfig): HTMLElement {
     button(
       problems.length > 0 ? "Fix" : "Edit",
       "btn btn--icon",
-      () => {
-        if (persist(() => store.startEdit(config))) {
-          // The tool page's canonical address, not index.html.
-          location.href = "./";
-        }
-      },
+      () => editConfig(config),
       `${problems.length > 0 ? "Fix" : "Edit"} ${label}`,
     ),
     button(
       icon("close"),
       "btn btn--danger btn--icon",
-      () => {
-        persist(() => store.remove(config));
-        render();
-      },
+      () => deleteConfig(config),
       `Delete ${label}`,
     ),
   );
+  enableCardMenu(article, config, problems.length > 0);
 
   header.append(title, actions);
   article.append(header);
@@ -228,11 +284,12 @@ function render(): void {
     : `Fix ${
       invalid === 1 ? "the configuration" : `the ${invalid} configurations`
     } marked above before downloading.`;
+  syncSaveMenu();
 }
 
 /**
- * Adds every configuration in a dropped profile straight to the list. Unlike
- * the tool page there is no form to review a single one in first.
+ * Adds every configuration in a dropped or opened profile straight to the
+ * list. Unlike the tool page there is no form to review a single one in first.
  */
 async function importFile(file: File): Promise<void> {
   let configs: DnsConfig[];
@@ -270,6 +327,7 @@ async function download(): Promise<void> {
 
   saving = true;
   downloadButton.disabled = true;
+  syncSaveMenu();
   try {
     const xml = buildProfileXml(
       configs,
@@ -304,6 +362,15 @@ async function download(): Promise<void> {
 
 function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
+  enablePixelMode();
+  updateSaveMenu = enableSaveMenu(() => void download());
+  desktopBindings()?.onCardMenuChosen?.((action) => {
+    const config = cardMenuFor;
+    cardMenuFor = undefined;
+    if (config === undefined) return;
+    if (action === "edit") editConfig(config);
+    else deleteConfig(config);
+  }).catch((error) => console.error("Could not listen for card menus:", error));
   input("systemChk").checked = appConfig.systemScopeByDefault;
   signing = enableSigning(updateDownloadButton);
   downloadButton.addEventListener("click", () => void download());
@@ -323,4 +390,6 @@ function init(): void {
 }
 
 init();
+holdStillWhenFitting();
 signalPageReady();
+void receiveOpenedProfiles(importFile);

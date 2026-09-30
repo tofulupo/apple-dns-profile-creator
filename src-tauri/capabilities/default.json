@@ -1,9 +1,18 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window",
+  "description": "What the app's own pages may call: the app's commands and listening for its events. Nothing else, so no Tauri or plugin API is reachable from the page.",
   "windows": ["main"],
   "permissions": [
-    "core:default"
+    "core:event:allow-listen",
+    "allow-page-ready",
+    "allow-list-signing-identities",
+    "allow-save-profile",
+    "allow-take-opened-profile",
+    "allow-ask",
+    "allow-tell",
+    "allow-set-save-action",
+    "allow-set-appearance",
+    "allow-show-card-menu"
   ]
 }

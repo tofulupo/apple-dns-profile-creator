@@ -4,20 +4,30 @@
 //! them, which wry does not: `confirm()` returns false at once and `alert()`
 //! does nothing. The page calls these instead (src/ui/dialogs.ts).
 
-use tauri::WebviewWindow;
+use tauri::{AppHandle, Manager, WebviewWindow};
 use tauri_plugin_dialog::{DialogExt, MessageDialogBuilder, MessageDialogButtons};
 
-/// An alert attached to `window` as a sheet.
-///
+use crate::MAIN_WINDOW;
+
 /// The first paragraph becomes the alert's bold heading and the rest its
 /// smaller text below, the way macOS alerts are laid out.
-pub fn alert(window: &WebviewWindow, message: &str) -> MessageDialogBuilder<tauri::Wry> {
+fn message(app: &AppHandle, message: &str) -> MessageDialogBuilder<tauri::Wry> {
     let (heading, details) = message.split_once("\n\n").unwrap_or((message, ""));
-    window
-        .dialog()
-        .message(details.trim())
-        .title(heading.trim())
-        .parent(window)
+    app.dialog().message(details.trim()).title(heading.trim())
+}
+
+/// An alert attached to `window` as a sheet.
+pub fn alert(window: &WebviewWindow, text: &str) -> MessageDialogBuilder<tauri::Wry> {
+    message(window.app_handle(), text).parent(window)
+}
+
+/// An alert not raised by the page, such as for a file opened with the app
+/// that cannot be read. A sheet on the window once it exists.
+pub fn app_alert(app: &AppHandle, text: &str) -> MessageDialogBuilder<tauri::Wry> {
+    match app.get_webview_window(MAIN_WINDOW) {
+        Some(window) => alert(&window, text),
+        None => message(app, text),
+    }
 }
 
 /// Shows `dialog` and resolves with whether the user chose the OK button.

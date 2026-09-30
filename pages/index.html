@@ -68,6 +68,7 @@
       <div class="input-check" id="serverCheck">
         <input type="text" id="serverUrl" inputmode="url"
           autocapitalize="off" autocorrect="off" spellcheck="false"
+          writingsuggestions="false"
           autocomplete="off" placeholder="https://example.com/dns-query"
           aria-describedby="serverCheckText">
         <span class="icon input-check__icon" aria-hidden="true"></span>
@@ -96,13 +97,15 @@
           <div class="address-grid">
             <div class="field" id="field-ipv4a">
               <input type="text" id="ipv4a" class="mono" inputmode="decimal"
-                autocomplete="off" spellcheck="false"
+                autocapitalize="off" autocorrect="off" spellcheck="false"
+                writingsuggestions="false" autocomplete="off"
                 aria-label="First IPv4 address" placeholder="192.0.2.1">
               <p class="field__error" hidden></p>
             </div>
             <div class="field" id="field-ipv4b">
               <input type="text" id="ipv4b" class="mono" inputmode="decimal"
-                autocomplete="off" spellcheck="false"
+                autocapitalize="off" autocorrect="off" spellcheck="false"
+                writingsuggestions="false" autocomplete="off"
                 aria-label="Second IPv4 address" placeholder="192.0.2.2">
               <p class="field__error" hidden></p>
             </div>
@@ -114,6 +117,7 @@
             <div class="field" id="field-ipv6a">
               <input type="text" id="ipv6a" class="mono"
                 autocapitalize="off" autocorrect="off" spellcheck="false"
+                writingsuggestions="false"
                 autocomplete="off" aria-label="First IPv6 address"
                 placeholder="2001:db8::1">
               <p class="field__error" hidden></p>
@@ -121,6 +125,7 @@
             <div class="field" id="field-ipv6b">
               <input type="text" id="ipv6b" class="mono"
                 autocapitalize="off" autocorrect="off" spellcheck="false"
+                writingsuggestions="false"
                 autocomplete="off" aria-label="Second IPv6 address"
                 placeholder="2001:db8::2">
               <p class="field__error" hidden></p>
@@ -152,8 +157,8 @@
               <div class="field" id="field-exclWifi">
                 <label for="exclWifi">Skip encrypted DNS on</label>
                 <textarea id="exclWifi" class="mono" rows="3"
-                  spellcheck="false"
-                  autocapitalize="off" autocomplete="off"
+                  autocapitalize="off" autocorrect="off" spellcheck="false"
+                  writingsuggestions="false" autocomplete="off"
                   placeholder="MyHomeNetwork&#10;Silence of the LANs"></textarea>
                 <span
                   class="hint">One Wi-Fi network name (SSID) per line.</span>
@@ -172,8 +177,8 @@
               <div class="field">
                 <label for="exclDomains">Skip encrypted DNS for</label>
                 <input type="text" id="exclDomains" class="mono"
-                  autocapitalize="off"
-                  autocorrect="off" spellcheck="false" autocomplete="off"
+                  autocapitalize="off" autocorrect="off" spellcheck="false"
+                  writingsuggestions="false" autocomplete="off"
                   placeholder="example.com, internal.lan">
                 <span class="hint">Comma separated. These use the
                   network's own DNS.</span>
@@ -181,8 +186,8 @@
               <div class="field">
                 <label for="matchDomains">Use encrypted DNS only for</label>
                 <input type="text" id="matchDomains" class="mono"
-                  autocapitalize="off"
-                  autocorrect="off" spellcheck="false" autocomplete="off"
+                  autocapitalize="off" autocorrect="off" spellcheck="false"
+                  writingsuggestions="false" autocomplete="off"
                   placeholder="*.example.com, internal.lan">
                 <span class="hint">Comma separated. Each may start
                   with <code>*.</code> Leave empty for all domains.</span>

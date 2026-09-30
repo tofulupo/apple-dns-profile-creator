@@ -23,6 +23,20 @@ export interface SigningIdentity {
   readonly status: IdentityStatus;
 }
 
+/** A profile opened with the app, from Finder, the Dock or File > Open. */
+export interface OpenedProfile {
+  /** The file name. */
+  readonly name: string;
+  /** The file's content, decoded as a dropped file's `text()` would be. */
+  readonly text: string;
+}
+
+/** The theme switch's choices, as View > Appearance offers them. */
+export type Appearance = "system" | "light" | "dark";
+
+/** The items of a profile card's context menu. */
+export type CardAction = "edit" | "delete";
+
 export interface DesktopBindings {
   /**
    * Saves the profile to ~/Downloads under `filename`, numbering it instead
@@ -54,4 +68,46 @@ export interface DesktopBindings {
 
   /** `alert()` as a native dialog; see `ask`. Call `tell` in src/ui/dialogs.ts. */
   tell(message: string): Promise<void>;
+
+  /**
+   * The oldest profile opened with the app that no page has taken yet, or
+   * null. Each is handed out once. Use `receiveOpenedProfiles` in
+   * src/ui/opened.ts rather than this.
+   */
+  takeOpenedProfile(): Promise<OpenedProfile | null>;
+
+  /**
+   * Calls `listener` whenever profiles are opened with the app while the
+   * page is open. Resolves once listening.
+   */
+  onProfilesOpened(listener: () => void): Promise<void>;
+
+  /**
+   * Names File > Save (⌘S) for what the page's main button does, and enables
+   * it while that button can be used.
+   */
+  setSaveAction(label: string, enabled: boolean): Promise<void>;
+
+  /** Calls `listener` whenever File > Save (⌘S) is chosen. */
+  onSaveRequested(listener: () => void): Promise<void>;
+
+  /**
+   * Checks `appearance` in View > Appearance and gives it to the app's title
+   * bar, menus and dialogs, which otherwise follow the system.
+   */
+  setAppearance(appearance: Appearance): Promise<void>;
+
+  /** Calls `listener` with what is chosen in View > Appearance. */
+  onAppearanceChosen(
+    listener: (appearance: Appearance) => void,
+  ): Promise<void>;
+
+  /**
+   * Shows a profile card's context menu at the pointer, with Fix rather than
+   * Edit when `fix`. The choice arrives through `onCardMenuChosen`.
+   */
+  showCardMenu(fix: boolean): Promise<void>;
+
+  /** Calls `listener` with the item chosen in a card's context menu. */
+  onCardMenuChosen(listener: (action: CardAction) => void): Promise<void>;
 }

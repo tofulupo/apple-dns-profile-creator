@@ -16,6 +16,7 @@ import {
   textFontPreload,
 } from "../../scripts/build.ts";
 import { THEME_KEY } from "../../src/ui/theme.ts";
+import { PIXEL_KEY } from "../../src/ui/pixel.ts";
 import { appConfig } from "../../src/config.ts";
 
 const here = import.meta.dirname;
@@ -177,6 +178,12 @@ for (const { page, html } of rendered) {
     it("applies a saved theme before first paint with the module's key", () => {
       expect(html).toContain(
         `localStorage.getItem(${JSON.stringify(THEME_KEY)})`,
+      );
+    });
+
+    it("keeps the app's pixel font from page to page with the module's key", () => {
+      expect(html).toContain(
+        `sessionStorage.getItem(${JSON.stringify(PIXEL_KEY)}) === "on"`,
       );
     });
 

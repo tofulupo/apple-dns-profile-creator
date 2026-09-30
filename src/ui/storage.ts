@@ -12,6 +12,11 @@ const EDIT_TARGET_KEY = `${KEY_PREFIX}edit-target`;
 const IMPORT_WARNINGS_KEY = `${KEY_PREFIX}import-warnings`;
 /** Also hardcoded in the layout's inline script; the markup test checks both. */
 export const THEME_KEY = `${KEY_PREFIX}theme`;
+/**
+ * In `sessionStorage`, so it lasts until the app quits. Also hardcoded in the
+ * layout's inline script; the markup test checks both.
+ */
+export const PIXEL_KEY = `${KEY_PREFIX}pixel`;
 
 /** The part of `Storage` the app uses, so tests and stand-ins stay small. */
 export type StorageArea = Pick<Storage, "getItem" | "setItem" | "removeItem">;

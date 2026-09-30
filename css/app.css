@@ -125,6 +125,37 @@
   --font: "Söhne", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
 }
 
+/* The desktop app's pixel font (src/ui/pixel.ts): ⌘G six times sets all
+   text in Geist Pixel Square (OFL, from the same `geist` package as Geist,
+   under the same licence). It has one weight, and a faked bold smudges the
+   pixels, so headings stay regular. Characters it lacks fall back to Söhne
+   and Lilex. */
+@font-face {
+  font-family: "Geist Pixel";
+  src: url("fonts/GeistPixel-Square.woff2") format("woff2");
+  font-weight: 400;
+  font-display: block;
+}
+
+:root[data-app="desktop"][data-pixel] {
+  --font: "Geist Pixel", "Söhne", -apple-system, BlinkMacSystemFont,
+    system-ui, sans-serif;
+  --font-mono: "Geist Pixel", "Lilex", ui-monospace, SFMono-Regular,
+    "SF Mono", Menlo, monospace;
+  font-synthesis-weight: none;
+}
+
+/* The app's page never bounces sideways, where there is nothing to scroll,
+   nor up and down while it fits the window: `data-fits`, from
+   src/ui/overscroll.ts. */
+:root[data-app="desktop"] {
+  overscroll-behavior-x: none;
+}
+
+:root[data-app="desktop"][data-fits] {
+  overscroll-behavior-y: none;
+}
+
 /* Set before first paint by the inline script in pages/_layout.html. */
 :root[data-theme="light"] {
   color-scheme: light;
@@ -393,6 +424,13 @@ code {
 
 .site-header {
   padding: 2rem 0 1.25rem;
+}
+
+/* The app's title bar is transparent (src-tauri/tauri.conf.json), showing the
+   page's background with only the window buttons in it, so it already gives
+   the header the space above it. */
+:root[data-app="desktop"] .site-header {
+  padding-top: 0.5rem;
 }
 
 .tabs {

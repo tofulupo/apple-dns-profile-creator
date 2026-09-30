@@ -107,10 +107,17 @@ describe("the stylesheet's fonts", () => {
     expect(urls).toEqual(
       [
         "Geist-Latin.woff2",
+        "GeistPixel-Square.woff2",
         "Lilex-Latin.woff2",
         ...Object.values(SOEHNE_FACES),
       ].sort(),
     );
+  });
+
+  // The app's pixel font; covered by Geist's licence, from the same package.
+  it("include Geist Pixel", () => {
+    expect(Deno.statSync(join(FONTS, "GeistPixel-Square.woff2")).isFile)
+      .toBe(true);
   });
 
   // Söhne is licensed and kept out of the repository, so only the OFL fonts

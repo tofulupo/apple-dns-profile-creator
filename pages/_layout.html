@@ -37,6 +37,13 @@
     // Marks the desktop app, whose fonts differ (css/app.css). Tauri injects
     // __TAURI__ before any of the page's scripts run.
     if ("__TAURI__" in window) document.documentElement.dataset.app = "desktop";
+    // The app's pixel font, kept from page to page until it quits. Key and
+    // value must match src/ui/pixel.ts.
+    try {
+      if (sessionStorage.getItem("dns-mobileconfig:pixel") === "on") {
+        document.documentElement.dataset.pixel = "";
+      }
+    } catch {}
     // Applies a chosen theme before first paint, so it never flashes the
     // other one. Key and values must match src/ui/storage.ts and theme.ts.
     try {

@@ -21,6 +21,16 @@ jobs:
           # Pinned to a minor: deno bundle is experimental.
           deno-version: ~2.9
 
+      # For the desktop app in src-tauri/, which `deno task check` lints and
+      # tests too.
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
       # Unlicensed upstream profiles, so they are not committed.
       - name: Fetch upstream fixtures
         continue-on-error: true

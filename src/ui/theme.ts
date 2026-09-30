@@ -4,8 +4,12 @@
  * The choice is applied as `data-theme` on the root element. The inline script
  * in `pages/_layout.html` does that before first paint, reading the same
  * storage key; this module only handles switching and the toolbar colour.
+ *
+ * In the desktop app View > Appearance offers the same choice, and the app's
+ * title bar, menus and dialogs follow it too.
  */
 
+import { desktopBindings } from "./desktop.ts";
 import { browserStorage, type StorageArea, THEME_KEY } from "./storage.ts";
 
 export { THEME_KEY };
@@ -70,27 +74,43 @@ function describe(button: HTMLButtonElement, theme: Theme): void {
   button.title = label;
 }
 
+function applyTheme(theme: Theme): void {
+  const root = document.documentElement;
+  // Colours with a transition (the upload zone's background) would fade
+  // while text flips at once, leaving it unreadable for a moment. Switch
+  // everything in one frame instead.
+  root.classList.add("theme-switching");
+  if (theme === "system") delete root.dataset["theme"];
+  else root.dataset["theme"] = theme;
+  void root.offsetWidth;
+  requestAnimationFrame(() => root.classList.remove("theme-switching"));
+}
+
 export function enableThemeSwitch(button: HTMLButtonElement): void {
   // Deferred lookup: reading the `localStorage` global itself throws when
   // storage is blocked, which the try blocks above would not catch.
   const storage = browserStorage();
   let theme = readTheme(storage);
+  const desktop = desktopBindings();
+  const tellApp = (chosen: Theme): void => {
+    desktop?.setAppearance?.(chosen).catch((error) =>
+      console.error("Could not set the app's appearance:", error)
+    );
+  };
   describe(button, theme);
   syncThemeColor(theme);
+  tellApp(theme);
 
-  button.addEventListener("click", () => {
-    theme = nextTheme(theme);
-    const root = document.documentElement;
-    // Colours with a transition (the upload zone's background) would fade
-    // while text flips at once, leaving it unreadable for a moment. Switch
-    // everything in one frame instead.
-    root.classList.add("theme-switching");
-    if (theme === "system") delete root.dataset["theme"];
-    else root.dataset["theme"] = theme;
-    void root.offsetWidth;
-    requestAnimationFrame(() => root.classList.remove("theme-switching"));
+  const choose = (chosen: Theme): void => {
+    theme = chosen;
+    applyTheme(theme);
     saveTheme(storage, theme);
     describe(button, theme);
     syncThemeColor(theme);
-  });
+    tellApp(theme);
+  };
+  button.addEventListener("click", () => choose(nextTheme(theme)));
+  desktop?.onAppearanceChosen?.(choose).catch((error) =>
+    console.error("Could not follow View > Appearance:", error)
+  );
 }
