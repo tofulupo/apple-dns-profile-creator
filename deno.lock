@@ -17,6 +17,7 @@
     "jsr:@std/net@^1.0.7": "1.0.7",
     "jsr:@std/path@^1.1.5": "1.1.6",
     "jsr:@std/path@^1.1.6": "1.1.6",
+    "jsr:@std/semver@^1.0.8": "1.0.8",
     "jsr:@std/streams@^1.2.0": "1.2.0",
     "jsr:@std/testing@^1.0.21": "1.0.21",
     "npm:@tauri-apps/cli@2": "2.12.0",
@@ -91,6 +92,9 @@
       "dependencies": [
         "jsr:@std/internal@^1.0.14"
       ]
+    },
+    "@std/semver@1.0.8": {
+      "integrity": "dc830e8b8b6a380c895d53fbfd1258dc253704ca57bbe1629ac65fd7830179b7"
     },
     "@std/streams@1.2.0": {
       "integrity": "256b934254778f2bf45f5713b934209ff29e9b4b7fd4ec095219966813758c5f"
@@ -235,7 +239,9 @@
       "jsr:@std/fs@^1.0.24",
       "jsr:@std/http@^1.1.4",
       "jsr:@std/path@^1.1.6",
-      "jsr:@std/testing@^1.0.21"
+      "jsr:@std/semver@^1.0.8",
+      "jsr:@std/testing@^1.0.21",
+      "npm:@tauri-apps/cli@^2.12.0"
     ]
   }
 }

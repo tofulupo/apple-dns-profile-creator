@@ -47,6 +47,7 @@ deno fmt                   # format
 
 deno task fixtures:fetch   # (re)download upstream .mobileconfig test fixtures
 deno task fixtures:lint    # validate fixtures with Apple's plutil (macOS only)
+deno task deps:update      # latest compatible deps, Tauri's too, a day old at least
 ```
 
 ### local development

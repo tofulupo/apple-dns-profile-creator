@@ -92,7 +92,8 @@ async function generateTauriIcons(): Promise<void> {
     await must(Deno.execPath(), [
       "run",
       "-A",
-      "npm:@tauri-apps/cli@^2",
+      // deno.json's import, which `deno task deps:update` keeps current.
+      "@tauri-apps/cli",
       "icon",
       FALLBACK_PNG,
       "--output",
