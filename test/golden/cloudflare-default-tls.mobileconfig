@@ -61,7 +61,7 @@
 		</dict>
 	</array>
 	<key>PayloadDescription</key>
-	<string>.mobileconfig file provides DNS profile for iOS 26 and macOS 26 or higher. https://github.com/tofulupo/apple-dns-profile-creator</string>
+	<string>DNS Profile Creator (.mobileconfig) iOS/macOS 26</string>
 	<key>PayloadDisplayName</key>
 	<string>Encrypted DNS (DoH, DoT)</string>
 	<key>PayloadIdentifier</key>
