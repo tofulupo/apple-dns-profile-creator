@@ -80,10 +80,17 @@ export const DISABLED_FEATURES: readonly string[] = [
   "unload",
 ];
 
-/** Sent with every response. */
+/**
+ * Sent with every response. The cross-origin pair: the pages load nothing
+ * from another origin (the CSP allows only 'self' and data:), so they can
+ * require every subresource to opt in, and no other site may embed the
+ * site's files. Link previews fetch from a server, which neither governs.
+ */
 const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   "Strict-Transport-Security": `max-age=${2 * YEAR}; includeSubDomains`,
   "Cross-Origin-Opener-Policy": "same-origin",
+  "Cross-Origin-Embedder-Policy": "require-corp",
+  "Cross-Origin-Resource-Policy": "same-origin",
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",

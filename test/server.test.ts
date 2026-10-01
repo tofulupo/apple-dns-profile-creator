@@ -131,6 +131,12 @@ describe("createHandler", () => {
       "same-origin",
     );
     expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(response.headers.get("Cross-Origin-Embedder-Policy")).toBe(
+      "require-corp",
+    );
+    expect(response.headers.get("Cross-Origin-Resource-Policy")).toBe(
+      "same-origin",
+    );
     expect(response.headers.get("Permissions-Policy")).toBe(
       DISABLED_FEATURES.map((feature) => `${feature}=()`).join(", "),
     );
@@ -141,6 +147,9 @@ describe("createHandler", () => {
     expect(await response.text()).toBe("p{color:red}");
     expect(response.headers.get("Cache-Control")).toContain("immutable");
     expect(response.headers.get("Content-Security-Policy")).toBeNull();
+    expect(response.headers.get("Cross-Origin-Resource-Policy")).toBe(
+      "same-origin",
+    );
   });
 
   it("answers a repeat visit with 304, still with security headers", async () => {
