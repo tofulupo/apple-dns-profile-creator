@@ -12,7 +12,8 @@
     "desktop:check": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path src-tauri/Cargo.toml",
     "tauri": "deno run -A npm:@tauri-apps/cli@^2.12",
     "test": "deno test --allow-read --allow-write --allow-run",
-    "check": "deno check src pages test scripts && deno check --config src/lib/pure.deno.jsonc src/lib && deno lint && deno fmt --check && deno task test",
+    "check": "deno check src pages test scripts && deno check --config src/lib/pure.deno.jsonc src/lib && deno lint && deno fmt --check && deno task lint:md && deno task test",
+    "lint:md": "deno run -A npm:rumdl@^0.2 check .",
     "indexnow": "deno run --env-file=.env --allow-env=INDEXNOW_KEY --allow-net=apple.mobileconfig.deno.net,api.indexnow.org scripts/indexnow.ts",
     "fixtures:fetch": "deno run --allow-net --allow-read --allow-write --allow-run scripts/fetch_fixtures.ts",
     "fixtures:lint": "deno run --allow-read --allow-run scripts/lint_fixtures.ts"

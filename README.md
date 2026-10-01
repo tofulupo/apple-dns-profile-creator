@@ -38,8 +38,9 @@ deno task desktop          # build, then package the macOS app with Tauri
 deno task desktop:dev      # build, then run the app without packaging it
 deno task desktop:icon     # regenerate the app's icon files after editing the icon
 
-deno task check            # type-check + lint + fmt --check + test
+deno task check            # type-check + lint + fmt --check + Markdown lint + test
 deno task desktop:check    # the same for the app's Rust code
+deno task lint:md          # Markdown lint only (rumdl, settings in .rumdl.toml)
 deno task test             # test suite only
 deno fmt                   # format
 
@@ -63,7 +64,7 @@ refresh the page. Edits to `pages/pages.ts` itself need a restart.
 
 ```sh
 deno task test             # the suite
-deno task check            # type-check + lint + fmt --check + the suite
+deno task check            # type-check + lint + fmt --check + Markdown lint + the suite
 deno task fixtures:fetch   # required once, for the Mullvad-dependent tests
 ```
 

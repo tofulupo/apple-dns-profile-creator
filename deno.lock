@@ -20,7 +20,8 @@
     "jsr:@std/streams@^1.2.0": "1.2.0",
     "jsr:@std/testing@^1.0.21": "1.0.21",
     "npm:@tauri-apps/cli@2": "2.12.0",
-    "npm:@tauri-apps/cli@^2.12.0": "2.12.0"
+    "npm:@tauri-apps/cli@^2.12.0": "2.12.0",
+    "npm:rumdl@0.2": "0.2.78"
   },
   "jsr": {
     "@std/assert@1.0.19": {
@@ -107,6 +108,41 @@
     }
   },
   "npm": {
+    "@rumdl/cli-darwin-arm64@0.2.78": {
+      "integrity": "sha512-wuY7EL6Eda+2LyrOROr1OsenfxASDX/Zo8yel6HTmulhpUmjR1G4Bfr45KRii4pSr1e+WlGAgOejHY+AVT7suw==",
+      "os": ["darwin"],
+      "cpu": ["arm64"]
+    },
+    "@rumdl/cli-darwin-x64@0.2.78": {
+      "integrity": "sha512-L1Zz8/0i0qwkncx3/SirHsTQDgqav4R91wp9EFVcp54mKxbpOejZm14/dCzJ0LRzypkBRNECmCYG4H86g6gTiA==",
+      "os": ["darwin"],
+      "cpu": ["x64"]
+    },
+    "@rumdl/cli-linux-arm64-musl@0.2.78": {
+      "integrity": "sha512-1zRG9dOGiasBR4R8/qAoMzVRBjT9yeB8ysCoXemJHM5KiRJidw6NM336BOkAT4Ujj/FWgZcpCLE/iQBvtItnmw==",
+      "os": ["linux"],
+      "cpu": ["arm64"]
+    },
+    "@rumdl/cli-linux-arm64@0.2.78": {
+      "integrity": "sha512-j3r4Fe8+iydQSLUlko5apW4bvLITvD+Kqp848kZE7NzGhgKPRTlm9nFqrpQnZ2dBWjBCxa5Lj4b3O7BjdWRo1Q==",
+      "os": ["linux"],
+      "cpu": ["arm64"]
+    },
+    "@rumdl/cli-linux-x64-musl@0.2.78": {
+      "integrity": "sha512-E477aK9qrunFkE4XTNZLrfz5BU4KS+W13VnjTv5Qh8fdxlAVxlh6aWoYB7BzbzXQSEgNe/yi1u3r3EHcwgP+dw==",
+      "os": ["linux"],
+      "cpu": ["x64"]
+    },
+    "@rumdl/cli-linux-x64@0.2.78": {
+      "integrity": "sha512-zkrnqmxV+/eBDVg98TDPW3ZSL8CfXjwm1QsOO/vEREa5cgbE03iUP1D/UJE3z4Rypv2GRcnRiOtgsuhhebOEgA==",
+      "os": ["linux"],
+      "cpu": ["x64"]
+    },
+    "@rumdl/cli-win32-x64@0.2.78": {
+      "integrity": "sha512-4DaBXu3tFVNc/2eflJADguC4Hf8ookxYh3ie7XsLFxYEJrfXeGqD1j1ZIVXg+dZDG22+R1VEwFT6JsCOG3ntWA==",
+      "os": ["win32"],
+      "cpu": ["x64"]
+    },
     "@tauri-apps/cli-darwin-arm64@2.12.0": {
       "integrity": "sha512-v5J+jISihLGtih1+3yWagbsL+5dbLZORu4vaSI0vhY0Heb+MAW+T/1s1RyKxrQrwEPGBG5kqwfDDTnSbmVkuqA==",
       "os": ["darwin"],
@@ -176,6 +212,19 @@
         "@tauri-apps/cli-win32-arm64-msvc",
         "@tauri-apps/cli-win32-ia32-msvc",
         "@tauri-apps/cli-win32-x64-msvc"
+      ],
+      "bin": true
+    },
+    "rumdl@0.2.78": {
+      "integrity": "sha512-nm40qNFQnrpYiLetMrsq14qaItqKT7cUoi7wtlTtx0n/3xWn6a7/ZwkgChvBbfP24cZQYz1n5IJ+DBPIrQQfFQ==",
+      "optionalDependencies": [
+        "@rumdl/cli-darwin-arm64",
+        "@rumdl/cli-darwin-x64",
+        "@rumdl/cli-linux-arm64",
+        "@rumdl/cli-linux-arm64-musl",
+        "@rumdl/cli-linux-x64",
+        "@rumdl/cli-linux-x64-musl",
+        "@rumdl/cli-win32-x64"
       ],
       "bin": true
     }
