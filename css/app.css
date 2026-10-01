@@ -245,20 +245,28 @@ h3 {
   color: var(--text);
 }
 
-/* The version badge under the theme switch: side by side they left the name
-   too little room on phones. */
+/* The theme switch and version badge in one row, centred on the lockup. */
 .site-header__actions {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
+  align-self: center;
+  align-items: center;
   gap: 0.4rem;
   flex-shrink: 0;
   margin-left: auto;
-  /* In line with the name's first line rather than the bar's top. */
-  padding-top: 0.35rem;
 }
 
-/* Round icon button above the version badge. */
+/* Phones (360px): narrower gaps leave the footnote its one line. */
+@media (max-width: 30rem) {
+  .site-header__top {
+    gap: 0.5rem;
+  }
+
+  .site-header__actions {
+    gap: 0.3rem;
+  }
+}
+
+/* Round icon button beside the version badge. */
 .theme-switch {
   display: grid;
   place-items: center;
