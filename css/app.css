@@ -177,81 +177,53 @@ h3 {
   gap: 0.75rem;
 }
 
-/* The tool's name as a lockup: the app's mark beside the name, and the
-   protocols under it in Lilex, the face of the version badge and the server
-   addresses. Size and weight carry the name; the mark and the mono line
-   only frame it. */
+/* The tool's name as a lockup: a solid bar in the accent down the name and
+   the protocols, which sit under it as a footnote in Lilex, the face of the
+   version badge and the server addresses. Size and weight carry the name.
+   The bar's width and gap, and the footnote's size, follow --name. */
 .brand {
-  --mark: 3rem;
+  --name: 2.1rem;
 
   display: grid;
-  grid-template-columns: var(--mark) minmax(0, 1fr);
-  align-items: center;
-  column-gap: 0.85rem;
+  grid-template-columns: calc(var(--name) * 0.32) minmax(0, 1fr);
+  column-gap: calc(var(--name) * 0.36);
   min-width: 0;
 }
 
-.brand__mark {
-  display: grid;
-  grid-row: span 2;
-  place-items: center;
-  width: var(--mark);
-  height: var(--mark);
-  background: var(--surface);
-  border: 1px solid var(--border);
-  /* The proportion of the app icon's rounded square. */
-  border-radius: calc(var(--mark) * 0.24);
-  color: var(--text);
-}
-
-.brand__mark .icon {
-  width: 60%;
-  height: 60%;
-}
-
-.icon--app {
-  --icon: url("icons/icon.svg");
+/* Past the capitals' top and the footnote's baseline, rather than flush. */
+.brand::before {
+  content: "";
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  margin-block: calc(var(--name) * -0.12) calc(var(--name) * -0.1);
+  background: var(--accent);
 }
 
 .brand__name {
-  font-size: 2.1rem;
+  font-size: var(--name);
   font-weight: 700;
   line-height: 1.05;
   letter-spacing: -0.03em;
   text-wrap: balance;
 }
 
+/* Muted, so the bar stays the lockup's one accent. Never under 14px. */
 .brand__protocols {
-  margin: 0.3rem 0 0;
-  color: var(--accent-text);
+  grid-column: 2;
+  margin: calc(var(--name) * 0.16) 0 0;
+  color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: max(0.875rem, calc(var(--name) * 0.34));
+  font-weight: 400;
   line-height: 1.2;
   white-space: nowrap;
 }
 
-/* Phones (360px): beside the badge and switch the name takes two lines, next
-   to the mark, and the protocols move under both, where they fit on one. */
+/* Phones (360px): beside the badge and switch the name takes two lines, and
+   the bar runs down both and the footnote. */
 @media (max-width: 30rem) {
   .brand {
-    --mark: 2.5rem;
-
-    column-gap: 0.7rem;
-  }
-
-  .brand__mark {
-    grid-row: auto;
-  }
-
-  .brand__name {
-    font-size: 1.55rem;
-  }
-
-  .brand__protocols {
-    grid-column: 1 / -1;
-    margin-top: 0.55rem;
-    font-size: 0.8rem;
+    --name: 1.55rem;
   }
 }
 
@@ -282,7 +254,7 @@ h3 {
   gap: 0.4rem;
   flex-shrink: 0;
   margin-left: auto;
-  /* In line with the name's first line rather than the mark's top. */
+  /* In line with the name's first line rather than the bar's top. */
   padding-top: 0.35rem;
 }
 
