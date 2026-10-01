@@ -67,62 +67,62 @@
   --inline-btn-height: 2.125rem;
   --inline-btn-inset: 0.3rem;
 
-  --font: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+  --font: "Söhne", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
     sans-serif;
+  --font-mono: "Berkeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
+    monospace;
+}
+
+/* The desktop app's monospace: Berkeley Mono is licensed for the website
+   only, and the app never requests it. */
+:root[data-app="desktop"] {
   --font-mono: "Lilex", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
     monospace;
 }
 
-/* Lilex (OFL, committed in fonts/ with its licence). swap, since it arrives
-   over the network; _layout.html preloads it. */
-@font-face {
-  font-family: "Lilex";
-  src: url("fonts/Lilex-Latin.woff2") format("woff2");
-  font-weight: 100 700;
-  font-display: swap;
-}
-
-/* Geist (OFL, committed in fonts/ with its licence): the website's text. A
-   Latin subset of the variable font from the `geist` npm package, 1.7.2,
-   made like the Söhne subsets (LATIN_UNICODES and tnum, scripts/fonts.ts).
-   One file for every weight. swap and preloaded, like Lilex; the desktop app
-   uses Söhne instead, and never requests it. */
-@font-face {
-  font-family: "Geist";
-  src: url("fonts/Geist-Latin.woff2") format("woff2");
-  font-weight: 100 900;
-  font-display: swap;
-}
-
-/* Söhne: desktop app only, through data-app, which the inline script in
-   pages/_layout.html sets. The files are Latin subsets made from the licensed
-   webfonts by `deno task fonts` (fonts/source/ -> fonts/subset/), kept out of
-   git and copied only into the app's build (scripts/build.ts), which fails a
-   release without them. The website uses Geist instead and never requests
-   these files. Three weights: 700 and up (the h1) resolve to Halbfett. */
+/* Söhne, the text everywhere: Latin subsets made from the licensed webfonts
+   by `deno task fonts` (fonts/source/ -> fonts/subset/), kept out of git. The
+   app's build copies them in, and fails a release without them; the website's
+   build downloads them from R2 (scripts/web_fonts.ts). Three weights: 700 and
+   up (the h1) resolve to Halbfett. swap, since on the website they arrive
+   over the network; the build preloads Buch. */
 @font-face {
   font-family: "Söhne";
   src: url("fonts/Soehne-Buch.woff2") format("woff2");
   font-weight: 400;
-  font-display: block;
+  font-display: swap;
 }
 
 @font-face {
   font-family: "Söhne";
   src: url("fonts/Soehne-Kraeftig.woff2") format("woff2");
   font-weight: 500;
-  font-display: block;
+  font-display: swap;
 }
 
 @font-face {
   font-family: "Söhne";
   src: url("fonts/Soehne-Halbfett.woff2") format("woff2");
   font-weight: 600 900;
-  font-display: block;
+  font-display: swap;
 }
 
-:root[data-app="desktop"] {
-  --font: "Söhne", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+/* Berkeley Mono, the website's monospace: the variable font from US
+   Graphics (TX-02), weights 400 to 700, licensed for the website only and
+   downloaded from R2 like Söhne. */
+@font-face {
+  font-family: "Berkeley Mono";
+  src: url("fonts/Berkeley_Mono.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+/* Lilex (OFL, committed in fonts/ with its licence): the app's monospace. */
+@font-face {
+  font-family: "Lilex";
+  src: url("fonts/Lilex-Latin.woff2") format("woff2");
+  font-weight: 100 700;
+  font-display: swap;
 }
 
 /* Set before first paint by the inline script in pages/_layout.html. */
@@ -183,8 +183,10 @@ h3 {
    The bar's width and gap, and the footnote's size, follow --name. */
 .brand {
   --name: 2.1rem;
-  /* The space before the name's D, in em: Geist's here, Söhne's in the app. */
-  --name-indent: 0.074;
+  /* The space before Söhne's bold D, and before the monospace E, in em, from
+     the fonts' metrics: Berkeley Mono's here, Lilex's in the app. */
+  --name-indent: 0.062;
+  --mono-indent: 0.131;
 
   display: grid;
   grid-template-columns: calc(var(--name) * 0.32) minmax(0, 1fr);
@@ -210,16 +212,18 @@ h3 {
 }
 
 :root[data-app="desktop"] .brand {
-  --name-indent: 0.056;
+  --mono-indent: 0.09;
 }
 
 /* Muted, so the bar stays the lockup's one accent. Never under 14px. Its E
-   starts where the name's D does: the bold D sits further from its edge than
-   Lilex's E, 0.08em, so the footnote moves in by the difference. */
+   starts where the name's D does: the footnote moves by the difference
+   between the two letters' spaces. */
 .brand__protocols {
   grid-column: 2;
   margin: calc(var(--name) * 0.16) 0 0;
-  padding-left: calc(var(--name) * var(--name-indent) - 0.08em);
+  padding-left: calc(
+    var(--name) * var(--name-indent) - var(--mono-indent) * 1em
+  );
   color: var(--muted);
   font-family: var(--font-mono);
   font-size: max(0.875rem, calc(var(--name) * 0.34));

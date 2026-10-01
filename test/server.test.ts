@@ -36,7 +36,7 @@ describe("cacheControl", () => {
   });
 
   it("keeps fonts for a year and icons for a week, without immutable", () => {
-    expect(cacheControl("/fonts/Geist-Latin.woff2")).toBe(
+    expect(cacheControl("/fonts/Soehne-Buch.woff2")).toBe(
       "public, max-age=31536000",
     );
     expect(cacheControl("/icons/favicon.ico")).toBe("public, max-age=604800");

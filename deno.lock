@@ -22,6 +22,7 @@
     "jsr:@std/testing@^1.0.21": "1.0.21",
     "npm:@tauri-apps/cli@2": "2.12.0",
     "npm:@tauri-apps/cli@^2.12.0": "2.12.0",
+    "npm:aws4fetch@^1.0.20": "1.0.20",
     "npm:rumdl@0.2": "0.2.78"
   },
   "jsr": {
@@ -219,6 +220,9 @@
       ],
       "bin": true
     },
+    "aws4fetch@1.0.20": {
+      "integrity": "sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g=="
+    },
     "rumdl@0.2.78": {
       "integrity": "sha512-nm40qNFQnrpYiLetMrsq14qaItqKT7cUoi7wtlTtx0n/3xWn6a7/ZwkgChvBbfP24cZQYz1n5IJ+DBPIrQQfFQ==",
       "optionalDependencies": [
@@ -241,7 +245,8 @@
       "jsr:@std/path@^1.1.6",
       "jsr:@std/semver@^1.0.8",
       "jsr:@std/testing@^1.0.21",
-      "npm:@tauri-apps/cli@^2.12.0"
+      "npm:@tauri-apps/cli@^2.12.0",
+      "npm:aws4fetch@^1.0.20"
     ]
   }
 }

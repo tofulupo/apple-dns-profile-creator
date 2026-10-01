@@ -10,6 +10,12 @@ import {
   type PresetFeature,
 } from "../src/config.ts";
 import { FONT_SUBSET } from "./fonts.ts";
+import {
+  BERKELEY_MONO,
+  downloadFonts,
+  r2Config,
+  WEB_FONTS,
+} from "./web_fonts.ts";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
@@ -19,8 +25,9 @@ const LAYOUT = "pages/_layout.html";
 const LLMS = "pages/llms.txt";
 const STYLESHEET = "css/app.css";
 /**
- * Fonts both the website and the app ship, with their licences: Lilex, and
- * Geist, which only the website uses.
+ * Fonts committed with their licences: Lilex, the desktop app's monospace,
+ * and Geist's licence, which covers the app's Geist Pixel. The website's fonts
+ * are licensed and come from elsewhere (scripts/web_fonts.ts).
  */
 const FONTS = join(ROOT, "fonts");
 /**
@@ -39,21 +46,35 @@ export interface PageAssets {
   /** Shown next to the page heading. */
   readonly version: string;
   /**
-   * Built for the desktop app, whose text is in Söhne rather than the
-   * website's Geist.
+   * Built for the desktop app, whose monospace is Lilex rather than the
+   * website's Berkeley Mono.
    */
   readonly desktop?: boolean;
+  /** The font files the build ships, for the preloads. All when undefined. */
+  readonly fonts?: readonly string[];
+}
+
+function preload(file: string): string {
+  return `<link rel="preload" href="fonts/${file}" as="font"\n` +
+    `      type="font/woff2" crossorigin>`;
 }
 
 /**
- * The website's text font, fetched alongside the stylesheet like Lilex. Not
- * in the app, which would load it for nothing and warn that it went unused.
+ * The fonts every page shows, fetched alongside the stylesheet rather than
+ * after it: the text's regular weight, and the monospace of the version badge
+ * and the header's protocols. Each build only preloads its own monospace; the
+ * other would load for nothing and warn that it went unused. Of `shipped`,
+ * where given, so a build without the licensed fonts asks for none.
  */
-export function textFontPreload(desktop: boolean): string {
-  return desktop
-    ? ""
-    : `<link rel="preload" href="fonts/Geist-Latin.woff2" as="font"\n` +
-      `      type="font/woff2" crossorigin>`;
+export function fontPreloads(
+  desktop: boolean,
+  shipped?: readonly string[],
+): string {
+  return [
+    "Soehne-Buch.woff2",
+    desktop ? "Lilex-Latin.woff2" : BERKELEY_MONO,
+  ].filter((file) => shipped === undefined || shipped.includes(file))
+    .map(preload).join("\n    ");
 }
 
 async function bundle(
@@ -210,6 +231,22 @@ export function fontUrls(css: string): string[] {
     ...new Set([...css.matchAll(/url\(\s*["']?fonts\/([^"')]+)/g)]
       .map((match) => match[1]!)),
   ].sort();
+}
+
+/**
+ * The stylesheet without the @font-face rules for files not among `shipped`,
+ * so pages never ask for a font the build does not have: local builds lack
+ * the website's licensed fonts.
+ */
+export function withoutMissingFonts(
+  css: string,
+  shipped: readonly string[],
+): string {
+  return css.replace(
+    /@font-face\s*\{[^}]*\}\s*/g,
+    (rule) =>
+      fontUrls(rule).every((file) => shipped.includes(file)) ? rule : "",
+  );
 }
 
 /** Of the stylesheet's font files, those not among `shipped`. */
@@ -424,7 +461,7 @@ export async function renderPage(
     canonical: escape(pageUrl(page)),
     structuredData: jsonLd,
     stylesheet: escape(assets.stylesheet),
-    textFontPreload: textFontPreload(assets.desktop ?? false),
+    fontPreloads: fontPreloads(assets.desktop ?? false, assets.fonts),
     script: inlineScript(assets.script),
     version: escape(assets.version),
     nav: navigation(page),
@@ -617,19 +654,46 @@ export async function build(): Promise<void> {
   await bundle([STYLESHEET], ["--external=icons/*", "--external=fonts/*"]);
 
   const bundled = join(DIST, "app.css");
-  const css = await inlineIcons(
+  const fullCss = await inlineIcons(
     await Deno.readTextFile(bundled),
     (file) => Deno.readTextFile(join(ROOT, "public", file)),
   );
-  const stylesheet = `app-${await fingerprint(
-    new TextEncoder().encode(css),
-  )}.css`;
   await Deno.remove(bundled);
-  await Deno.writeTextFile(join(DIST, stylesheet), css);
 
   // The Tauri CLI sets TAURI_ENV_PLATFORM for its beforeBuildCommand and
   // beforeDevCommand.
   const desktop = Deno.env.get("TAURI_ENV_PLATFORM") !== undefined;
+  const fonts = join(DIST, "fonts");
+  const shipped = await copyFonts(FONTS, fonts);
+  if (desktop) {
+    shipped.push(...await copyFonts(FONT_SUBSET, fonts));
+    // Berkeley Mono is the website's alone: the app uses Lilex.
+    const missing = missingFonts(fullCss, shipped).filter((file) =>
+      file !== BERKELEY_MONO
+    );
+    if (missing.length > 0) {
+      const message = `Fonts missing from the app: ${missing.join(", ")}. ` +
+        "Put the Söhne .woff2 files in fonts/source/ and run `deno task fonts`.";
+      // A release must not quietly ship the system font; `desktop:dev` may.
+      if (Deno.env.get("TAURI_ENV_DEBUG") !== "true") throw new Error(message);
+      console.warn(`\n\u26a0 ${message}\n`);
+    }
+  } else {
+    // From the R2 bucket, on Deno Deploy only, where its credentials are set
+    // and any failure fails the build. Local and CI builds use the system
+    // font.
+    const config = r2Config((name) => Deno.env.get(name));
+    if (config !== undefined) {
+      shipped.push(...await downloadFonts(config, WEB_FONTS, fonts));
+    }
+  }
+
+  const css = withoutMissingFonts(fullCss, shipped);
+  const stylesheet = `app-${await fingerprint(
+    new TextEncoder().encode(css),
+  )}.css`;
+  await Deno.writeTextFile(join(DIST, stylesheet), css);
+
   const version = await readVersion();
   for (const page of PAGES) {
     await Deno.writeTextFile(
@@ -639,6 +703,7 @@ export async function build(): Promise<void> {
         script: await bundleScript(page.script),
         version,
         desktop,
+        fonts: shipped,
       }),
     );
   }
@@ -649,22 +714,6 @@ export async function build(): Promise<void> {
     await copy(join(ROOT, "public", entry.name), join(DIST, entry.name), {
       overwrite: true,
     });
-  }
-
-  // Lilex and Geist everywhere. Söhne only in the desktop app; the website
-  // uses Geist instead, and never asks for Söhne's files.
-  const fonts = join(DIST, "fonts");
-  const shipped = await copyFonts(FONTS, fonts);
-  if (desktop) {
-    shipped.push(...await copyFonts(FONT_SUBSET, fonts));
-    const missing = missingFonts(css, shipped);
-    if (missing.length > 0) {
-      const message = `Fonts missing from the app: ${missing.join(", ")}. ` +
-        "Put the Söhne .woff2 files in fonts/source/ and run `deno task fonts`.";
-      // A release must not quietly ship the system font; `desktop:dev` may.
-      if (Deno.env.get("TAURI_ENV_DEBUG") !== "true") throw new Error(message);
-      console.warn(`\n\u26a0 ${message}\n`);
-    }
   }
 
   // Generated rather than copied from public/, so the site's address lives

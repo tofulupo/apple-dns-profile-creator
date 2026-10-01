@@ -3,7 +3,7 @@
   "license": "BSD-3-Clause",
   "tasks": {
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
-    "build": "deno run --allow-read --allow-write --allow-run --allow-env=INDEXNOW_KEY,TAURI_ENV_PLATFORM,TAURI_ENV_DEBUG scripts/build.ts",
+    "build": "deno run --allow-read --allow-write --allow-run --allow-env=INDEXNOW_KEY,TAURI_ENV_PLATFORM,TAURI_ENV_DEBUG,R2_ENDPOINT,R2_ACCOUNT_ID,R2_BUCKET,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY --allow-net=*.r2.cloudflarestorage.com scripts/build.ts",
     "fonts": "deno run --allow-read --allow-write --allow-run scripts/fonts.ts",
     "preview": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts",
     "desktop": "deno task tauri build",
@@ -26,7 +26,8 @@
     "@std/fs": "jsr:@std/fs@^1.0.24",
     "@std/http": "jsr:@std/http@^1.1.4",
     "@std/path": "jsr:@std/path@^1.1.6",
-    "@std/testing": "jsr:@std/testing@^1.0.21"
+    "@std/testing": "jsr:@std/testing@^1.0.21",
+    "aws4fetch": "npm:aws4fetch@^1.0.20"
   },
   "compilerOptions": {
     "lib": ["deno.ns", "dom", "dom.iterable", "esnext"],
