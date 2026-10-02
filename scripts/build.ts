@@ -301,9 +301,13 @@ function navigation(current: Page): string {
       : `<span class="tab__count" id="${
         escape(page.countId)
       }" aria-hidden="true" hidden></span>`;
-    return `<a href="${escape(pageHref(page))}" class="tab"${state}>${icon}${
+    // The label in its own element, which the floating bar on small phones
+    // hides visually, leaving the icon (css/app.css).
+    return `<a href="${
+      escape(pageHref(page))
+    }" class="tab"${state}>${icon}<span class="tab__label">${
       escape(page.nav)
-    }${count}</a>`;
+    }</span>${count}</a>`;
   }).join("\n");
 }
 

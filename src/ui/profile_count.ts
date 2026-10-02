@@ -7,10 +7,13 @@ import { element } from "./dom.ts";
 /** The most the tab shows exactly; more read as "9+". */
 const MAX_SHOWN = 9;
 
-/** The count as the tab shows it: "(1)" to "(9)", then "(9+)"; none at 0. */
+/**
+ * The count as the tab shows it: "1" to "9", then "9+"; none at 0. The header's
+ * tab puts it in brackets, the floating bar's in a badge (css/app.css).
+ */
 export function countLabel(count: number): string {
   if (count <= 0) return "";
-  return count > MAX_SHOWN ? `(${MAX_SHOWN}+)` : `(${count})`;
+  return count > MAX_SHOWN ? `${MAX_SHOWN}+` : String(count);
 }
 
 export function showProfileCount(count: number): void {

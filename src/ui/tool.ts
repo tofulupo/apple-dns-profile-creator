@@ -35,6 +35,7 @@ import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { showProfileCount } from "./profile_count.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
+import { watchKeyboard } from "./dock.ts";
 
 const store = createConfigStore(browserStorage());
 
@@ -800,6 +801,7 @@ async function handleUpload(file: File): Promise<void> {
 
 function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
+  watchKeyboard();
   bindPickers();
   bindPresets();
   bindProtocols();

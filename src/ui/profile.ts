@@ -17,6 +17,7 @@ import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { enableSigning, type Signing } from "./signing.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
+import { watchKeyboard } from "./dock.ts";
 
 const store = createConfigStore(browserStorage());
 
@@ -391,6 +392,7 @@ async function share(): Promise<void> {
 
 function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
+  watchKeyboard();
   input("systemChk").checked = appConfig.systemScopeByDefault;
   signing = enableSigning(updateDownloadButton);
   downloadButton.addEventListener("click", () => void download());
