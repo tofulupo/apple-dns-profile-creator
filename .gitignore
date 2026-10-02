@@ -6,6 +6,10 @@ build/
 .env
 .env.release
 
+# Local design scratch pages, e.g. the mascot playground. Also keeps them out
+# of deno fmt and lint, which skip ignored paths.
+playground/
+
 # Packaged builds, e.g. dist/ tarred up to copy onto a device or server.
 *.tar.gz
 
