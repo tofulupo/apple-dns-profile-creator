@@ -378,6 +378,18 @@ code {
   --icon: url("icons/download.svg");
 }
 
+.icon--file-download {
+  --icon: url("icons/file-download.svg");
+}
+
+.icon--receipt {
+  --icon: url("icons/receipt.svg");
+}
+
+.icon--file-send {
+  --icon: url("icons/file-send.svg");
+}
+
 .icon--info {
   --icon: url("icons/info.svg");
 }
@@ -434,10 +446,9 @@ code {
   font-variant-numeric: tabular-nums;
 }
 
-/* Selected tabs and protocol options share one look: a solid accent pill.
-   Declared after the hover rules, which must not recolour it. */
-.tab[aria-current="page"],
-.segmented__option:has(input:checked) {
+/* The selected tab: a solid accent pill. Declared after the hover rules,
+   which must not recolour it. */
+.tab[aria-current="page"] {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
@@ -626,78 +637,13 @@ textarea::placeholder {
   border-color: var(--danger);
 }
 
-/* Server field: a shield inside the input turns into a green check once the
-   value is usable for the selected protocol. */
-.input-check {
+/* A field with a button inside its right edge, which opens a menu below it:
+   presets on the name, the protocol on the server. */
+.picker {
   position: relative;
 }
 
-.input-check input {
-  padding-right: 2.5rem;
-}
-
-.input-check__icon {
-  --icon: url("icons/shield-plus.svg");
-
-  position: absolute;
-  top: 50%;
-  right: 0.75rem;
-  color: var(--muted);
-  pointer-events: none;
-  transform: translateY(-50%);
-  transition: color 0.15s ease;
-}
-
-.input-check--valid .input-check__icon {
-  --icon: url("icons/shield-check.svg");
-
-  color: var(--success-icon);
-}
-
-/* Two-way protocol switch. The radios stay in the page, visually hidden, so
-   arrow keys and screen readers treat it as the radio group it is. */
-.segmented {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.25rem;
-  padding: 0.25rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.segmented__option {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  color: var(--muted);
-  font-size: 0.9rem;
-  font-weight: 500;
-  line-height: 1.3;
-  text-align: center;
-  cursor: pointer;
-}
-
-.segmented__option:hover {
-  color: var(--text);
-}
-
-.segmented__option:has(input:focus-visible) {
-  outline: 2px solid var(--focus);
-  outline-offset: 2px;
-}
-
-/* Provider name: typed, or taken from a preset with the button inside the
-   field's right edge, which opens the preset menu below it. */
-.name-picker {
-  position: relative;
-}
-
-.name-picker input {
+.picker input {
   min-height: calc(var(--inline-btn-height) + 2 * var(--inline-btn-inset) +
     2px);
   padding-right: calc(var(--inline-btn-width) + var(--inline-btn-inset) +
@@ -705,11 +651,11 @@ textarea::placeholder {
 }
 
 /* No presets configured, so no button to make room for. */
-.name-picker:has(> [hidden]) input {
+.picker:has(> button[hidden]) input {
   padding-right: 0.75rem;
 }
 
-.name-picker__toggle {
+.picker__toggle {
   position: absolute;
   top: 50%;
   right: var(--inline-btn-inset);
@@ -735,14 +681,48 @@ textarea::placeholder {
     border-color 0.15s ease;
 }
 
-.name-picker__toggle:hover {
+.picker__toggle:hover {
   background: var(--surface-sunken);
 }
 
-.name-picker__toggle[aria-expanded="true"] {
+.picker__toggle[aria-expanded="true"] {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface));
   border-color: var(--accent);
   color: var(--accent-text);
+}
+
+/* Validation of a field whose format matters (server, addresses) shows in
+   its own small marker: the protocol on the server's button, the number in
+   front of an address. Green once the value is usable; a red x once submit
+   finds it is not, so the two differ in shape as well as colour, and empty
+   (no value at all) stays grey.
+
+   On the server: [✓ DoH ▾] or [× DoH ▾], kept while the menu is open,
+   inside its accent. */
+.picker__status {
+  display: none;
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.field--valid .picker__status {
+  --icon: url("icons/check.svg");
+
+  display: inline-block;
+}
+
+.field--invalid .picker__status {
+  --icon: url("icons/close.svg");
+
+  display: inline-block;
+}
+
+.field--valid :is(.picker__status, .picker__label) {
+  color: var(--success);
+}
+
+.field--invalid :is(.picker__status, .picker__label) {
+  color: var(--danger);
 }
 
 .icon--chevron {
@@ -899,6 +879,20 @@ textarea::placeholder {
   line-height: 1.45;
 }
 
+/* The protocol menu: the protocol's tag where a preset has its flag, so the
+   column is as wide as the tag. */
+.preset--protocol {
+  grid-template-columns: auto 1fr auto;
+}
+
+.preset--protocol .preset__protocol {
+  grid-area: mark;
+}
+
+.preset--protocol .preset__server {
+  font-size: 0.8rem;
+}
+
 .preset__host {
   min-width: 0;
   font-family: var(--font-mono);
@@ -956,6 +950,19 @@ textarea::placeholder {
   align-items: center;
   gap: 0.4rem;
   margin-top: 0.5rem;
+}
+
+/* In the quick inserts' place for DoT, and no taller: two lines of this
+   size fill their 2rem, so switching protocol moves nothing below. */
+.protocol-note {
+  display: flex;
+  align-items: center;
+  min-height: 2rem;
+  margin: 0.5rem 0 0;
+  color: var(--warning);
+  font-size: 0.8rem;
+  line-height: 1.25;
+  text-wrap: pretty;
 }
 
 .quick-insert__label {
@@ -1217,19 +1224,47 @@ summary.rule__head::-webkit-details-marker {
 
 .address-input input {
   min-height: var(--address-height);
-  padding-left: 2rem;
+  padding-left: 2.3rem;
   padding-right: 2.6rem;
 }
 
+/* The number in an outlined circle: green once the address is usable, an x
+   instead of the number once submit finds it is not (see .picker__status). */
 .address-input__index {
   position: absolute;
   top: 50%;
-  left: 0.8rem;
+  left: 0.65rem;
+  display: grid;
+  place-items: center;
+  width: 1.2rem;
+  height: 1.2rem;
+  border: 1px solid currentColor;
+  border-radius: 50%;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
+  line-height: 1;
   pointer-events: none;
   translate: 0 -50%;
+  transition: color 0.15s ease;
+}
+
+.field--valid .address-input__index {
+  color: var(--success);
+}
+
+.field--invalid .address-input__index {
+  color: transparent;
+  border-color: var(--danger);
+}
+
+.field--invalid .address-input__index::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--danger);
+  -webkit-mask: url("icons/close.svg") center / 0.6rem no-repeat;
+  mask: url("icons/close.svg") center / 0.6rem no-repeat;
 }
 
 /* Grey until hovered: it clears one field, which is less than the red X on a
@@ -1745,6 +1780,18 @@ summary.rule__head::-webkit-details-marker {
 
 .panel .btn--block {
   margin-top: 0.25rem;
+}
+
+/* Download, and Share beside it in two equal halves where the browser can
+   share the file; Download alone takes the whole row. */
+.download-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.download-actions:has(> [hidden]) {
+  grid-template-columns: 1fr;
 }
 
 /* The unsigned-profile note under Download, with its explanation inline. */

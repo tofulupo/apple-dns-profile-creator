@@ -86,10 +86,15 @@
     </div>
   </fieldset>
 
-  <button id="downloadBtn" class="btn btn--primary btn--block"
-    aria-describedby="downloadBlocked"><span class="icon icon--shield-check"
-      id="downloadIcon" aria-hidden="true" hidden></span><span
-      id="downloadLabel">Download profile</span></button>
+  <div class="download-actions">
+    <button id="downloadBtn" class="btn btn--primary btn--block"
+      aria-describedby="downloadBlocked"><span class="icon icon--file-download"
+        id="downloadIcon" aria-hidden="true"></span><span
+        id="downloadLabel">Download profile</span></button>
+    <button type="button" id="shareBtn" class="btn btn--block"
+      aria-describedby="downloadBlocked" hidden><span
+        class="icon icon--file-send" aria-hidden="true"></span>Share</button>
+  </div>
   <p class="field__error" id="downloadBlocked" role="status" hidden></p>
 
   <div class="note" id="noteSigned" hidden>
@@ -102,7 +107,7 @@
   <div class="note" id="noteUnsigned">
     <span class="icon icon--info" aria-hidden="true"></span>
     <div class="note__body">
-      <p>Unsigned = &ldquo;Not Signed&rdquo; on iOS/macOS. Desktop App enables local signing.</p>
+      <p>Shown as &ldquo;Not Signed&rdquo; when installing. The desktop app can sign profiles locally.</p>
     </div>
   </div>
 </section>

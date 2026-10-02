@@ -52,6 +52,14 @@ export function setFieldError(
   if (message !== null) openEnclosing(field);
 }
 
+/**
+ * Marks `field` as holding a usable value, for fields whose format matters:
+ * the server and the addresses, which show it in their own markers.
+ */
+export function setFieldValid(field: HTMLElement, valid: boolean): void {
+  field.classList.toggle("field--valid", valid);
+}
+
 /** Opens every `<details>` around `element`, so it can be seen. */
 export function openEnclosing(element: Element): void {
   for (

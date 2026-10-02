@@ -11,6 +11,7 @@ import {
   contentSecurityPolicy,
   createHandler,
   DISABLED_FEATURES,
+  SELF_FEATURES,
 } from "../scripts/server.ts";
 
 const THEME = 'document.documentElement.dataset.theme="dark";';
@@ -96,6 +97,12 @@ describe("DISABLED_FEATURES", () => {
       expect(DISABLED_FEATURES).not.toContain(feature);
     }
   });
+
+  it("does not also disable a feature the pages use", () => {
+    for (const feature of SELF_FEATURES) {
+      expect(DISABLED_FEATURES).not.toContain(feature);
+    }
+  });
 });
 
 describe("createHandler", () => {
@@ -138,7 +145,14 @@ describe("createHandler", () => {
       "same-origin",
     );
     expect(response.headers.get("Permissions-Policy")).toBe(
-      DISABLED_FEATURES.map((feature) => `${feature}=()`).join(", "),
+      [
+        ...DISABLED_FEATURES.map((feature) => `${feature}=()`),
+        ...SELF_FEATURES.map((feature) => `${feature}=(self)`),
+      ].join(", "),
+    );
+    // The profile page's Share button.
+    expect(response.headers.get("Permissions-Policy")).toContain(
+      "web-share=(self)",
     );
   });
 

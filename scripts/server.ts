@@ -30,9 +30,9 @@ export function cacheControl(pathname: string): string {
 }
 
 /**
- * Browser features the pages may use: none. Pasting addresses is a plain paste
- * event, downloads are blob: links and loading a file is a file input, none of
- * which the policy governs. The header has no "everything else", so each
+ * Browser features the pages may not use: all but SELF_FEATURES. Pasting
+ * addresses is a plain paste event, downloads are blob: links and loading a
+ * file is a file input, none of which the policy governs. The header has no "everything else", so each
  * feature is listed. Only names Chrome knows: it warns about any other in the
  * console, so its retired advertising APIs (FLoC's interest-cohort, Protected
  * Audience, Shared Storage, Attribution Reporting, Private Aggregation) and
@@ -74,11 +74,17 @@ export const DISABLED_FEATURES: readonly string[] = [
   "picture-in-picture",
   "autoplay",
   "encrypted-media",
-  "web-share",
   "gamepad",
   "sync-xhr",
   "unload",
 ];
+
+/**
+ * Browser features the pages use themselves, allowed for the site's own
+ * origin and nothing that embeds it (which X-Frame-Options rules out
+ * anyway): the profile page's Share button opens the share sheet.
+ */
+export const SELF_FEATURES: readonly string[] = ["web-share"];
 
 /**
  * Sent with every response. The cross-origin pair: the pages load nothing
@@ -94,8 +100,10 @@ const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "strict-origin-when-cross-origin",
-  "Permissions-Policy": DISABLED_FEATURES.map((feature) => `${feature}=()`)
-    .join(", "),
+  "Permissions-Policy": [
+    ...DISABLED_FEATURES.map((feature) => `${feature}=()`),
+    ...SELF_FEATURES.map((feature) => `${feature}=(self)`),
+  ].join(", "),
 };
 
 async function sha256(text: string): Promise<string> {

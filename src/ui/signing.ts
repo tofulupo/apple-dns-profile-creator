@@ -115,7 +115,9 @@ export function enableSigning(onChange: () => void): Signing {
       ? "identity__status"
       : `identity__status identity__status--${current.status}`;
 
-    noteUnsigned.hidden = current !== undefined;
+    // The website's note points to the desktop app, which this already is;
+    // the Unsigned card says the rest.
+    noteUnsigned.hidden = true;
     noteSigned.hidden = current === undefined;
     onChange();
   }

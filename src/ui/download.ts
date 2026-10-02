@@ -1,5 +1,5 @@
 /**
- * Local file download.
+ * Local file download, and sharing through the system share sheet.
  */
 import type { DesktopBindings } from "../desktop/bindings.ts";
 import { desktopBindings } from "./desktop.ts";
@@ -45,8 +45,7 @@ export async function downloadProfile(
     throw new Error("Signing is only available in the desktop app.");
   }
 
-  const blob = new Blob([xml], { type: MOBILECONFIG_MIME });
-  const url = URL.createObjectURL(blob);
+  const url = URL.createObjectURL(profileFile(filename, xml));
 
   const link = document.createElement("a");
   link.href = url;
@@ -58,4 +57,53 @@ export async function downloadProfile(
 
   // Give the browser a moment to start the download.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/** The profile as a file, the same for a download and a share. */
+export function profileFile(filename: string, xml: string): File {
+  return new File([xml], filename, { type: MOBILECONFIG_MIME });
+}
+
+/**
+ * Whether the share sheet can take the profile file. Never in the desktop
+ * app, where a signed profile only exists on the Rust side. Elsewhere it
+ * needs a secure context (`navigator.share` is missing on a plain http:// LAN
+ * address) and a browser that accepts the file type: browsers only share
+ * the types they allow, and Chrome's list may well leave .mobileconfig out.
+ */
+export function canShareProfile(
+  filename: string,
+  nav: Navigator = navigator,
+): boolean {
+  if (desktopSave() !== undefined) return false;
+  if (typeof nav.share !== "function" || typeof nav.canShare !== "function") {
+    return false;
+  }
+  try {
+    return nav.canShare({ files: [profileFile(filename, "")] });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Opens the share sheet with the profile file alone: some targets drop a
+ * file that comes with text. Resolves false when the user closed the sheet
+ * without sharing, which is not an error. Must be called straight from the
+ * click, with nothing awaited before it, or the browser refuses it.
+ */
+export async function shareProfile(
+  filename: string,
+  xml: string,
+  nav: Navigator = navigator,
+): Promise<boolean> {
+  try {
+    await nav.share({ files: [profileFile(filename, xml)] });
+    return true;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return false;
+    }
+    throw asError(error);
+  }
 }

@@ -11,7 +11,7 @@ import { element, input, setFieldError, showNotices } from "./dom.ts";
 
 import { ask, tell } from "./dialogs.ts";
 import { signalPageReady } from "./page_ready.ts";
-import { downloadProfile } from "./download.ts";
+import { canShareProfile, downloadProfile, shareProfile } from "./download.ts";
 import { showProfileCount } from "./profile_count.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { enableSigning, type Signing } from "./signing.ts";
@@ -33,15 +33,24 @@ const importNotice = element<HTMLUListElement>("importNotice");
 const downloadBlocked = element("downloadBlocked");
 const downloadLabel = element("downloadLabel");
 const downloadIcon = element("downloadIcon");
+const shareButton = element<HTMLButtonElement>("shareBtn");
+/** Checked once: what the browser can share does not change on the page. */
+const canShare = canShareProfile(appConfig.profileFilename);
 
 let signing: Signing = { selected: () => undefined };
 
 function updateDownloadButton(): void {
   const signed = signing.selected() !== undefined;
+  // Beside Share, in half the row, the short label fits a phone.
   downloadLabel.textContent = signed
     ? "Download signed profile"
+    : canShare
+    ? "Download"
     : "Download profile";
-  downloadIcon.hidden = !signed;
+  // A signed profile keeps the shield it has always had in place of the
+  // download arrow.
+  downloadIcon.classList.toggle("icon--shield-check", signed);
+  downloadIcon.classList.toggle("icon--file-download", !signed);
 }
 
 function problemsOf(config: DnsConfig): string[] {
@@ -265,12 +274,15 @@ function render(): void {
   const invalid = configs.filter((config) => problemsOf(config).length > 0)
     .length;
   downloadButton.disabled = saving || invalid > 0;
+  shareButton.disabled = saving || invalid > 0;
   downloadBlocked.hidden = invalid === 0;
   downloadBlocked.textContent = invalid === 0
     ? ""
     : `Fix ${
       invalid === 1 ? "the configuration" : `the ${invalid} configurations`
-    } marked above before downloading.`;
+    } marked above before ${
+      canShare ? "downloading or sharing" : "downloading"
+    }.`;
 }
 
 /**
@@ -295,36 +307,45 @@ async function importFile(file: File): Promise<void> {
 }
 
 /**
- * True while a download is in progress. In the desktop app that includes
- * signing and the native dialogs, and a second click would queue a second
- * save.
+ * True while a download or share is in progress. In the desktop app that
+ * includes signing and the native dialogs, and a second click would queue a
+ * second save; in a browser, the share sheet stays open until dismissed.
  */
 let saving = false;
 
-async function download(): Promise<void> {
-  if (saving) return;
+/**
+ * The stored configurations as profile XML, or undefined when there is
+ * nothing valid to save. Re-checked here rather than trusting the buttons:
+ * another tab may have changed the list since it was last rendered.
+ */
+function profileXml(): string | undefined {
   const configs = store.list();
-  // Re-checked here rather than trusting the button: another tab may have
-  // changed the list since it was last rendered.
   if (configs.length === 0 || configs.some((c) => problemsOf(c).length > 0)) {
     render();
-    return;
+    return undefined;
   }
+  return buildProfileXml(
+    configs,
+    {
+      systemScope: input("systemChk").checked,
+      identifierPrefix: appConfig.identifierPrefix,
+    },
+    // Falls back to crypto.getRandomValues() when
+    // crypto.randomUUID() is unavailable, which is the case on a plain
+    // http:// LAN address.
+    randomUuid,
+  );
+}
+
+async function download(): Promise<void> {
+  if (saving) return;
+  const xml = profileXml();
+  if (xml === undefined) return;
 
   saving = true;
   downloadButton.disabled = true;
+  shareButton.disabled = true;
   try {
-    const xml = buildProfileXml(
-      configs,
-      {
-        systemScope: input("systemChk").checked,
-        identifierPrefix: appConfig.identifierPrefix,
-      },
-      // Falls back to crypto.getRandomValues() when
-      // crypto.randomUUID() is unavailable, which is the case on a plain
-      // http:// LAN address.
-      randomUuid,
-    );
     const signWith = signing.selected();
     await downloadProfile(
       signWith === undefined
@@ -345,11 +366,37 @@ async function download(): Promise<void> {
   }
 }
 
+/** Never signed: Share is only offered outside the desktop app. */
+async function share(): Promise<void> {
+  if (saving) return;
+  const xml = profileXml();
+  if (xml === undefined) return;
+
+  saving = true;
+  downloadButton.disabled = true;
+  shareButton.disabled = true;
+  try {
+    await shareProfile(appConfig.profileFilename, xml);
+  } catch (error) {
+    await tell(
+      `Could not share the profile: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  } finally {
+    saving = false;
+    render();
+  }
+}
+
 function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
   input("systemChk").checked = appConfig.systemScopeByDefault;
   signing = enableSigning(updateDownloadButton);
   downloadButton.addEventListener("click", () => void download());
+  shareButton.hidden = !canShare;
+  shareButton.addEventListener("click", () => void share());
+  updateDownloadButton();
   enableDrop(emptyZone, (file) => void importFile(file));
   deleteAllButton.addEventListener("click", async () => {
     if (!await ask("Delete all configurations on this page?")) return;
