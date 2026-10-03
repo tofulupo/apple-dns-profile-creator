@@ -67,8 +67,8 @@
   --inline-btn-height: 2.125rem;
   --inline-btn-inset: 0.3rem;
 
-  --font: "Söhne", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
-    sans-serif;
+  --font: "Söhne", "Söhne Fallback", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
   --font-mono: "Berkeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
     monospace;
 }
@@ -105,6 +105,43 @@
   src: url("fonts/Soehne-Halbfett.woff2") format("woff2");
   font-weight: 600 900;
   font-display: swap;
+}
+
+/* What shows until Söhne arrives: Arial, or Liberation Sans, which shares its
+   metrics, scaled to Söhne's width and given its ascent and descent. The
+   text then keeps its size and place when Söhne swaps in, so nothing on the
+   page shifts. Measured against the name and the form's labels; each weight
+   is a little narrower than Arial. The overrides are of the adjusted size,
+   hence Söhne's 117% and 42% divided by the size-adjust. */
+@font-face {
+  font-family: "Söhne Fallback";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans");
+  font-weight: 400;
+  size-adjust: 97.8%;
+  ascent-override: 119.6%;
+  descent-override: 42.9%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Söhne Fallback";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans");
+  font-weight: 500;
+  size-adjust: 98.5%;
+  ascent-override: 118.8%;
+  descent-override: 42.6%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Söhne Fallback";
+  src:
+    local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold");
+  font-weight: 600 900;
+  size-adjust: 94.6%;
+  ascent-override: 123.7%;
+  descent-override: 44.4%;
+  line-gap-override: 0%;
 }
 
 /* Berkeley Mono, the website's monospace: the variable font from US
