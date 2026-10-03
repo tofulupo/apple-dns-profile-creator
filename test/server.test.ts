@@ -40,7 +40,9 @@ describe("cacheControl", () => {
     expect(cacheControl("/fonts/Soehne-Buch.woff2")).toBe(
       "public, max-age=31536000",
     );
-    expect(cacheControl("/icons/favicon.ico")).toBe("public, max-age=604800");
+    expect(cacheControl("/icons/favicon-96x96.png")).toBe(
+      "public, max-age=604800",
+    );
   });
 
   it("revalidates pages and everything else", () => {

@@ -84,3 +84,51 @@ describe("the retired GitHub Pages address", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("the site's icons", () => {
+  const layout = Deno.readTextFileSync(join(ROOT, "pages", "_layout.html"));
+  const manifest = JSON.parse(
+    Deno.readTextFileSync(join(ROOT, "public", "site.webmanifest")),
+  ) as { icons: { src: string; sizes: string; purpose: string }[] };
+  const linked = [
+    ...layout.matchAll(/<link rel="[^"]*icon"[^>]*href="([^"]+)"/g),
+  ]
+    .map(([, href]) => href!);
+
+  it("exist, whether linked from the pages or the manifest", () => {
+    const files = [...linked, ...manifest.icons.map((icon) => icon.src)];
+    expect(files.length).toBeGreaterThan(5);
+    for (const file of files) {
+      expect({ file, exists: exists(join(ROOT, "public", file)) }).toEqual({
+        file,
+        exists: true,
+      });
+    }
+  });
+
+  it("keep favicon.ico at the root, where crawlers look for it", () => {
+    expect(linked).toContain("favicon.ico");
+  });
+
+  // Yandex shows a 120x120 favicon or an SVG in its results.
+  it("offer Yandex a 120px icon and the SVG", () => {
+    expect(linked).toContain("icons/favicon-120x120.png");
+    expect(linked).toContain("icons/favicon.svg");
+  });
+
+  it("give Android both a plain and a maskable icon", () => {
+    expect(manifest.icons.map((icon) => icon.purpose).sort()).toEqual([
+      "any",
+      "any",
+      "maskable",
+    ]);
+  });
+});
+
+function exists(path: string): boolean {
+  try {
+    return Deno.statSync(path).isFile;
+  } catch {
+    return false;
+  }
+}
