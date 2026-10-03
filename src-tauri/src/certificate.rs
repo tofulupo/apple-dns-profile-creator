@@ -1,10 +1,7 @@
-//! Just enough X.509 reading to find a certificate's Subject Key Identifier,
-//! which is how `security cms -Z` picks a signing identity.
-
 use base64::Engine as _;
 use base64::engine::general_purpose::STANDARD;
 
-/// OID 2.5.29.14, subjectKeyIdentifier, as encoded content bytes.
+/// OID 2.5.29.14, subjectKeyIdentifier.
 const SUBJECT_KEY_IDENTIFIER: &[u8] = &[0x55, 0x1d, 0x0e];
 
 const SEQUENCE: u8 = 0x30;
@@ -16,9 +13,7 @@ const EXTENSIONS: u8 = 0xa3;
 #[derive(Debug, Clone, Copy)]
 struct Tlv {
     tag: u8,
-    /// Offset of the first content byte.
     start: usize,
-    /// Offset just past the last content byte.
     end: usize,
 }
 
@@ -28,7 +23,6 @@ impl Tlv {
     }
 }
 
-/// The element at `offset`, which must end by `limit`.
 fn read_tlv(der: &[u8], offset: usize, limit: usize) -> Option<Tlv> {
     let tag = *der.get(offset)?;
     let first = *der.get(offset + 1)?;
@@ -66,8 +60,6 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|byte| format!("{byte:02X}")).collect()
 }
 
-/// The Subject Key Identifier of a DER certificate as uppercase hex, or None
-/// when it has none or cannot be read.
 pub fn subject_key_id(der: &[u8]) -> Option<String> {
     let certificate = read_tlv(der, 0, der.len())?;
     let tbs = *children(der, certificate)?.first()?;
@@ -94,7 +86,7 @@ pub fn subject_key_id(der: &[u8]) -> Option<String> {
         {
             continue;
         }
-        // The extension value is itself a DER OCTET STRING holding the key id.
+
         let key_id = read_tlv(der, value.start, value.end)?;
         if key_id.tag != OCTET_STRING || key_id.end != value.end {
             return None;
@@ -104,7 +96,6 @@ pub fn subject_key_id(der: &[u8]) -> Option<String> {
     None
 }
 
-/// Decodes one PEM `CERTIFICATE` block to DER, or None if it is not base64.
 pub fn pem_to_der(pem: &str) -> Option<Vec<u8>> {
     let body: String = pem
         .replace("-----BEGIN CERTIFICATE-----", "")
@@ -115,8 +106,7 @@ pub fn pem_to_der(pem: &str) -> Option<Vec<u8>> {
     STANDARD.decode(body).ok()
 }
 
-/// Throwaway self-signed certificates for tests. Generated once with openssl;
-/// the private keys were discarded, so these can sign nothing.
+/// Self-signed test certificates. The private keys were discarded.
 #[cfg(test)]
 pub mod fixtures {
     pub struct Certificate {
@@ -125,7 +115,6 @@ pub mod fixtures {
         pub pem: &'static str,
     }
 
-    /// CN "DNS Test With SKI", critical Code Signing EKU.
     pub const WITH_SKI: Certificate = Certificate {
         sha1: "521DE52A9299A20983B50C899FBD043C843CD46E",
         subject_key_id: Some("FF587220711AD856672BC5BE621946481D52D34C"),
@@ -142,7 +131,6 @@ rF6ZKBnAfj0=
 -----END CERTIFICATE-----",
     };
 
-    /// CN "DNS Test No SKI", no Subject Key Identifier extension.
     pub const WITHOUT_SKI: Certificate = Certificate {
         sha1: "F2AE54BEA0E67175D5443D384345FA402F09479B",
         subject_key_id: None,

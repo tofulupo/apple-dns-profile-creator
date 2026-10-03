@@ -1,11 +1,3 @@
-//! Profiles the user opens with the app: with Finder's Open With, by dropping
-//! them on the Dock icon, or with File > Open Profile….
-//!
-//! Each is read here and queued; the page takes them one at a time
-//! (src/ui/opened.ts) and imports each as if it had been dropped on it. The
-//! queue also covers a launch by opening a file, which happens before the page
-//! is there to receive it.
-
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::Read;
@@ -15,22 +7,17 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::Url;
 
-/// Emitted to the page whenever profiles are queued. Must match
-/// `OPENED_EVENT` in src/ui/desktop.ts; a test checks both.
+/// Must match `OPENED_EVENT` in src/ui/desktop.ts; a test checks both.
 pub const OPENED_EVENT: &str = "profiles-opened";
 
-/// Far above any real profile, which is a few kilobytes; keeps a wrongly
-/// chosen file from being read into memory whole.
+/// Far above any real profile, which is a few kilobytes.
 const MAX_PROFILE_BYTES: u64 = 5 * 1024 * 1024;
 
-/// A profile as the page receives it: the page's `OpenedProfile` in
-/// src/desktop/bindings.ts.
+/// The page's `OpenedProfile` in src/desktop/bindings.ts.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct OpenedProfile {
-    /// The file name, shown by the page as what was loaded.
     pub name: String,
-    /// The file's content. Decoded as the page decodes a dropped file, so a
-    /// signed profile keeps its plist and loses only the binary around it.
+    /// Decoded as the page decodes a dropped file.
     pub text: String,
 }
 
@@ -38,8 +25,6 @@ pub struct OpenedProfile {
 pub struct OpenedProfiles(Mutex<VecDeque<OpenedProfile>>);
 
 impl OpenedProfiles {
-    /// Reads and queues each file. Returns a message for each that could not
-    /// be read, for the user.
     pub fn add(&self, paths: &[PathBuf]) -> Vec<String> {
         let (read, failures): (Vec<_>, Vec<_>) = paths
             .iter()
@@ -51,13 +36,11 @@ impl OpenedProfiles {
         failures.into_iter().filter_map(Result::err).collect()
     }
 
-    /// The oldest queued profile, handed out once.
     pub fn take(&self) -> Option<OpenedProfile> {
         self.0.lock().ok()?.pop_front()
     }
 }
 
-/// The local files among `urls`, which is how macOS passes opened files.
 pub fn file_paths(urls: &[Url]) -> Vec<PathBuf> {
     urls.iter()
         .filter(|url| url.scheme() == "file")
@@ -65,7 +48,6 @@ pub fn file_paths(urls: &[Url]) -> Vec<PathBuf> {
         .collect()
 }
 
-/// Reads `path` for the page, or explains why it could not.
 pub fn read_profile(path: &Path) -> Result<OpenedProfile, String> {
     let name = path.file_name().map_or_else(
         || path.display().to_string(),
@@ -81,8 +63,7 @@ pub fn read_profile(path: &Path) -> Result<OpenedProfile, String> {
         return Err(failed("It is not a file."));
     }
     let mut bytes = Vec::new();
-    // One byte more than allowed, so a file that grew since `metadata` is
-    // still caught without reading all of it.
+    // One byte over the limit, to catch a file that grew since `metadata`.
     file.take(MAX_PROFILE_BYTES + 1)
         .read_to_end(&mut bytes)
         .map_err(|error| failed(&error.to_string()))?;
@@ -118,8 +99,6 @@ mod tests {
 
     #[test]
     fn keeps_the_plist_of_a_signed_profile() {
-        // A signed profile is binary CMS with the plist inside, as the page's
-        // import expects when a file is dropped.
         let folder = tempfile::tempdir().unwrap();
         let path = folder.path().join("signed.mobileconfig");
         let mut bytes = vec![0x30, 0x82, 0xff, 0xfe];

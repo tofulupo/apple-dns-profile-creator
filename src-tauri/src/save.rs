@@ -1,5 +1,3 @@
-//! Saving profiles into a folder, never over a file that is already there.
-
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -9,10 +7,6 @@ const FALLBACK_STEM: &str = "profile";
 /// Far more than anyone needs; stops a runaway loop in a pathological folder.
 const MAX_ATTEMPTS: u32 = 1000;
 
-/// A plain file name ending in `.mobileconfig`, which is what makes macOS
-/// hand the file to System Settings. The name comes from the webview, so any
-/// folder part is dropped rather than trusted, along with control characters
-/// and the colon, which macOS file names cannot hold.
 pub fn profile_filename(requested: &str) -> String {
     let base = requested.rsplit(['/', '\\']).next().unwrap_or_default();
     let cleaned: String = base
@@ -26,7 +20,7 @@ pub fn profile_filename(requested: &str) -> String {
         .and_then(|start| Some((trimmed.get(..start)?, trimmed.get(start..)?)))
         .filter(|(_, extension)| extension.eq_ignore_ascii_case(EXTENSION))
         .map_or(trimmed, |(stem, _)| stem);
-    // A leading dot would hide the file in Finder.
+
     let stem = without_extension.trim().trim_start_matches('.');
     format!(
         "{}{EXTENSION}",
@@ -34,9 +28,6 @@ pub fn profile_filename(requested: &str) -> String {
     )
 }
 
-/// The `n`th name to try for `filename`, numbered the way Finder numbers
-/// copies: `a.mobileconfig`, `a 2.mobileconfig`, `a 3.mobileconfig`...
-/// `filename` must come from `profile_filename`.
 pub fn numbered_filename(filename: &str, n: u32) -> String {
     if n <= 1 {
         return filename.to_owned();
@@ -45,8 +36,6 @@ pub fn numbered_filename(filename: &str, n: u32) -> String {
     format!("{stem} {n}{EXTENSION}")
 }
 
-/// Writes `contents` into `folder` under a name derived from `requested`,
-/// creating the folder if needed. Returns the path written.
 pub fn save_without_overwrite(
     folder: &Path,
     requested: &str,
@@ -57,8 +46,7 @@ pub fn save_without_overwrite(
 
     for n in 1..=MAX_ATTEMPTS {
         let path = folder.join(numbered_filename(&filename, n));
-        // `create_new` makes the existence check and the write one step, so a
-        // file that appears in between is still never replaced.
+
         match OpenOptions::new().write(true).create_new(true).open(&path) {
             Ok(mut file) => {
                 file.write_all(contents)?;
@@ -128,7 +116,7 @@ mod tests {
             profile_filename("Mein Profil ü.mobileconfig"),
             "Mein Profil ü.mobileconfig"
         );
-        // Multi-byte text right before where the extension would start.
+
         assert_eq!(profile_filename("ü"), "ü.mobileconfig");
         assert_eq!(profile_filename("üüüüüüü"), "üüüüüüü.mobileconfig");
     }

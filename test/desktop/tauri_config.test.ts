@@ -6,6 +6,9 @@ import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join, resolve } from "@std/path";
 
+import { PAGES } from "../../pages/pages.ts";
+import { pageHref } from "../../scripts/build.ts";
+
 const here = import.meta.dirname;
 if (here === undefined) throw new Error("Must be loaded from a file URL");
 const SRC_TAURI = resolve(here, "..", "..", "src-tauri");
@@ -22,6 +25,10 @@ interface TauriConfig {
       readonly dragDropEnabled?: boolean;
       readonly titleBarStyle?: string;
       readonly hiddenTitle?: boolean;
+      readonly trafficLightPosition?: {
+        readonly x: number;
+        readonly y: number;
+      };
     }[];
     readonly security: { readonly csp: string | null };
   };
@@ -73,12 +80,23 @@ describe("src-tauri/tauri.conf.json", () => {
       .toEqual([{ label: "main", create: false }]);
   });
 
-  // css/app.css takes the header's top padding off in the app, counting on
-  // the title bar's space.
-  it("shows the page's background in the title bar, without a title", () => {
+  // css/app.css draws the title bar as part of the page, with its own items
+  // and drag region (pages/_layout.html), around the window buttons.
+  it("runs the page under the window buttons, without a title", () => {
     const [window] = config.app.windows;
-    expect(window?.titleBarStyle).toBe("Transparent");
+    expect(window?.titleBarStyle).toBe("Overlay");
     expect(window?.hiddenTitle).toBe(true);
+  });
+
+  // AppKit centres the buttons 2px above trafficLightPosition's y.
+  it("centres the window buttons in the page's title bar", () => {
+    const css = Deno.readTextFileSync(
+      resolve(SRC_TAURI, "..", "css", "app.css"),
+    );
+    const height = Number(/--titlebar:\s*(\d+)px/.exec(css)?.[1]);
+    const y = config.app.windows[0]?.trafficLightPosition?.y ?? NaN;
+    expect(height).toBeGreaterThan(0);
+    expect(y - 2).toBe(height / 2);
   });
 
   // Merged into the app's Info.plist by Tauri.
@@ -137,6 +155,27 @@ describe("src-tauri/tauri.conf.json", () => {
   });
 });
 
+// View > Tool (⌘1) and Profile (⌘2), src-tauri/src/menu.rs.
+describe("the View menu's pages", () => {
+  const menu = Deno.readTextFileSync(join(SRC_TAURI, "src", "menu.rs"));
+  const listed = [
+    ...(/const PAGES[^=]*=\s*\[([\s\S]*?)\];/.exec(menu)?.[1] ?? "")
+      .matchAll(
+        /label: "([^"]*)",\s*file: "([^"]*)",\s*href: "([^"]*)"/g,
+      ),
+  ].map(([, label, file, href]) => ({ label, file, href }));
+
+  it("are the site's pages, with their tab labels, links and order", () => {
+    expect(listed).toEqual(
+      PAGES.map((page) => ({
+        label: page.nav,
+        file: page.file,
+        href: pageHref(page),
+      })),
+    );
+  });
+});
+
 describe("the app's commands", () => {
   const read = (path: string) => Deno.readTextFileSync(join(SRC_TAURI, path));
   const declared = [
@@ -155,10 +194,14 @@ describe("the app's commands", () => {
     expect([...declared].sort()).toEqual([...registered].sort());
   });
 
-  it("are each granted to the page, with nothing else but events", () => {
+  // Besides events, only what the title bar's drag region uses: dragging, and
+  // zooming on a double click.
+  it("are each granted to the page, with nothing else but events and the title bar", () => {
     expect([...capability.permissions].sort()).toEqual(
       [
         "core:event:allow-listen",
+        "core:window:allow-start-dragging",
+        "core:window:allow-internal-toggle-maximize",
         ...declared.map((name) => `allow-${name?.replaceAll("_", "-")}`),
       ].sort(),
     );

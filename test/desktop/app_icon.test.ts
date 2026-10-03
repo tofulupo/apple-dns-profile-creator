@@ -1,8 +1,3 @@
-/**
- * Guards the desktop app icon source: every layer's image exists, both the
- * background and the glyph have a dark look, the glyph stays visible in the
- * Clear and Tinted looks, and the fallback PNG is there.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join, resolve } from "@std/path";
@@ -59,10 +54,6 @@ describe("desktop/AppIcon.icon", () => {
       .toBe(true);
   });
 
-  // Clear and Tinted draw every layer as tinted glass. A flat layer with a
-  // colour meant for Default blends into the background there, so each layer
-  // needs glass and its own colour for the "tinted" appearance, which covers
-  // both looks.
   it("stays visible in the Clear and Tinted looks", () => {
     for (const layer of layers) {
       const glass = layer["glass-specializations"]?.find((entry) =>
@@ -76,8 +67,6 @@ describe("desktop/AppIcon.icon", () => {
     }
   });
 
-  // src-tauri/icons/ is generated from it by `deno task desktop:icon`, for
-  // macOS before 26, which cannot read the .icon.
   it("has the fallback PNG the app's older icon files come from", () => {
     expect(Deno.statSync(join(ROOT, "desktop", "AppIcon.png")).isFile).toBe(
       true,

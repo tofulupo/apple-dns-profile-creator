@@ -1,10 +1,12 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "What the app's own pages may call: the app's commands and listening for its events. Nothing else, so no Tauri or plugin API is reachable from the page.",
+  "description": "What the app's own pages may call: the app's commands, listening for its events, and dragging and zooming the window from the title bar (data-tauri-drag-region). Nothing else, so no other Tauri or plugin API is reachable from the page.",
   "windows": ["main"],
   "permissions": [
     "core:event:allow-listen",
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
     "allow-page-ready",
     "allow-list-signing-identities",
     "allow-save-profile",

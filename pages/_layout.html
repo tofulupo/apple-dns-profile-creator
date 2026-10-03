@@ -56,6 +56,10 @@
   </head>
 
   <body>
+    <!-- The desktop app's title bar, which moves the window like a native one.
+      The protocols, theme switch and version badge sit on it (css/app.css);
+      on the website it is not shown. -->
+    <div class="titlebar" data-tauri-drag-region aria-hidden="true"></div>
     <div class="page">
       <header class="site-header">
         <div class="site-header__top">
@@ -63,7 +67,7 @@
             <span class="brand__mark" aria-hidden="true"><span
                 class="icon icon--app"></span></span>
             <h1 class="brand__name">DNS Profile Creator</h1>
-            <p class="brand__protocols">Encrypted DNS(DoH/DoT)</p>
+            <p class="brand__protocols">Encrypted DNS (DoH/DoT)</p>
           </div>
           <div class="site-header__actions">
             <button type="button" class="theme-switch" id="themeSwitch"

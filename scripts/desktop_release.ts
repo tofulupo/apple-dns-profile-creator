@@ -1,21 +1,9 @@
 #!/usr/bin/env -S deno run --env-file=.env.release --allow-read --allow-write --allow-run --allow-env
-// Builds the desktop app for release: one DMG per Mac architecture, signed
-// with a Developer ID and notarized, ready for a GitHub release and a
-// Homebrew cask. The DMGs and their SHA-256 sums end up in build/desktop/.
-//
-// Settings come from .env.release (git-ignored; see .env.release.example).
-// Tauri signs the app, notarizes it and staples its ticket; this script then
-// signs, notarizes and staples each DMG too, so the download itself passes
-// Gatekeeper, and checks both before calling the build done.
-//
-// `--sign-only` skips notarization, for trying the signing before an App
-// Store Connect API key exists. Such a build only opens on this Mac.
 import { basename, dirname, fromFileUrl, join, resolve } from "@std/path";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const OUT = join(ROOT, "build", "desktop");
 
-/** The Rust targets built, and the architecture each DMG is named after. */
 export const TARGETS = [
   { rust: "aarch64-apple-darwin", arch: "arm64" },
   { rust: "x86_64-apple-darwin", arch: "x86_64" },
@@ -24,7 +12,6 @@ export const TARGETS = [
 const SIGNING = ["APPLE_SIGNING_IDENTITY"];
 const NOTARIZING = ["APPLE_API_ISSUER", "APPLE_API_KEY", "APPLE_API_KEY_PATH"];
 
-/** The settings `env` lacks for this kind of build, by name. */
 export function missingSettings(
   env: Readonly<Record<string, string | undefined>>,
   signOnly: boolean,
@@ -34,10 +21,6 @@ export function missingSettings(
   );
 }
 
-/**
- * Why `identity` cannot sign a release, or null. The ad-hoc identity `-`
- * would build an app that only opens on this Mac.
- */
 export function identityProblem(identity: string): string | null {
   if (identity.trim() === "-") {
     return "APPLE_SIGNING_IDENTITY is `-`, the ad-hoc identity. Set it to " +
@@ -46,10 +29,6 @@ export function identityProblem(identity: string): string | null {
   return null;
 }
 
-/**
- * The DMG's name in the release: no spaces, so it works as is in a URL and a
- * Homebrew cask. `DNS-Profile-Creator-4.0.0-arm64.dmg`.
- */
 export function releaseName(version: string, arch: string): string {
   return `DNS-Profile-Creator-${version}-${arch}.dmg`;
 }
@@ -69,10 +48,6 @@ async function run(command: string, args: string[]): Promise<string> {
   return output;
 }
 
-/**
- * Like `run`, with the output shown as it happens: builds take a while. With
- * `env`, the command gets exactly that environment rather than this one's.
- */
 async function stream(
   command: string,
   args: string[],
@@ -98,7 +73,6 @@ async function readVersion(): Promise<string> {
   return config.version;
 }
 
-/** The one DMG Tauri made for `rust`. */
 async function builtDmg(rust: string): Promise<string> {
   const folder = join(
     ROOT,
@@ -146,7 +120,6 @@ async function release(signOnly: boolean): Promise<void> {
   if (problem !== null) throw new Error(problem);
   if (!signOnly) await Deno.stat(env["APPLE_API_KEY_PATH"] ?? "");
 
-  // Without the API key's settings, Tauri signs but does not notarize.
   const buildEnv = signOnly
     ? Object.fromEntries(
       Object.entries(env).filter(([name]) => !NOTARIZING.includes(name)),
@@ -190,8 +163,6 @@ async function release(signOnly: boolean): Promise<void> {
       "DNS Profile Creator.app",
     );
 
-    // Signed here whatever Tauri did, with the secure timestamp notarization
-    // requires.
     await run("codesign", [
       "--force",
       "--sign",
@@ -210,7 +181,6 @@ async function release(signOnly: boolean): Promise<void> {
         "--wait",
       ]);
       await run("xcrun", ["stapler", "staple", dmg]);
-      // What Gatekeeper says on another Mac: the app, and the download.
       await run("spctl", ["--assess", "--type", "execute", app]);
       await run("spctl", [
         "--assess",

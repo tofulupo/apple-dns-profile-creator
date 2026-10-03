@@ -1,7 +1,3 @@
-//! Signing profiles with a Keychain identity through macOS's own `security`
-//! tool. The private key never leaves the Keychain; the first time, macOS
-//! asks the user whether `security` may use it.
-
 use std::collections::HashMap;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
@@ -12,7 +8,6 @@ use serde::Serialize;
 
 use crate::certificate::{pem_to_der, subject_key_id};
 
-/// An absolute path, so nothing earlier on PATH can stand in for it.
 const SECURITY: &str = "/usr/bin/security";
 
 pub struct RunResult {
@@ -21,14 +16,10 @@ pub struct RunResult {
     pub stderr: String,
 }
 
-/// Runs `security` with the given arguments, feeding it stdin when given:
-/// `run_security`, or a fake in tests.
 pub trait RunSecurity: Fn(&[&str], Option<&[u8]>) -> io::Result<RunResult> + Sync {}
 
 impl<F: Fn(&[&str], Option<&[u8]>) -> io::Result<RunResult> + Sync> RunSecurity for F {}
 
-/// Whether macOS trusts a certificate's chain. Expired certificates are never
-/// offered, so they have no status.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum IdentityStatus {
@@ -36,32 +27,24 @@ pub enum IdentityStatus {
     Untrusted,
 }
 
-/// A Keychain certificate with its private key, usable for signing: the page's
-/// `SigningIdentity` in src/desktop/bindings.ts.
+/// The page's `SigningIdentity` in src/desktop/bindings.ts.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SigningIdentity {
-    /// SHA-1 fingerprint of the certificate: unique, unlike the name.
     pub id: String,
-    /// The certificate's name as Keychain Access shows it.
     pub name: String,
     pub status: IdentityStatus,
 }
 
-/// A line of `security find-identity`, before any filtering.
 #[derive(Debug, PartialEq, Eq)]
 pub struct KeychainIdentity {
     pub sha1: String,
     pub name: String,
-    /// The `CSSMERR_…` code macOS reports, None for a trusted identity.
     pub error: Option<String>,
 }
 
-/// How `security cms -S` picks the identity.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Selector {
-    /// `-Z`: the certificate's Subject Key Identifier.
     KeyId(String),
-    /// `-N`: the certificate's name, only when no other identity shares it.
     Name(String),
 }
 
@@ -80,17 +63,19 @@ pub struct Usable {
     pub selector: Selector,
 }
 
-/// Certificates that must not be offered: they can no longer be trusted.
 const UNUSABLE: [&str; 3] = [
     "CSSMERR_TP_CERT_EXPIRED",
     "CSSMERR_TP_CERT_NOT_VALID_YET",
     "CSSMERR_TP_CERT_REVOKED",
 ];
 
+/// A `security find-identity` line: `1) <SHA-1> "<name>" (<CSSMERR_…>)`, the
+/// error optional.
 static IDENTITY_LINE: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r#"^\s*\d+\)\s+([0-9A-F]{40})\s+"(.*)"(?:\s+\((\w+)\))?\s*$"#).unwrap()
 });
 
+/// A `security find-certificate -Z -p` entry: its SHA-1 and the PEM block after it.
 static CERTIFICATE_BLOCK: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"SHA-1 hash: ([0-9A-F]{40})\s+(-----BEGIN CERTIFICATE-----(?s:.*?)-----END CERTIFICATE-----)",
@@ -98,8 +83,6 @@ static CERTIFICATE_BLOCK: LazyLock<Regex> = LazyLock::new(|| {
     .unwrap()
 });
 
-/// Reads `security find-identity -p basic`. Only the first section counts:
-/// the "Valid identities only" section after it repeats a subset.
 pub fn parse_find_identity(output: &str) -> Vec<KeychainIdentity> {
     let mut found: Vec<KeychainIdentity> = Vec::new();
     for line in output.lines() {
@@ -122,8 +105,6 @@ pub fn parse_find_identity(output: &str) -> Vec<KeychainIdentity> {
     found
 }
 
-/// Reads `security find-certificate -a -Z -p`: each certificate's SHA-1 and
-/// its Subject Key Identifier, if it has one.
 pub fn parse_find_certificate(output: &str) -> HashMap<String, Option<String>> {
     CERTIFICATE_BLOCK
         .captures_iter(output)
@@ -134,10 +115,6 @@ pub fn parse_find_certificate(output: &str) -> HashMap<String, Option<String>> {
         .collect()
 }
 
-/// The identities that can be offered, with how to select each. The Subject
-/// Key Identifier is preferred, since names repeat (renewed certificates keep
-/// theirs); without one, a name that is unique among all identities, expired
-/// ones included, is used instead, and an identity with neither is left out.
 pub fn usable_identities(
     all: &[KeychainIdentity],
     key_ids: &HashMap<String, Option<String>>,
@@ -187,7 +164,6 @@ pub fn usable_identities(
     usable
 }
 
-/// Runs `security` with `args`, feeding it `stdin` when given.
 pub fn run_security(args: &[&str], stdin: Option<&[u8]>) -> io::Result<RunResult> {
     let mut child = Command::new(SECURITY)
         .args(args)
@@ -200,9 +176,7 @@ pub fn run_security(args: &[&str], stdin: Option<&[u8]>) -> io::Result<RunResult
         .stderr(Stdio::piped())
         .spawn()?;
     let pipe = child.stdin.take();
-    // Written from another thread while this one collects the output, so a
-    // full stdout pipe cannot stall the write. A failed write shows in the
-    // exit status, since `security` then reads a truncated profile.
+
     let output = std::thread::scope(|scope| {
         if let (Some(input), Some(mut pipe)) = (stdin, pipe) {
             scope.spawn(move || {
@@ -223,7 +197,6 @@ fn last_line(text: &str) -> &str {
     line.strip_prefix("security:").unwrap_or(line).trim_start()
 }
 
-/// A signed profile, and the name of the certificate that signed it.
 pub struct Signature {
     pub signed: Vec<u8>,
     pub name: String,
@@ -233,7 +206,6 @@ pub struct Keychain<R> {
     run: R,
 }
 
-/// The Keychain as `security` sees it.
 pub fn keychain() -> Keychain<impl RunSecurity> {
     Keychain::new(run_security)
 }
@@ -270,7 +242,6 @@ impl<R: RunSecurity> Keychain<R> {
         ))
     }
 
-    /// Identities in the Keychain that can sign, expired ones left out.
     pub fn list(&self) -> Result<Vec<SigningIdentity>, String> {
         Ok(self
             .inventory()?
@@ -279,10 +250,7 @@ impl<R: RunSecurity> Keychain<R> {
             .collect())
     }
 
-    /// Signs `xml` with the listed identity `id`.
     pub fn sign(&self, xml: &str, id: &str) -> Result<Signature, String> {
-        // Looked up again rather than trusting the page: the id must still name
-        // a usable identity, and only the selector found here reaches `security`.
         let Some(Usable { identity, selector }) = self
             .inventory()?
             .into_iter()
@@ -313,8 +281,6 @@ impl<R: RunSecurity> Keychain<R> {
             return Err(refused(last_line(&signed.stderr)));
         }
 
-        // Decoded with Apple's own reader: what gets saved must hold exactly
-        // the profile that was built.
         let checks_out = (self.run)(&["cms", "-D"], Some(&signed.stdout))
             .is_ok_and(|decoded| decoded.success && decoded.stdout == xml.as_bytes());
         if !checks_out {
@@ -340,7 +306,6 @@ mod tests {
     const C: &str = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
     const D: &str = "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD";
 
-    /// The shape `security find-identity -p basic` prints on macOS.
     fn find_identity() -> String {
         format!(
             r#"
@@ -467,8 +432,6 @@ Policy: X.509 Basic
             Selector::Name("Only one".into())
         );
 
-        // An expired namesake would make `-N` ambiguous, so the identity is
-        // left out rather than risk signing with the wrong certificate.
         let clash = [
             identity(A, "Twin", None),
             identity(D, "Twin", Some("CSSMERR_TP_CERT_EXPIRED")),
@@ -490,11 +453,9 @@ Policy: X.509 Basic
     }
 
     type Answer = fn(&[&str], Option<&[u8]>) -> Option<RunResult>;
-    /// A recorded call: the arguments, and what was written to stdin.
+
     type Call = (Vec<String>, Option<Vec<u8>>);
 
-    /// A fake `security` that records its calls and answers from a script;
-    /// the Keychain listing when the script has no answer.
     struct FakeSecurity {
         calls: Mutex<Vec<Call>>,
         answer: Answer,
@@ -558,8 +519,7 @@ Policy: X.509 Basic
     #[test]
     fn lists_usable_identities_without_their_selectors() {
         let security = FakeSecurity::new(|_, _| None);
-        // The expired one is hidden; "Company Signing" and the legacy one have
-        // no Subject Key Identifier here but unique names, so they stay.
+
         let names: Vec<_> = security
             .keychain()
             .list()
@@ -667,8 +627,6 @@ Policy: X.509 Basic
 
     #[test]
     fn feeds_stdin_to_the_real_tool_and_reads_its_output() {
-        // `security` itself, without touching a keychain: an unknown command
-        // fails, with its complaint on stderr.
         let result = run_security(&["no-such-command"], Some(b"ignored")).unwrap();
         assert!(!result.success);
         assert!(!result.stderr.is_empty());

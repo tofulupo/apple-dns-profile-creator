@@ -1,7 +1,3 @@
-/**
- * Tests for `deno task desktop:release`: the checks it makes before a long
- * build, and the names the DMGs are published under.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
@@ -35,7 +31,6 @@ describe("missingSettings", () => {
       .toEqual([]);
   });
 
-  // What an unfilled line in .env.release gives.
   it("counts a blank value as missing", () => {
     expect(missingSettings({ ...complete, APPLE_API_KEY: " " }, false))
       .toEqual(["APPLE_API_KEY"]);
@@ -53,7 +48,6 @@ describe("identityProblem", () => {
 });
 
 describe("releaseName", () => {
-  // Spaces would have to be escaped in the release URL and the cask.
   it("names each DMG by version and architecture, without spaces", () => {
     expect(TARGETS.map(({ arch }) => releaseName("4.0.0", arch))).toEqual([
       "DNS-Profile-Creator-4.0.0-arm64.dmg",

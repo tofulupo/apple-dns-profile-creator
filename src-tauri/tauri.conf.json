@@ -17,10 +17,12 @@
         "title": "DNS Profile Creator",
         "width": 900,
         "height": 840,
+        "minWidth": 720,
         "visible": false,
         "dragDropEnabled": false,
-        "titleBarStyle": "Transparent",
+        "titleBarStyle": "Overlay",
         "hiddenTitle": true,
+        "trafficLightPosition": { "x": 20, "y": 28 },
         "acceptFirstMouse": true,
         "allowLinkPreview": false
       }

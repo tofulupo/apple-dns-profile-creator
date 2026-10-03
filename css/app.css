@@ -436,11 +436,171 @@ code {
   padding: 2rem 0 1.25rem;
 }
 
-/* The app's title bar is transparent (src-tauri/tauri.conf.json), showing the
-   page's background with only the window buttons in it, so it already gives
-   the header the space above it. */
+/* The app's unified title bar. The page runs under the window buttons
+   (titleBarStyle Overlay, src-tauri/tauri.conf.json), and the bar is part of
+   it: the page's own background, flat, with the tabs in the middle and the
+   theme switch and version at the far end, as in a macOS toolbar. That
+   leaves the header to the name and the protocols under it.
+
+   --titlebar must stay twice the window buttons' centre, which AppKit puts
+   2px above trafficLightPosition's y of 28: 26px from the top. Pixels, since
+   AppKit's are. */
+.titlebar {
+  display: none;
+}
+
+:root[data-app="desktop"] {
+  --titlebar: 52px;
+  --titlebar-end: 20px;
+  /* The tabs' segments, equal like a macOS segmented control's, and wide
+     enough for "Profile (9+)". */
+  --segment: 7.5rem;
+
+  /* Focus and in-page jumps stop clear of the bar. */
+  scroll-padding-top: var(--titlebar);
+}
+
+/* The drag region (data-tauri-drag-region), under the items on it. */
+:root[data-app="desktop"] .titlebar {
+  display: block;
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 10;
+  height: var(--titlebar);
+  background: var(--bg);
+  border-bottom: 1px solid transparent;
+}
+
+/* A hairline once the page scrolls under the bar, as macOS draws it; at the
+   top the bar and page stay one surface. */
+@supports (animation-timeline: scroll()) {
+  :root[data-app="desktop"] .titlebar {
+    animation: titlebar-edge linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 1rem;
+  }
+}
+
+@keyframes titlebar-edge {
+  to {
+    border-bottom-color: var(--border);
+  }
+}
+
+:root[data-app="desktop"] .site-header__actions {
+  position: fixed;
+  top: 0;
+  right: var(--titlebar-end);
+  z-index: 11;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.15rem;
+  height: var(--titlebar);
+  padding-top: 0;
+}
+
+/* Flat on the bar, without fill or border, so its edge stays clean; a fill
+   only shows under the pointer, as a toolbar button's does. */
+:root[data-app="desktop"] .theme-switch,
+:root[data-app="desktop"] .site-header__actions .version {
+  height: 1.75rem;
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--radius-sm);
+}
+
+:root[data-app="desktop"] .theme-switch:hover,
+:root[data-app="desktop"] .site-header__actions .version:hover {
+  background: var(--surface);
+  border-color: transparent;
+}
+
+:root[data-app="desktop"] .site-header__actions .version {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.45rem;
+}
+
+/* The tabs, centred in the window as a segmented control, as tall as the
+   switch and version beside them. The current page keeps its
+   solid accent pill (.tab[aria-current="page"]); View > Tool (⌘1) and
+   Profile (⌘2) switch between them, src-tauri/src/menu.rs. */
+:root[data-app="desktop"] .tabs {
+  position: fixed;
+  top: calc((var(--titlebar) - 1.75rem) / 2);
+  left: 50%;
+  z-index: 11;
+  height: 1.75rem;
+  gap: 2px;
+  padding: 2px;
+  margin: 0;
+  border-radius: 999px;
+  box-shadow: none;
+  translate: -50% 0;
+}
+
+/* A width rather than a flex basis, which WebKit leaves out of the
+   container's own width. */
+:root[data-app="desktop"] .tab {
+  flex: none;
+  width: var(--segment);
+  gap: 0.35rem;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+:root[data-app="desktop"] .tab .icon {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+/* With the bar carrying the rest, the header holds only the name and the
+   protocols. */
 :root[data-app="desktop"] .site-header {
-  padding-top: 0.5rem;
+  padding-top: calc(var(--titlebar) + 1rem);
+  padding-bottom: 1.75rem;
+}
+
+/* The name and the protocols as one block, set off by a solid bar in the
+   accent down both lines, instead of the app's mark: the window and the Dock
+   already show the icon. The bar's width and gap, and the protocols' size,
+   follow the name's. */
+:root[data-app="desktop"] .brand {
+  --name: clamp(2.1rem, 1rem + 3.2vw, 3rem);
+
+  grid-template-columns: calc(var(--name) * 0.32) minmax(0, 1fr);
+  column-gap: calc(var(--name) * 0.36);
+}
+
+/* Past the capitals' top and the protocols' baseline, rather than flush. */
+:root[data-app="desktop"] .brand::before {
+  content: "";
+  grid-row: 1 / span 2;
+  align-self: stretch;
+  margin-block: calc(var(--name) * -0.12) calc(var(--name) * -0.1);
+  background: var(--accent);
+}
+
+:root[data-app="desktop"] .brand__mark {
+  display: none;
+}
+
+:root[data-app="desktop"] .brand__name {
+  font-size: var(--name);
+  line-height: 1;
+}
+
+/* A footnote to the name, in the palette's muted grey, so the bar and the
+   tabs' accent pill stay the strongest marks. Never under 14px. */
+:root[data-app="desktop"] .brand__protocols {
+  grid-column: 2;
+  margin-top: calc(var(--name) * 0.16);
+  color: var(--muted);
+  font-size: max(0.875rem, calc(var(--name) * 0.34));
+  font-weight: 400;
 }
 
 .tabs {

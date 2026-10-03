@@ -1,11 +1,5 @@
-//! The window's size between launches, in logical pixels.
-//!
-//! The same file and format as earlier versions, built with `deno desktop`,
-//! so an existing saved size carries over. Size only, not position: a saved position can point at a display that is
-//! no longer connected, and the window would then open out of sight.
-//!
-//! Not tauri-plugin-window-state: it saves physical pixels, so a size saved
-//! on a Retina display opens twice as large on a standard one.
+//! The same file and format as the earlier `deno desktop` builds, so a saved
+//! size carries over.
 
 use std::fs;
 use std::io;
@@ -14,15 +8,12 @@ use std::path::Path;
 use serde::Serialize;
 use serde_json::Value;
 
-/// In the app's config folder, `~/Library/Application Support/<identifier>`.
 pub const FILENAME: &str = "window.json";
 
 /// Keeps a corrupt or hand-edited file from opening a sliver or a giant.
 const MIN_DIMENSION: f64 = 240.0;
 const MAX_DIMENSION: f64 = 10_000.0;
 
-/// Only made through `new` or `load`, so it is always in range and a size
-/// that would be refused on loading can never be saved.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct WindowSize {
     width: u32,
@@ -36,7 +27,6 @@ fn dimension(value: f64) -> Option<u32> {
 }
 
 impl WindowSize {
-    /// Rounded to whole pixels; None when either side is out of range.
     pub fn new(width: f64, height: f64) -> Option<Self> {
         Some(Self {
             width: dimension(width)?,
@@ -48,7 +38,6 @@ impl WindowSize {
         tauri::LogicalSize::new(self.width, self.height)
     }
 
-    /// Not a derived `Deserialize`: that would also accept `[900, 840]`.
     fn parse(text: &str) -> Option<Self> {
         let Value::Object(saved) = serde_json::from_str(text).ok()? else {
             return None;
@@ -60,14 +49,10 @@ impl WindowSize {
     }
 }
 
-/// The size saved at `path`, or None when there is none or it is unusable.
-/// Never fails: a bad file must not stop the app from starting.
 pub fn load(path: &Path) -> Option<WindowSize> {
     WindowSize::parse(&fs::read_to_string(path).ok()?)
 }
 
-/// Saves `size` to `path`, creating its folder. Written via a temporary file,
-/// so a crash never leaves half a file behind.
 pub fn save(path: &Path, size: WindowSize) -> io::Result<()> {
     if let Some(folder) = path.parent() {
         fs::create_dir_all(folder)?;

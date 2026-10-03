@@ -1,6 +1,6 @@
 //! The menu bar: the standard macOS menus, plus File > Open Profile… and Save,
-//! View > Appearance, a link to the source code in Help, and the context menu
-//! of the profile page's cards.
+//! View > Tool (⌘1), Profile (⌘2) and Appearance, a link to the source code in
+//! Help, and the context menu of the profile page's cards.
 //!
 //! The page decides what Save does and which appearance is chosen, since it
 //! owns the form, the list and the theme switch; it keeps the menu in step
@@ -11,7 +11,7 @@ use tauri::menu::{
     AboutMetadata, CheckMenuItem, CheckMenuItemBuilder, HELP_SUBMENU_ID, Menu, MenuBuilder,
     MenuEvent, MenuItem, MenuItemBuilder, SubmenuBuilder, WINDOW_SUBMENU_ID,
 };
-use tauri::{AppHandle, Emitter, Manager, WebviewWindow, Wry};
+use tauri::{AppHandle, Emitter, Manager, Url, WebviewWindow, Wry};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 
@@ -37,6 +37,47 @@ const SAVE: &str = "save";
 const SOURCE_CODE: &str = "source-code";
 const CARD_EDIT: &str = "card-edit";
 const CARD_DELETE: &str = "card-delete";
+
+/// One of the app's pages, as View lists it.
+struct Page {
+    menu_id: &'static str,
+    label: &'static str,
+    /// The page's file in dist/.
+    file: &'static str,
+    /// Its address relative to the site root, as `pageHref` in
+    /// scripts/build.ts links it.
+    href: &'static str,
+}
+
+/// The same pages, labels and order as `PAGES` in pages/pages.ts; a test
+/// checks both. The first is ⌘1, the next ⌘2.
+const PAGES: [Page; 2] = [
+    Page {
+        menu_id: "page-tool",
+        label: "Tool",
+        file: "index.html",
+        href: "./",
+    },
+    Page {
+        menu_id: "page-profile",
+        label: "Profile",
+        file: "finalize.html",
+        href: "finalize.html",
+    },
+];
+
+fn page_by_menu_id(id: &str) -> Option<usize> {
+    PAGES.iter().position(|page| page.menu_id == id)
+}
+
+/// Which of `PAGES` `url` shows, the start page also at the site root.
+fn page_at(url: &Url) -> Option<usize> {
+    let file = match url.path_segments()?.next_back()? {
+        "" => "index.html",
+        file => file,
+    };
+    PAGES.iter().position(|page| page.file == file)
+}
 
 /// The page's theme switch, as View > Appearance offers it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -87,6 +128,8 @@ impl Appearance {
 struct MenuItems {
     save: MenuItem<Wry>,
     appearance: Vec<(Appearance, CheckMenuItem<Wry>)>,
+    /// In the order of `PAGES`.
+    pages: Vec<CheckMenuItem<Wry>>,
 }
 
 pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
@@ -153,7 +196,23 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     for (_, item) in &appearance {
         appearance_menu = appearance_menu.item(item);
     }
-    let view = SubmenuBuilder::new(app, "View")
+    // Checked for the page shown, as each page loads (`show_page`).
+    let pages = PAGES
+        .iter()
+        .enumerate()
+        .map(|(index, page)| {
+            CheckMenuItemBuilder::with_id(page.menu_id, page.label)
+                .accelerator(format!("CmdOrCtrl+{}", index + 1))
+                .checked(index == 0)
+                .build(app)
+        })
+        .collect::<tauri::Result<Vec<_>>>()?;
+    let mut view = SubmenuBuilder::new(app, "View");
+    for item in &pages {
+        view = view.item(item);
+    }
+    let view = view
+        .separator()
         .item(&appearance_menu.build()?)
         .separator()
         .fullscreen()
@@ -170,7 +229,11 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .text(SOURCE_CODE, format!("{} on GitHub", info.name))
         .build()?;
 
-    app.manage(MenuItems { save, appearance });
+    app.manage(MenuItems {
+        save,
+        appearance,
+        pages,
+    });
     MenuBuilder::new(app)
         .items(&[&app_menu, &file, &edit, &view, &window, &help])
         .build()
@@ -185,7 +248,9 @@ pub fn handle(app: &AppHandle, event: &MenuEvent) {
         CARD_EDIT => emit(app, CARD_MENU_EVENT, "edit"),
         CARD_DELETE => emit(app, CARD_MENU_EVENT, "delete"),
         id => {
-            if let Some(appearance) = Appearance::from_menu_id(id) {
+            if let Some(page) = page_by_menu_id(id) {
+                go_to_page(app, page);
+            } else if let Some(appearance) = Appearance::from_menu_id(id) {
                 // Applied here too, so the check marks are right even if the
                 // page does not answer; it confirms with `set_appearance`.
                 apply_appearance(app, appearance);
@@ -211,6 +276,49 @@ fn apply_appearance(app: &AppHandle, appearance: Appearance) {
         }
     }
     app.set_theme(appearance.theme());
+}
+
+/// Opens one of `PAGES` in the window, as its tab would.
+fn go_to_page(app: &AppHandle, page: usize) {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
+        return;
+    };
+    let Ok(current) = window.url() else {
+        return;
+    };
+    // A check item also toggles itself when chosen; the current page's stays
+    // checked, and another's until its page loads.
+    if page_at(&current) == Some(page) {
+        check_page(app, page);
+        return;
+    }
+    let target = current.join(PAGES[page].href);
+    if let Err(error) = target
+        .map_err(|error| error.to_string())
+        .and_then(|url| window.navigate(url).map_err(|error| error.to_string()))
+    {
+        eprintln!("Could not open {}: {error}", PAGES[page].label);
+    }
+}
+
+/// Checks the page `url` shows in View, if it is one of `PAGES`. Called as
+/// each of the app's pages loads, however it was reached.
+pub fn show_page(app: &AppHandle, url: &Url) {
+    if let Some(page) = page_at(url) {
+        check_page(app, page);
+    }
+}
+
+fn check_page(app: &AppHandle, page: usize) {
+    // Not managed yet while the menu is still being built.
+    let Some(items) = app.try_state::<MenuItems>() else {
+        return;
+    };
+    for (index, item) in items.pages.iter().enumerate() {
+        if let Err(error) = item.set_checked(index == page) {
+            eprintln!("Could not check {}: {error}", PAGES[index].label);
+        }
+    }
 }
 
 /// Renames File > Save for what the page's main button does, and enables it
@@ -307,6 +415,38 @@ mod tests {
             );
         }
         assert_eq!(Appearance::from_menu_id(SAVE), None);
+    }
+
+    fn page(url: &str) -> Option<&'static str> {
+        page_at(&Url::parse(url).unwrap()).map(|index| PAGES[index].label)
+    }
+
+    #[test]
+    fn knows_each_page_by_its_address() {
+        assert_eq!(page("tauri://localhost/"), Some("Tool"));
+        assert_eq!(page("tauri://localhost/index.html"), Some("Tool"));
+        assert_eq!(page("tauri://localhost/finalize.html"), Some("Profile"));
+        assert_eq!(page("http://localhost:1430/finalize.html"), Some("Profile"));
+        assert_eq!(page("tauri://localhost/finalize.html?x#y"), Some("Profile"));
+        assert_eq!(page("tauri://localhost/other.html"), None);
+    }
+
+    #[test]
+    fn links_each_page_from_the_others() {
+        let profile = Url::parse("tauri://localhost/finalize.html").unwrap();
+        for (index, item) in PAGES.iter().enumerate() {
+            let url = profile.join(item.href).unwrap();
+            assert_eq!(page_at(&url), Some(index), "{}", item.label);
+        }
+    }
+
+    #[test]
+    fn finds_each_page_by_its_menu_id_only() {
+        for (index, item) in PAGES.iter().enumerate() {
+            assert_eq!(page_by_menu_id(item.menu_id), Some(index));
+        }
+        assert_eq!(page_by_menu_id(SAVE), None);
+        assert_eq!(page_by_menu_id("appearance-dark"), None);
     }
 
     #[test]
