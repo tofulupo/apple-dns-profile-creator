@@ -273,7 +273,7 @@ function card(config: DnsConfig): HTMLElement {
   if (config.excludedWifi.length > 0) {
     body.append(
       row(
-        "Skip for SSiD",
+        "Skip for SSID",
         config.excludedWifi.map((ssid) => `“${ssid}”`).join(", "),
         true,
       ),
