@@ -5,7 +5,6 @@ import { join, resolve } from "@std/path";
 import {
   copyFonts,
   fontUrls,
-  missingFonts,
   servedFontName,
   withoutMissingFonts,
 } from "../../scripts/build.ts";
@@ -74,17 +73,11 @@ describe("copyFonts", () => {
   });
 });
 
-describe("missingFonts", () => {
-  const css = `@font-face{src:url("fonts/A.woff2")}` +
-    `@font-face{src:url(fonts/B.woff2) format("woff2")}`;
-
-  it("lists the stylesheet's font files that were not shipped", () => {
+describe("fontUrls", () => {
+  it("lists the stylesheet's font files", () => {
+    const css = `@font-face{src:url("fonts/A.woff2")}` +
+      `@font-face{src:url(fonts/B.woff2) format("woff2")}`;
     expect(fontUrls(css)).toEqual(["A.woff2", "B.woff2"]);
-    expect(missingFonts(css, ["A.woff2", "A-OFL.txt"])).toEqual(["B.woff2"]);
-  });
-
-  it("is empty when everything was shipped", () => {
-    expect(missingFonts(css, ["A.woff2", "B.woff2"])).toEqual([]);
   });
 });
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env -S deno run --env-file=.env.release --allow-read --allow-write --allow-run --allow-env
 import { basename, dirname, fromFileUrl, join, resolve } from "@std/path";
+import { FONT_SUBSET, SOEHNE_FACES } from "./fonts.ts";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const OUT = join(ROOT, "build", "desktop");
@@ -27,6 +28,20 @@ export function identityProblem(identity: string): string | null {
       "your Developer ID Application certificate.";
   }
   return null;
+}
+
+export function missingSoehne(subset: readonly string[]): string[] {
+  return Object.values(SOEHNE_FACES).filter((file) => !subset.includes(file));
+}
+
+async function filesIn(folder: string): Promise<string[]> {
+  const names: string[] = [];
+  try {
+    for await (const entry of Deno.readDir(folder)) names.push(entry.name);
+  } catch (error) {
+    if (!(error instanceof Deno.errors.NotFound)) throw error;
+  }
+  return names;
 }
 
 export function releaseName(version: string, arch: string): string {
@@ -119,6 +134,13 @@ async function release(signOnly: boolean): Promise<void> {
   const problem = identityProblem(identity);
   if (problem !== null) throw new Error(problem);
   if (!signOnly) await Deno.stat(env["APPLE_API_KEY_PATH"] ?? "");
+  const fonts = missingSoehne(await filesIn(FONT_SUBSET));
+  if (fonts.length > 0) {
+    throw new Error(
+      `Missing in fonts/subset/: ${fonts.join(", ")}. Put the Söhne .woff2 ` +
+        "files in fonts/source/ and run `deno task fonts`.",
+    );
+  }
 
   const buildEnv = signOnly
     ? Object.fromEntries(

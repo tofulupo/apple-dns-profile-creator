@@ -3,7 +3,7 @@
   "license": "BSD-3-Clause",
   "tasks": {
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
-    "build": "deno run --allow-read --allow-write --allow-run --allow-env=INDEXNOW_KEY,TAURI_ENV_PLATFORM,TAURI_ENV_DEBUG,R2_ENDPOINT,R2_ACCOUNT_ID,R2_BUCKET,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY --allow-net=*.r2.cloudflarestorage.com scripts/build.ts",
+    "build": "deno run --allow-read --allow-write --allow-run --allow-env=INDEXNOW_KEY,TAURI_ENV_PLATFORM,R2_ENDPOINT,R2_ACCOUNT_ID,R2_BUCKET,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY --allow-net=*.r2.cloudflarestorage.com scripts/build.ts",
     "fonts": "deno run --allow-read --allow-write --allow-run scripts/fonts.ts",
     "preview": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts",
     "desktop": "deno task tauri build",

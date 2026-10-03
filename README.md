@@ -28,7 +28,7 @@ git clone git@github.com:tofulupo/apple-dns-profile-creator.git
 
 > [!NOTE]
 > Requires [Deno](https://deno.com) 2.9 or newer. The desktop app also needs
-> [Rust](https://rustup.rs) and Xcode 26 or newer.
+> [Rust](https://rustup.rs) 1.85 or newer and Xcode 26 or newer.
 
 ```sh
 deno task dev              # build, watch and serve on the LAN
@@ -217,7 +217,7 @@ deno task desktop
 
 Packages `dist/` into a macOS application,
 `src-tauri/target/release/bundle/macos/DNS Profile Creator.app`, using
-[Tauri 2](https://tauri.app) - about 7 MB, with the system's own webview. The
+[Tauri 2](https://tauri.app) - about 6 MB, with the system's own webview. The
 pages load from inside the app; nothing listens on the network.
 
 **Download profile** saves straight to `~/Downloads`, never over an existing
@@ -248,10 +248,20 @@ Devices show a signed profile as "Verified" only if they trust the certificate's
 issuer. A self-signed certificate shows as "Not Verified" unless it is installed
 and trusted on each device.
 
-**The bundle is only ad-hoc signed**, which is fine locally but not
-distributable. Set `bundle.macOS.signingIdentity` in
-[`src-tauri/tauri.conf.json`](src-tauri/tauri.conf.json) to a Developer ID to
-produce something notarizable.
+To build a release yourself, check out its tag and package the app:
+
+```sh
+git clone https://github.com/tofulupo/apple-dns-profile-creator.git
+cd apple-dns-profile-creator
+git checkout v4.0.0-rc.1
+deno task desktop
+```
+
+The app is signed ad hoc, which is enough to run it on the Mac that built it.
+Without the licensed Söhne files in `fonts/subset/` it uses a fallback font with
+the same metrics, and nothing else changes. Signed and notarized builds come
+from `deno task desktop:release`, which needs a Developer ID and the Söhne
+files.
 
 ### Profile signing
 

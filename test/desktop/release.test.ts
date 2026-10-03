@@ -4,6 +4,7 @@ import { expect } from "@std/expect";
 import {
   identityProblem,
   missingSettings,
+  missingSoehne,
   releaseName,
   TARGETS,
 } from "../../scripts/desktop_release.ts";
@@ -44,6 +45,23 @@ describe("identityProblem", () => {
 
   it("accepts a certificate", () => {
     expect(identityProblem(complete.APPLE_SIGNING_IDENTITY)).toBeNull();
+  });
+});
+
+describe("missingSoehne", () => {
+  it("wants every Söhne weight, so a release never falls back", () => {
+    expect(missingSoehne([])).toEqual([
+      "Soehne-Buch.woff2",
+      "Soehne-Kraeftig.woff2",
+      "Soehne-Halbfett.woff2",
+    ]);
+    expect(
+      missingSoehne([
+        "Soehne-Buch.woff2",
+        "Soehne-Kraeftig.woff2",
+        "Soehne-Halbfett.woff2",
+      ]),
+    ).toEqual([]);
   });
 });
 

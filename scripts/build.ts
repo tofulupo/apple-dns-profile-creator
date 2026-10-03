@@ -199,13 +199,6 @@ export function withoutMissingFonts(
   );
 }
 
-export function missingFonts(
-  css: string,
-  shipped: readonly string[],
-): string[] {
-  return fontUrls(css).filter((file) => !shipped.includes(file));
-}
-
 async function fingerprint(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
   return Array.from(
@@ -585,15 +578,6 @@ export async function build(): Promise<void> {
   const shipped = await copyFonts(FONTS, fonts);
   if (desktop) {
     shipped.push(...await copyFonts(FONT_SUBSET, fonts));
-    const missing = missingFonts(fullCss, shipped).filter((file) =>
-      file !== BERKELEY_MONO
-    );
-    if (missing.length > 0) {
-      const message = `Fonts missing from the app: ${missing.join(", ")}. ` +
-        "Put the Söhne .woff2 files in fonts/source/ and run `deno task fonts`.";
-      if (Deno.env.get("TAURI_ENV_DEBUG") !== "true") throw new Error(message);
-      console.warn(`\n\u26a0 ${message}\n`);
-    }
   } else {
     const config = r2Config((name) => Deno.env.get(name));
     if (config !== undefined) {
