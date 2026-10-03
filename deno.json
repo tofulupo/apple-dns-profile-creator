@@ -1,5 +1,5 @@
 {
-  "version": "3.13.0",
+  "version": "3.13.1",
   "license": "BSD-3-Clause",
   "tasks": {
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
