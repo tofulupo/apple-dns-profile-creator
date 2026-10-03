@@ -1,6 +1,6 @@
 //! The menu bar: the standard macOS menus, plus File > Open Profile… and Save,
-//! View > Appearance, links to the website and the source code in Help, and
-//! the context menu of the profile page's cards.
+//! View > Appearance, a link to the source code in Help, and the context menu
+//! of the profile page's cards.
 //!
 //! The page decides what Save does and which appearance is chosen, since it
 //! owns the form, the list and the theme switch; it keeps the menu in step
@@ -17,8 +17,6 @@ use tauri_plugin_opener::OpenerExt;
 
 use crate::MAIN_WINDOW;
 
-/// The same as `SITE_URL` in pages/pages.ts.
-const SITE_URL: &str = "https://apple.mobileconfig.deno.net/";
 /// The same as `REPOSITORY_URL` in scripts/build.ts.
 const REPOSITORY_URL: &str = "https://github.com/tofulupo/apple-dns-profile-creator";
 
@@ -35,7 +33,7 @@ pub const CARD_MENU_EVENT: &str = "card-menu-chosen";
 
 const OPEN_PROFILE: &str = "open-profile";
 const SAVE: &str = "save";
-const WEBSITE: &str = "website";
+
 const SOURCE_CODE: &str = "source-code";
 const CARD_EDIT: &str = "card-edit";
 const CARD_DELETE: &str = "card-delete";
@@ -96,8 +94,11 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let about = AboutMetadata {
         name: Some(info.name.clone()),
         version: Some(info.version.to_string()),
+        // macOS shows the build number in brackets after the version, read from
+        // CFBundleVersion when unset. It's the same number, so blank it.
+        short_version: Some(String::new()),
+        // Also names the licence, so no credits line repeating it.
         copyright: app.config().bundle.copyright.clone(),
-        credits: Some("Open source under the BSD 3-Clause License.".into()),
         ..Default::default()
     };
 
@@ -166,8 +167,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .bring_all_to_front()
         .build()?;
     let help = SubmenuBuilder::with_id(app, HELP_SUBMENU_ID, "Help")
-        .text(WEBSITE, format!("{} Website", info.name))
-        .text(SOURCE_CODE, "Source Code on GitHub")
+        .text(SOURCE_CODE, format!("{} on GitHub", info.name))
         .build()?;
 
     app.manage(MenuItems { save, appearance });
@@ -180,7 +180,7 @@ pub fn handle(app: &AppHandle, event: &MenuEvent) {
     match event.id().as_ref() {
         OPEN_PROFILE => choose_profiles(app),
         SAVE => emit(app, SAVE_EVENT, ()),
-        WEBSITE => open_url(app, SITE_URL),
+
         SOURCE_CODE => open_url(app, REPOSITORY_URL),
         CARD_EDIT => emit(app, CARD_MENU_EVENT, "edit"),
         CARD_DELETE => emit(app, CARD_MENU_EVENT, "delete"),
