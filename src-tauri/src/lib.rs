@@ -171,8 +171,9 @@ async fn share_profile(
         }
         None => xml.into_bytes(),
     };
+    let folder = share::folder(window.app_handle())?;
     let path = blocking(move || {
-        share::write(&share::folder(), &filename, &contents).map_err(|error| error.to_string())
+        share::write(&folder, &filename, &contents).map_err(|error| error.to_string())
     })
     .await?;
     share::show(&window, path, anchor)
@@ -305,6 +306,13 @@ fn remember_size(window: &tauri::Window, size: PhysicalSize<u32>) {
     }
 }
 
+fn clean_up_shares(app: &AppHandle) {
+    match share::folder(app) {
+        Ok(folder) => share::clean_up(&folder),
+        Err(error) => eprintln!("Could not find the shared files: {error}"),
+    }
+}
+
 fn save_last_size(app: &AppHandle) {
     let Some(size) = app.state::<LastSize>().0.lock().ok().and_then(|last| *last) else {
         return;
@@ -330,7 +338,7 @@ pub fn run() {
         .menu(menu::build)
         .on_menu_event(|app, event| menu::handle(app, &event))
         .setup(|app| {
-            share::clean_up(&share::folder());
+            clean_up_shares(app.handle());
             let window = create_window(app.handle(), MAIN_WINDOW)?;
             if let Some(size) = window_size::load(&window_size_path(app.handle())?) {
                 window.set_size(size.logical())?;
@@ -378,7 +386,7 @@ pub fn run() {
         .run(|app, event| match event {
             RunEvent::Exit => {
                 save_last_size(app);
-                share::clean_up(&share::folder());
+                clean_up_shares(app);
             }
 
             #[cfg(target_os = "macos")]

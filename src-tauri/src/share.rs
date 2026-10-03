@@ -4,10 +4,11 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use serde::Deserialize;
+use tauri::{AppHandle, Manager};
 
 use crate::save::profile_filename;
 
-const FOLDER: &str = "dns-profile-creator-share";
+const FOLDER: &str = "share";
 
 static NEXT: AtomicU32 = AtomicU32::new(1);
 
@@ -20,8 +21,11 @@ pub struct Anchor {
     pub height: f64,
 }
 
-pub fn folder() -> PathBuf {
-    std::env::temp_dir().join(FOLDER)
+pub fn folder(app: &AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_cache_dir()
+        .map(|cache| cache.join(FOLDER))
+        .map_err(|error| error.to_string())
 }
 
 pub fn write(folder: &Path, requested: &str, contents: &[u8]) -> io::Result<PathBuf> {
