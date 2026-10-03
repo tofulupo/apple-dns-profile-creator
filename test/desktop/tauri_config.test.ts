@@ -31,6 +31,15 @@ interface TauriConfig {
     readonly security: { readonly csp: string | null };
   };
   readonly bundle: {
+    readonly macOS: {
+      readonly dmg: {
+        readonly background: string;
+        readonly windowSize: {
+          readonly width: number;
+          readonly height: number;
+        };
+      };
+    };
     readonly icon: readonly string[];
     readonly copyright?: string;
     readonly fileAssociations?: readonly {
@@ -141,6 +150,18 @@ describe("src-tauri/tauri.conf.json", () => {
         rank: "Alternate",
       },
     ]);
+  });
+
+  // Finder counts the title bar, 28 points, as part of the window's height.
+  it("opens the DMG on its background, all of it below the title bar", async () => {
+    const { background, windowSize } = config.bundle.macOS.dmg;
+    const svg = await Deno.readTextFile(
+      join(SRC_TAURI, background.replace(/\.tiff$/, ".svg")),
+    );
+    expect(exists(join(SRC_TAURI, background))).toBe(true);
+    expect(svg).toContain(
+      `width="${windowSize.width}" height="${windowSize.height - 28}"`,
+    );
   });
 
   it("builds the icon from desktop/AppIcon.icon, with fallbacks that exist", () => {
