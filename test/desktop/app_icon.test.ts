@@ -17,8 +17,7 @@ interface IconDocument {
   readonly groups: readonly {
     readonly layers: readonly {
       readonly "image-name": string;
-      readonly "fill-specializations"?: readonly Specialization[];
-      readonly "glass-specializations"?: readonly Specialization[];
+      readonly "opacity-specializations"?: readonly Specialization[];
     }[];
   }[];
 }
@@ -36,6 +35,15 @@ function has(
     true;
 }
 
+function opacity(
+  layer: (typeof layers)[number],
+  appearance: string | undefined,
+): unknown {
+  return layer["opacity-specializations"]?.find((entry) =>
+    entry.appearance === appearance
+  )?.value;
+}
+
 describe("desktop/AppIcon.icon", () => {
   it("has at least one layer", () => {
     expect(layers.length).toBeGreaterThan(0);
@@ -48,23 +56,13 @@ describe("desktop/AppIcon.icon", () => {
     });
   }
 
-  it("inverts in dark mode: background and glyph both change", () => {
+  it("shows the light mascot in light mode and the dark one in dark mode", () => {
     expect(has(document["fill-specializations"], "dark")).toBe(true);
-    expect(layers.every((layer) => has(layer["fill-specializations"], "dark")))
-      .toBe(true);
-  });
-
-  it("stays visible in the Clear and Tinted looks", () => {
-    for (const layer of layers) {
-      const glass = layer["glass-specializations"]?.find((entry) =>
-        entry.appearance === "tinted"
-      );
-      expect({ layer: layer["image-name"], glass: glass?.value }).toEqual({
-        layer: layer["image-name"],
-        glass: true,
-      });
-      expect(has(layer["fill-specializations"], "tinted")).toBe(true);
-    }
+    const shown = (appearance: string | undefined) =>
+      layers.filter((layer) => opacity(layer, appearance) === 1)
+        .map((layer) => layer["image-name"]);
+    expect(shown(undefined)).toEqual(["mascot-light.svg"]);
+    expect(shown("dark")).toEqual(["mascot-dark.svg"]);
   });
 
   it("has the fallback PNG the app's older icon files come from", () => {

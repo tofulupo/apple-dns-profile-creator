@@ -16,28 +16,32 @@
     {
       "layers" : [
         {
-          "fill-specializations" : [
+          "glass" : false,
+          "image-name" : "mascot-dark.svg",
+          "name" : "mascot-dark",
+          "opacity-specializations" : [
             {
-              "value" : {
-                "solid" : "srgb:0.05882,0.09020,0.16471,1.00000"
-              }
+              "value" : 0
             },
             {
               "appearance" : "dark",
-              "value" : {
-                "solid" : "srgb:0.89804,0.90588,0.92157,1.00000"
-              }
+              "value" : 1
+            }
+          ]
+        },
+        {
+          "glass" : false,
+          "image-name" : "mascot-light.svg",
+          "name" : "mascot-light",
+          "opacity-specializations" : [
+            {
+              "value" : 1
             },
             {
-              "appearance" : "tinted",
-              "value" : {
-                "solid" : "srgb:1.00000,1.00000,1.00000,1.00000"
-              }
+              "appearance" : "dark",
+              "value" : 0
             }
-          ],
-          "glass-specializations" : [ { "value" : false }, { "appearance" : "tinted", "value" : true } ],
-          "image-name" : "glyph.svg",
-          "name" : "glyph"
+          ]
         }
       ],
       "shadow" : {
