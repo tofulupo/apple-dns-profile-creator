@@ -135,6 +135,7 @@ const FIELD_GUARDS: {
   // shape stays a superset and needs no migration.
   allowFailover: optional(isBoolean),
   supplementalMatchDomains: optional(isStringArray),
+  fromDeprecatedPayload: optional(isBoolean),
 };
 
 function isDnsConfig(value: unknown): value is DnsConfig {
@@ -145,10 +146,15 @@ function isDnsConfig(value: unknown): value is DnsConfig {
   );
 }
 
-/** Content equality, independent of the order keys were written in. */
+/**
+ * Content equality, independent of the order keys were written in. Where a
+ * configuration came from is left out: the same settings loaded from an old
+ * and a new profile are the same entry.
+ */
 function sameConfig(a: DnsConfig, b: DnsConfig): boolean {
-  const canonical = (config: DnsConfig) =>
-    JSON.stringify(config, Object.keys(config).sort());
+  const canonical = (
+    { fromDeprecatedPayload: _source, ...config }: DnsConfig,
+  ) => JSON.stringify(config, Object.keys(config).sort());
   return canonical(a) === canonical(b);
 }
 

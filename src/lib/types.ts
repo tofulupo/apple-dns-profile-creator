@@ -1,7 +1,3 @@
-/**
- * Domain types for the pure core.
- */
-
 export type DnsProtocol = "HTTPS" | "TLS";
 
 export interface DnsConfig {
@@ -16,16 +12,25 @@ export interface DnsConfig {
   readonly useEthernet: boolean;
   readonly prohibitDisablement: boolean;
 
-  /** Falls back to the system resolver. Needs iOS 26, macOS 26 or visionOS 26. */
+  /** Needs iOS 26, macOS 26 or visionOS 26. */
   readonly allowFailover?: boolean;
 
-  /** Limits the resolver to these domains. A single leading `*` is allowed. */
   readonly supplementalMatchDomains?: readonly string[];
+
+  readonly fromDeprecatedPayload?: boolean;
 }
+
+/**
+ * `payload` is read by every version but deprecated in iOS 27 and macOS 27.
+ * `declarations` only applies on iOS 27, macOS 27 and visionOS 27 and later.
+ */
+export type ProfileFormat = "payload" | "declarations";
 
 export interface ProfileOptions {
   readonly systemScope: boolean;
   readonly identifierPrefix?: string;
+
+  readonly format?: ProfileFormat;
 }
 
 export type UuidFactory = () => string;

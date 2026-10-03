@@ -1,7 +1,3 @@
-/**
- * Recovers DNS configurations from an uploaded `.mobileconfig`.
- */
-
 import { collectServerAddresses, limitServerAddresses } from "./addresses.ts";
 import {
   asArray,
@@ -12,7 +8,12 @@ import {
   type PlistDict,
   type PlistValue,
 } from "./plist.ts";
-import { DNS_PAYLOAD_TYPE } from "./profile.ts";
+import {
+  ACTIVATION_DECLARATION_TYPE,
+  DECLARATIONS_PAYLOAD_TYPE,
+  DNS_DECLARATION_TYPE,
+  DNS_PAYLOAD_TYPE,
+} from "./profile.ts";
 import type { DnsConfig, DnsProtocol } from "./types.ts";
 
 export class ProfileImportError extends Error {
@@ -31,9 +32,7 @@ const MATCHER_KEYS = [
 ] as const;
 
 export function extractPlistXml(fileText: string): string {
-  // The DOCTYPE is optional: plutil and hand-written profiles may omit it and
-  // start straight at <plist>. Anything before the match, such as the DER
-  // wrapper of a signed profile or the XML declaration, is dropped.
+  // From `<!DOCTYPE plist` or, without one, `<plist` through `</plist>`.
   const match = /(?:<!DOCTYPE plist|<plist[\s>]).*<\/plist>/s.exec(fileText);
   if (match === null) {
     throw new ProfileImportError(
@@ -73,14 +72,10 @@ function defaultInterfaceState(rules: readonly PlistDict[]): boolean {
   return asString(catchAll["Action"]) === "Connect";
 }
 
-/** What an import produced, and what it could not carry over. */
 export interface ProfileImport {
   readonly configs: DnsConfig[];
-  /**
-   * One sentence per part of the source profile that was left out or read
-   * only partly, for showing to the user. Empty for profiles this tool built.
-   */
   readonly warnings: string[];
+  readonly usesDeprecatedPayload: boolean;
 }
 
 type Warn = (message: string) => void;
@@ -102,7 +97,6 @@ function quoteList(values: readonly string[]): string {
   return values.map((value) => `“${value}”`).join(", ");
 }
 
-/** Reports matchers on `rule` beyond `used`, which the reader cannot honour. */
 function warnIgnoredMatchers(
   rule: PlistDict,
   used: readonly MatcherKey[],
@@ -125,8 +119,11 @@ interface OnDemandSummary {
   readonly useEthernet: boolean;
 }
 
-function readOnDemandRules(payload: PlistDict, warn: Warn): OnDemandSummary {
-  const rules = (asArray(payload["OnDemandRules"]) ?? [])
+function readOnDemandRules(
+  rulesHolder: PlistDict,
+  warn: Warn,
+): OnDemandSummary {
+  const rules = (asArray(rulesHolder["OnDemandRules"]) ?? [])
     .map((entry) => asDict(entry))
     .filter((entry): entry is PlistDict => entry !== undefined);
 
@@ -146,10 +143,6 @@ function readOnDemandRules(payload: PlistDict, warn: Warn): OnDemandSummary {
     const actionName = `“${action ?? "no action"}”`;
     const ssidMatch = asStringArray(rule["SSIDMatch"]);
 
-    // Checked first: an SSID rule is narrower than its interface, so it must
-    // not switch the whole interface on or off even if it also names one. Only
-    // a Disconnect is an exclusion; a Connect limited to some SSIDs has no
-    // equivalent in DnsConfig and is left out rather than inverted.
     if (ssidMatch !== undefined) {
       const subject = `for the Wi-Fi networks ${quoteList(ssidMatch)}`;
       if (action === "Disconnect") {
@@ -206,10 +199,78 @@ function readOnDemandRules(payload: PlistDict, warn: Warn): OnDemandSummary {
   };
 }
 
-/**
- * Reads every DNS payload in a profile, and describes anything it had to
- * leave out. Throws `ProfileImportError` when the profile is unusable.
- */
+function readConfig(name: string, holder: PlistDict, warn: Warn): DnsConfig {
+  const dnsSettings = asDict(holder["DNSSettings"]);
+  const protocol = readProtocol(dnsSettings);
+  const serverKey = protocol === "HTTPS" ? "ServerURL" : "ServerName";
+  const rules = readOnDemandRules(holder, warn);
+  const matchDomains =
+    asStringArray(dnsSettings?.["SupplementalMatchDomains"]) ?? [];
+
+  const listedAddresses = asStringArray(dnsSettings?.["ServerAddresses"]) ??
+    [];
+  const validAddresses = collectServerAddresses(listedAddresses);
+  const badAddresses = listedAddresses.filter((address) =>
+    !validAddresses.includes(address)
+  );
+  if (badAddresses.length > 0) {
+    warn(
+      `Left out resolver addresses that are not IP addresses: ${
+        quoteList(badAddresses)
+      }.`,
+    );
+  }
+
+  const { kept: serverAddresses, dropped: extraAddresses } =
+    limitServerAddresses(validAddresses);
+  if (extraAddresses.length > 0) {
+    warn(
+      `Left out resolver addresses beyond two IPv4 and two IPv6: ${
+        quoteList(extraAddresses)
+      }.`,
+    );
+  }
+
+  return {
+    name,
+    protocol,
+    serverUrl: asString(dnsSettings?.[serverKey]) ?? "",
+    serverAddresses,
+    excludedWifi: rules.excludedWifi,
+    excludedDomains: rules.excludedDomains,
+    useWifi: rules.useWifi,
+    useCellular: rules.useCellular,
+    useEthernet: rules.useEthernet,
+    prohibitDisablement: holder["ProhibitDisablement"] === true,
+    // Absent rather than false, as in buildDnsSettings, so a round trip
+    // reproduces the source profile.
+    ...(dnsSettings?.["AllowFailover"] === true && { allowFailover: true }),
+    ...(matchDomains.length > 0 &&
+      { supplementalMatchDomains: matchDomains }),
+  };
+}
+
+function readDeclarations(payload: PlistDict, warn: Warn): PlistDict[] {
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const declarations: PlistDict[] = [];
+  for (const item of asArray(payload["Declarations"]) ?? []) {
+    let declaration: PlistDict | undefined;
+    try {
+      declaration = item instanceof Uint8Array
+        ? asDict(JSON.parse(decoder.decode(item)) as PlistValue)
+        : undefined;
+    } catch {
+      declaration = undefined;
+    }
+    if (declaration === undefined) {
+      warn("Left out a declaration that could not be read.");
+    } else {
+      declarations.push(declaration);
+    }
+  }
+  return declarations;
+}
+
 export function importProfile(plist: PlistValue): ProfileImport {
   const root = asDict(plist);
   if (root === undefined) {
@@ -224,74 +285,43 @@ export function importProfile(plist: PlistValue): ProfileImport {
   const configs: DnsConfig[] = [];
   const warnings: string[] = [];
   const skippedTypes = new Set<string>();
+  const skippedDeclarationTypes = new Set<string>();
+  let usesDeprecatedPayload = false;
+  const warnFor = (name: string): Warn => (message) =>
+    warnings.push(name === "" ? message : `${name}: ${message}`);
 
   for (const entry of payloads) {
     const payload = asDict(entry);
     if (payload === undefined) {
       continue;
     }
-    // Profiles often bundle DNS with other payloads (Wi-Fi, certificates...).
-    // Those are skipped. A payload with no PayloadType at all is still read,
-    // so a hand-trimmed profile keeps working.
     const payloadType = asString(payload["PayloadType"]);
+
+    if (payloadType === DECLARATIONS_PAYLOAD_TYPE) {
+      for (const declaration of readDeclarations(payload, warnFor(""))) {
+        const type = asString(declaration["Type"]) ?? "no type";
+        const body = asDict(declaration["Payload"]);
+        if (type === DNS_DECLARATION_TYPE && body !== undefined) {
+          const name = asString(body["VisibleName"]) ?? "";
+          configs.push(readConfig(name, body, warnFor(name)));
+        } else if (type !== ACTIVATION_DECLARATION_TYPE) {
+          skippedDeclarationTypes.add(type);
+        }
+      }
+      continue;
+    }
+
     if (payloadType !== undefined && payloadType !== DNS_PAYLOAD_TYPE) {
       skippedTypes.add(payloadType);
       continue;
     }
 
     const name = asString(payload["PayloadDisplayName"]) ?? "";
-    const warn: Warn = (message) =>
-      warnings.push(name === "" ? message : `${name}: ${message}`);
-
-    const dnsSettings = asDict(payload["DNSSettings"]);
-    const protocol = readProtocol(dnsSettings);
-    const serverKey = protocol === "HTTPS" ? "ServerURL" : "ServerName";
-    const rules = readOnDemandRules(payload, warn);
-    const matchDomains =
-      asStringArray(dnsSettings?.["SupplementalMatchDomains"]) ?? [];
-
-    const listedAddresses = asStringArray(dnsSettings?.["ServerAddresses"]) ??
-      [];
-    const validAddresses = collectServerAddresses(listedAddresses);
-    const badAddresses = listedAddresses.filter((address) =>
-      !validAddresses.includes(address)
-    );
-    if (badAddresses.length > 0) {
-      warn(
-        `Left out resolver addresses that are not IP addresses: ${
-          quoteList(badAddresses)
-        }.`,
-      );
-    }
-    // Cut down to what the tool page's address fields hold, so an imported
-    // configuration does not keep addresses nobody can see or edit.
-    const { kept: serverAddresses, dropped: extraAddresses } =
-      limitServerAddresses(validAddresses);
-    if (extraAddresses.length > 0) {
-      warn(
-        `Left out resolver addresses beyond two IPv4 and two IPv6: ${
-          quoteList(extraAddresses)
-        }.`,
-      );
-    }
-
     configs.push({
-      name,
-      protocol,
-      serverUrl: asString(dnsSettings?.[serverKey]) ?? "",
-      serverAddresses,
-      excludedWifi: rules.excludedWifi,
-      excludedDomains: rules.excludedDomains,
-      useWifi: rules.useWifi,
-      useCellular: rules.useCellular,
-      useEthernet: rules.useEthernet,
-      prohibitDisablement: payload["ProhibitDisablement"] === true,
-      // Mirrors the builder: absent rather than falsy, so an import/export
-      // cycle reproduces the source profile.
-      ...(dnsSettings?.["AllowFailover"] === true && { allowFailover: true }),
-      ...(matchDomains.length > 0 &&
-        { supplementalMatchDomains: matchDomains }),
+      ...readConfig(name, payload, warnFor(name)),
+      fromDeprecatedPayload: true,
     });
+    usesDeprecatedPayload = true;
   }
 
   if (skippedTypes.size > 0) {
@@ -301,20 +331,25 @@ export function importProfile(plist: PlistValue): ProfileImport {
       }.`,
     );
   }
+  if (skippedDeclarationTypes.size > 0) {
+    warnings.push(
+      `Skipped declarations that are not DNS settings: ${
+        [...skippedDeclarationTypes].join(", ")
+      }.`,
+    );
+  }
 
-  return { configs, warnings };
+  return { configs, warnings, usesDeprecatedPayload };
 }
 
 export function importProfileXml(fileText: string): ProfileImport {
   return importProfile(parsePlist(extractPlistXml(fileText)));
 }
 
-/** `importProfile` without the warnings. */
 export function parseProfile(plist: PlistValue): DnsConfig[] {
   return importProfile(plist).configs;
 }
 
-/** `importProfileXml` without the warnings. */
 export function parseProfileXml(fileText: string): DnsConfig[] {
   return importProfileXml(fileText).configs;
 }

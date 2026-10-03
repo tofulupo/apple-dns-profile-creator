@@ -4,7 +4,7 @@
 
 import { appConfig } from "../config.ts";
 import { buildProfileXml } from "../lib/profile.ts";
-import type { DnsConfig } from "../lib/types.ts";
+import type { DnsConfig, ProfileFormat } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
 import { configProblems, isIPv4, isIPv6 } from "../lib/validate.ts";
 import { element, input, setFieldError, showNotices } from "./dom.ts";
@@ -128,6 +128,25 @@ function badge(label: string): HTMLSpanElement {
   const span = document.createElement("span");
   span.className = "badge";
   span.textContent = label;
+  return span;
+}
+
+const DEPRECATED_EXPLANATION =
+  "Loaded from the classic DNS payload, deprecated in iOS 27 and macOS 27";
+
+/**
+ * Marks a configuration loaded from the classic payload, until a profile is
+ * downloaded in the declaration format. The explanation is the tooltip, and
+ * spelled out for screen readers, which do not read tooltips reliably.
+ */
+function deprecatedBadge(): HTMLSpanElement {
+  const span = badge("Deprecated");
+  span.classList.add("badge--warning");
+  span.title = DEPRECATED_EXPLANATION;
+  const explanation = document.createElement("span");
+  explanation.className = "visually-hidden";
+  explanation.textContent = `: ${DEPRECATED_EXPLANATION}`;
+  span.append(explanation);
   return span;
 }
 
@@ -294,6 +313,8 @@ function card(config: DnsConfig): HTMLElement {
 
   const flags = document.createElement("p");
   flags.className = "profile-card__flags";
+  // First, ahead of the options: it is the one that asks for something.
+  if (config.fromDeprecatedPayload === true) flags.append(deprecatedBadge());
   if (config.useWifi) flags.append(badge("Wi-Fi"));
   if (config.useCellular) flags.append(badge("Cellular"));
   if (config.useEthernet) flags.append(badge("Ethernet"));
@@ -340,6 +361,31 @@ function render(): void {
       canShare ? "downloading or sharing" : "downloading"
     }.`;
   syncSaveMenu();
+  updateDeclarationsNote();
+}
+
+/**
+ * Points at the declaration format while it is off and a card is marked
+ * Deprecated, since it is the switch that clears the mark.
+ */
+function updateDeclarationsNote(): void {
+  element("declarationsNote").hidden = input("declarationsChk").checked ||
+    !store.list().some((config) => config.fromDeprecatedPayload === true);
+}
+
+/**
+ * Drops the Deprecated mark once a profile in the declaration format holds
+ * the configurations. Best effort: a refused write leaves the mark, which
+ * only means it shows a little longer.
+ */
+function clearDeprecatedMarks(): void {
+  persist(() => {
+    for (const config of store.list()) {
+      if (config.fromDeprecatedPayload !== true) continue;
+      const { fromDeprecatedPayload: _mark, ...settings } = config;
+      store.update(config, settings);
+    }
+  });
 }
 
 /**
@@ -375,7 +421,7 @@ let saving = false;
  * nothing valid to save. Re-checked here rather than trusting the buttons:
  * another tab may have changed the list since it was last rendered.
  */
-function profileXml(): string | undefined {
+function profileXml(format: ProfileFormat): string | undefined {
   const configs = store.list();
   if (configs.length === 0 || configs.some((c) => problemsOf(c).length > 0)) {
     render();
@@ -386,6 +432,7 @@ function profileXml(): string | undefined {
     {
       systemScope: input("systemChk").checked,
       identifierPrefix: appConfig.identifierPrefix,
+      format,
     },
     // Falls back to crypto.getRandomValues() when
     // crypto.randomUUID() is unavailable, which is the case on a plain
@@ -394,9 +441,15 @@ function profileXml(): string | undefined {
   );
 }
 
+/** The format the Download panel's Declaration format switch asks for. */
+function selectedFormat(): ProfileFormat {
+  return input("declarationsChk").checked ? "declarations" : "payload";
+}
+
 async function download(): Promise<void> {
   if (saving) return;
-  const xml = profileXml();
+  const format = selectedFormat();
+  const xml = profileXml(format);
   if (xml === undefined) return;
 
   saving = true;
@@ -412,6 +465,7 @@ async function download(): Promise<void> {
       xml,
       signWith,
     );
+    if (format === "declarations") clearDeprecatedMarks();
   } catch (error) {
     await tell(
       `Could not save the profile: ${
@@ -427,14 +481,17 @@ async function download(): Promise<void> {
 /** Never signed: Share is only offered outside the desktop app. */
 async function share(): Promise<void> {
   if (saving) return;
-  const xml = profileXml();
+  const format = selectedFormat();
+  const xml = profileXml(format);
   if (xml === undefined) return;
 
   saving = true;
   downloadButton.disabled = true;
   shareButton.disabled = true;
   try {
-    await shareProfile(appConfig.profileFilename, xml);
+    // Not when the share sheet was dismissed: nothing holds the profile.
+    const shared = await shareProfile(appConfig.profileFilename, xml);
+    if (shared && format === "declarations") clearDeprecatedMarks();
   } catch (error) {
     await tell(
       `Could not share the profile: ${
@@ -445,6 +502,27 @@ async function share(): Promise<void> {
     saving = false;
     render();
   }
+}
+
+/**
+ * The DNS settings declaration only installs with system scope, so the
+ * declaration format holds that switch on, and gives back the user's own
+ * choice when it is turned off again.
+ */
+function bindDeclarationFormat(): void {
+  const system = input("systemChk");
+  const declarations = input("declarationsChk");
+  let chosenScope = system.checked;
+  declarations.addEventListener("change", () => {
+    if (declarations.checked) {
+      chosenScope = system.checked;
+      system.checked = true;
+    } else {
+      system.checked = chosenScope;
+    }
+    system.disabled = declarations.checked;
+    updateDeclarationsNote();
+  });
 }
 
 function init(): void {
@@ -459,6 +537,7 @@ function init(): void {
     else deleteConfig(config);
   }).catch((error) => console.error("Could not listen for card menus:", error));
   input("systemChk").checked = appConfig.systemScopeByDefault;
+  bindDeclarationFormat();
   signing = enableSigning(updateDownloadButton);
   downloadButton.addEventListener("click", () => void download());
   shareButton.hidden = !canShare;

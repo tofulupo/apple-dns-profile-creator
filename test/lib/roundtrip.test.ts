@@ -1,6 +1,3 @@
-/**
- * Round-trip properties: export then import must return what went in.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
@@ -12,12 +9,18 @@ import type { DnsConfig } from "../../src/lib/types.ts";
 import { config, fullSurfaceConfigs } from "../helpers/configs.ts";
 import { stubUuid } from "../helpers/uuid.ts";
 
-/** Export a config and import it straight back. */
+function settingsOf(
+  { fromDeprecatedPayload, ...settings }: DnsConfig,
+): DnsConfig {
+  expect(fromDeprecatedPayload).toBe(true);
+  return settings;
+}
+
 function roundTrip(input: DnsConfig): DnsConfig {
   const profile = buildProfile([input], { systemScope: false }, stubUuid());
   const [output] = parseProfile(profile);
   expect(output).toBeDefined();
-  return output as DnsConfig;
+  return settingsOf(output as DnsConfig);
 }
 
 describe("fields that survive today", () => {
@@ -163,20 +166,13 @@ describe("previously broken round-trips", () => {
   });
 });
 
-/**
- * Export several configs as the XML a user downloads, and upload it again.
- * Going through the text rather than the dictionary covers the same path as
- * a real download and re-import on either page.
- */
 function roundTripXml(input: readonly DnsConfig[]): DnsConfig[] {
   const xml = buildProfileXml([...input], { systemScope: true }, stubUuid());
-  return parseProfileXml(xml);
+  return parseProfileXml(xml).map(settingsOf);
 }
 
 describe("multi-configuration profiles", () => {
   it("round-trips every quick preset in one profile, in order", () => {
-    // What the tool page stores after a preset click: the preset's name,
-    // protocol, server and addresses, form defaults otherwise.
     const input = appConfig.presets.map((preset) =>
       config({
         name: preset.name,
@@ -207,8 +203,6 @@ describe("multi-configuration profiles", () => {
 });
 
 describe("resolver address capacity", () => {
-  // The tool page has fields for two addresses per family, so an import
-  // keeps the first two of each, in their order, and reports the rest.
   it("keeps the first two addresses per family", () => {
     const serverAddresses = [
       "2001:db8::1",

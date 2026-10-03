@@ -868,9 +868,14 @@ function init(): void {
     if (!validate(config)) return;
 
     const original = editing;
+    // Editing changes the settings, not the format they came in: the card
+    // stays marked until a profile is downloaded in the declaration format.
+    const next = original?.fromDeprecatedPayload === true
+      ? { ...config, fromDeprecatedPayload: true }
+      : config;
     const saved = persist(() => {
-      if (original === undefined) store.add(config);
-      else store.update(original, config);
+      if (original === undefined) store.add(next);
+      else store.update(original, next);
     });
     if (saved) location.href = "finalize.html";
   });

@@ -1,6 +1,3 @@
-/**
- * Specification tests for the import direction (`src/lib/import.ts`).
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
@@ -15,7 +12,7 @@ import {
 import { buildProfile } from "../../src/lib/profile.ts";
 import { config, fullSurfaceConfigs } from "../helpers/configs.ts";
 import { stubUuid } from "../helpers/uuid.ts";
-import { parsePlist } from "../../src/lib/plist.ts";
+import { buildPlist, parsePlist } from "../../src/lib/plist.ts";
 import {
   extractedFixtures,
   fixture,
@@ -150,7 +147,6 @@ describe("interface rules are read when present", () => {
   });
 });
 
-/** A plain XML profile whose PayloadContent holds `payloads`, verbatim. */
 function profileXml(payloads: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -338,6 +334,80 @@ describe("import warnings", () => {
       .toEqual([
         "Skipped payloads that are not DNS settings: com.apple.wifi.managed.",
       ]);
+  });
+});
+
+describe("declaration profiles", () => {
+  function declarationsProfile(declarations: unknown[]): string {
+    const encoder = new TextEncoder();
+    return buildPlist({
+      PayloadContent: [{
+        PayloadType: "com.apple.declarations",
+        Declarations: declarations.map((d) =>
+          encoder.encode(JSON.stringify(d))
+        ),
+      }],
+    });
+  }
+
+  it("read back exactly what the declaration format writes", () => {
+    const configs = [...fullSurfaceConfigs(), config()];
+    const xml = buildPlist(
+      buildProfile(
+        configs,
+        { systemScope: true, format: "declarations" },
+        stubUuid(),
+      ),
+    );
+    const result = importProfileXml(xml);
+    expect(result.configs).toEqual(configs);
+    expect(result.warnings).toEqual([]);
+    expect(result.usesDeprecatedPayload).toBe(false);
+  });
+
+  it("name the declarations they skip, but not the activation", () => {
+    const { warnings } = importProfileXml(declarationsProfile([
+      { Type: "com.apple.activation.simple", Payload: {} },
+      { Type: "com.apple.configuration.passcode.settings", Payload: {} },
+      {
+        Type: "com.apple.configuration.network.dns-settings",
+        Payload: {
+          VisibleName: "Example",
+          DNSSettings: { DNSProtocol: "TLS", ServerName: "dot.example.com" },
+        },
+      },
+    ]));
+    expect(warnings).toEqual([
+      "Skipped declarations that are not DNS settings: com.apple.configuration.passcode.settings.",
+    ]);
+  });
+
+  it("leave out a declaration that is not JSON, and say so", () => {
+    const xml = buildPlist({
+      PayloadContent: [{
+        PayloadType: "com.apple.declarations",
+        Declarations: [new TextEncoder().encode("not json")],
+      }],
+    });
+    const { configs, warnings } = importProfileXml(xml);
+    expect(configs).toEqual([]);
+    expect(warnings).toEqual([
+      "Left out a declaration that could not be read.",
+    ]);
+  });
+
+  it("mark the classic payload as deprecated, on each configuration", () => {
+    const profile = buildProfile(
+      [config(), config({ name: "Two" })],
+      { systemScope: true },
+      stubUuid(),
+    );
+    const result = importProfile(profile);
+    expect(result.usesDeprecatedPayload).toBe(true);
+    expect(result.configs.map((c) => c.fromDeprecatedPayload)).toEqual([
+      true,
+      true,
+    ]);
   });
 });
 

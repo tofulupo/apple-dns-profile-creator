@@ -1,6 +1,3 @@
-/**
- * Tests for the configuration store that replaced the cookie jar.
- */
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
@@ -11,7 +8,6 @@ import {
 import type { ConfigStore, StorageArea } from "../../src/ui/storage.ts";
 import { config } from "../helpers/configs.ts";
 
-/** Minimal in-memory `Storage`. */
 class FakeStorage implements Storage {
   #entries = new Map<string, string>();
 
@@ -39,7 +35,6 @@ class FakeStorage implements Storage {
     this.#entries.set(key, String(value));
   }
 
-  /** Lets a test plant corrupt data. */
   raw(key: string, value: string): void {
     this.#entries.set(key, value);
   }
@@ -118,6 +113,13 @@ describe("configuration list", () => {
     expect(store.has(config({ name: "Stored" }))).toBe(true);
     expect(store.has(config({ name: "Other" }))).toBe(false);
   });
+
+  it("ignores where an entry came from when comparing", () => {
+    store.add(config({ name: "Stored", fromDeprecatedPayload: true }));
+    expect(store.has(config({ name: "Stored" }))).toBe(true);
+    store.update(config({ name: "Stored" }), config({ name: "Updated" }));
+    expect(store.list().map((c) => c.name)).toEqual(["Updated"]);
+  });
 });
 
 describe("changes made in another tab meanwhile", () => {
@@ -125,7 +127,6 @@ describe("changes made in another tab meanwhile", () => {
     const edited = config({ name: "Edited" });
     const other = config({ name: "Other" });
     store.add(other, edited);
-    // Another tab deletes the entry before it, shifting its index.
     createConfigStore(storage).remove(other);
     store.update(edited, config({ name: "Saved" }));
     expect(store.list().map((c) => c.name)).toEqual(["Saved"]);

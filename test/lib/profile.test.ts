@@ -1,15 +1,11 @@
-/**
- * Specification tests for the export direction (`src/lib/profile.ts`).
- *
- * Expected behaviour is derived from Apple's `com.apple.dnsSettings.managed`
- * payload and from the conventions observable in the upstream fixture corpus
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
 import { asArray, asDict, type PlistDict } from "../../src/lib/plist.ts";
+import { buildDnsSettings } from "../../src/lib/dnssettings.ts";
+import { buildOnDemandRules } from "../../src/lib/ondemand.ts";
 import { buildProfile } from "../../src/lib/profile.ts";
-import { config } from "../helpers/configs.ts";
+import { config, fullSurfaceConfigs } from "../helpers/configs.ts";
 import { stubUuid } from "../helpers/uuid.ts";
 
 function build(configs = [config()], systemScope = false): PlistDict {
@@ -280,5 +276,87 @@ describe("on-demand rules", () => {
       "Connect",
       "Disconnect",
     ]);
+  });
+});
+
+// Apple's device-management schema, release 27.0.
+describe("declaration format", () => {
+  function buildDeclarations(configs = [config()], uuid = stubUuid()) {
+    return buildProfile(
+      configs,
+      { systemScope: true, format: "declarations" },
+      uuid,
+    );
+  }
+
+  function declarationsOf(profile: PlistDict): PlistDict[] {
+    const payload = onlyPayload(profile);
+    return (asArray(payload["Declarations"]) ?? []).map((item) => {
+      expect(item).toBeInstanceOf(Uint8Array);
+      return JSON.parse(new TextDecoder().decode(item as Uint8Array));
+    });
+  }
+
+  it("carries every configuration in one declarations payload", () => {
+    const profile = buildDeclarations([config(), config({ name: "Two" })]);
+    const payload = onlyPayload(profile);
+    expect(payload["PayloadType"]).toBe("com.apple.declarations");
+    expect(payload["PayloadVersion"]).toBe(1);
+    expect(profile["PayloadScope"]).toBe("System");
+    expect(profile["PayloadDescription"]).toBe(
+      "DNS Profile Creator (.mobileconfig) iOS/macOS 27",
+    );
+  });
+
+  it("declares each configuration with the payload's own settings", () => {
+    const configs = fullSurfaceConfigs();
+    const dns = declarationsOf(buildDeclarations(configs)).filter((d) =>
+      d["Type"] === "com.apple.configuration.network.dns-settings"
+    );
+    expect(dns.map((d) => d["Payload"])).toEqual(
+      configs.map((c) => ({
+        VisibleName: c.name,
+        DNSSettings: buildDnsSettings(c),
+        OnDemandRules: buildOnDemandRules(c),
+        ProhibitDisablement: c.prohibitDisablement,
+      })),
+    );
+  });
+
+  it("activates exactly the configurations it declares", () => {
+    const declarations = declarationsOf(
+      buildDeclarations([config(), config({ name: "Two" })]),
+    );
+    const activations = declarations.filter((d) =>
+      d["Type"] === "com.apple.activation.simple"
+    );
+    expect(activations).toHaveLength(1);
+    const configured = declarations
+      .filter((d) => d["Type"] !== "com.apple.activation.simple")
+      .map((d) => d["Identifier"]);
+    expect(activations[0]?.["Payload"]).toEqual({
+      StandardConfigurations: configured,
+    });
+  });
+
+  it("gives every declaration its own identifier and token", () => {
+    const uuid = stubUuid();
+    const declarations = declarationsOf(
+      buildDeclarations([config(), config()], uuid),
+    );
+    const ids = declarations.flatMap((
+      d,
+    ) => [d["Identifier"], d["ServerToken"]]);
+    expect(new Set(ids).size).toBe(ids.length);
+    // Profile 2, payload 2, then 2 for each of the 2 configurations and the
+    // activation.
+    expect(uuid.calls).toHaveLength(10);
+    expect(new Set(uuid.calls).size).toBe(10);
+  });
+
+  it("stays the classic payload by default", () => {
+    expect(onlyPayload(build())["PayloadType"]).toBe(
+      "com.apple.dnsSettings.managed",
+    );
   });
 });

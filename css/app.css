@@ -1791,6 +1791,10 @@ summary.rule__head::-webkit-details-marker {
   text-wrap: pretty;
 }
 
+.switch-row__hint--warning {
+  color: var(--warning);
+}
+
 /* The knob is a gradient rather than a pseudo-element, which Firefox does not
    draw on inputs; sliding its background-position animates it everywhere. */
 .switch {
@@ -1820,6 +1824,16 @@ summary.rule__head::-webkit-details-marker {
 .switch:checked {
   background-color: var(--accent-fill);
   background-position: calc(100% - 0.1875rem) 50%;
+}
+
+/* Held in place by another option, such as system scope by the declaration
+   format. */
+.switch:disabled {
+  opacity: 0.5;
+}
+
+.switch-row:has(.switch:disabled) {
+  cursor: default;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -2216,4 +2230,18 @@ summary.rule__head::-webkit-details-marker {
   color: var(--muted);
   font-size: 0.75rem;
   font-weight: 500;
+}
+
+/* Something to keep an eye on, in the warning colour: the Beta of the
+   declaration format, and a card's Deprecated. Doubled up to win over the
+   cards' accent-tinted flags. */
+.badge.badge--warning {
+  background: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+  color: var(--warning);
+}
+
+.switch-row__title .badge {
+  margin-left: 0.25rem;
+  vertical-align: 0.1em;
 }

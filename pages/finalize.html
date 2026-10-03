@@ -11,7 +11,7 @@
 
 <div role="status">
   <ul class="notices notices--block" id="importNotice"
-    aria-label="Parts of the profile that were not imported" hidden></ul>
+    aria-label="Notes on the loaded profile" hidden></ul>
 </div>
 
 <section class="config-list" id="configList" aria-labelledby="configListTitle"
@@ -45,6 +45,20 @@
         </span>
         <input type="checkbox" role="switch" class="switch" id="systemChk"
           checked aria-labelledby="systemLabel" aria-describedby="systemHint">
+      </label>
+      <label class="switch-row">
+        <span class="switch-row__text">
+          <span class="switch-row__title" id="declarationsLabel">Declaration
+            format <span class="badge badge--warning">Beta</span></span>
+          <span class="switch-row__hint"
+            id="declarationsHint">Replaces deprecated classic payload (iOS/macOS 27+). Requires system scope.</span>
+          <span class="switch-row__hint switch-row__hint--warning"
+            id="declarationsNote" hidden>Some configurations came from the
+            deprecated format.</span>
+        </span>
+        <input type="checkbox" role="switch" class="switch"
+          id="declarationsChk" aria-labelledby="declarationsLabel"
+          aria-describedby="declarationsHint declarationsNote">
       </label>
     </div>
   </div>
