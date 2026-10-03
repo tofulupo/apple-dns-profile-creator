@@ -143,8 +143,9 @@ src-tauri/     macOS app (Tauri 2): shows dist/ in a native window
   tauri.conf.json    window, bundle, icon and signing settings
   src/lib.rs         the commands the pages call, window and app setup
   src/save.rs        save to a folder without overwriting
-  src/signing.rs     Keychain signing through macOS's `security` tool
-  src/certificate.rs Subject Key Identifier from a DER certificate
+  src/signing.rs     Keychain signing with macOS's Security framework, and
+                     signature checks on opened profiles
+  src/profile.rs     refuses anything but DNS profiles before saving or signing
   src/window_size.rs remembered window size
   src/dialog.rs      native alerts, for the pages and the commands
 
@@ -236,9 +237,10 @@ devices.
 
 In the desktop app the Download panel offers **Signed with Keychain**: pick a
 certificate that has its private key in your Keychain, and the profile is saved
-as `encrypted-dns-signed.mobileconfig`, signed through macOS's own `security`
-tool. The key never leaves the Keychain; the first time, macOS asks whether
-`security` may use it. Expired certificates are not listed.
+as `encrypted-dns-signed.mobileconfig`. The app signs it with macOS's Security
+framework, and the key never leaves the Keychain. Expired and not yet valid
+certificates are not listed. Opening a signed profile checks its signature, and
+the app asks before loading one that was changed after signing.
 
 ![The Download panel in the desktop app, signing with a Keychain certificate](docs/screenshots/desktop_signed_profile.png)
 

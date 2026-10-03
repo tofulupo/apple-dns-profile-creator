@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>Declarations</key>
+			<array>
+				<data>ewogICJUeXBlIjogImNvbS5hcHBsZS5hY3RpdmF0aW9uLnNpbXBsZSIsCiAgIklkZW50aWZpZXIiOiAiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDA3IiwKICAiU2VydmVyVG9rZW4iOiAiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDA4IiwKICAiUGF5bG9hZCI6IHsKICAgICJTdGFuZGFyZENvbmZpZ3VyYXRpb25zIjogWwogICAgICAiMDAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDA1IgogICAgXQogIH0KfQ==</data>
+				<data>ewogICJUeXBlIjogImNvbS5hcHBsZS5jb25maWd1cmF0aW9uLm5ldHdvcmsuZG5zLXNldHRpbmdzIiwKICAiSWRlbnRpZmllciI6ICIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDUiLAogICJTZXJ2ZXJUb2tlbiI6ICIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDYiLAogICJQYXlsb2FkIjogewogICAgIlZpc2libGVOYW1lIjogIlF1YWQ5IiwKICAgICJETlNTZXR0aW5ncyI6IHsKICAgICAgIkROU1Byb3RvY29sIjogIkhUVFBTIiwKICAgICAgIlNlcnZlckFkZHJlc3NlcyI6IFsKICAgICAgICAiOS45LjkuOSIKICAgICAgXSwKICAgICAgIlNlcnZlclVSTCI6ICJodHRwczovL2Rucy5xdWFkOS5uZXQvZG5zLXF1ZXJ5IgogICAgfSwKICAgICJPbkRlbWFuZFJ1bGVzIjogWwogICAgICB7CiAgICAgICAgIkFjdGlvbiI6ICJDb25uZWN0IiwKICAgICAgICAiSW50ZXJmYWNlVHlwZU1hdGNoIjogIldpRmkiCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAiQWN0aW9uIjogIkNvbm5lY3QiLAogICAgICAgICJJbnRlcmZhY2VUeXBlTWF0Y2giOiAiQ2VsbHVsYXIiCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAiQWN0aW9uIjogIkNvbm5lY3QiLAogICAgICAgICJJbnRlcmZhY2VUeXBlTWF0Y2giOiAiRXRoZXJuZXQiCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAiQWN0aW9uIjogIkRpc2Nvbm5lY3QiCiAgICAgIH0KICAgIF0sCiAgICAiUHJvaGliaXREaXNhYmxlbWVudCI6IGZhbHNlCiAgfQp9</data>
+			</array>
+			<key>PayloadDescription</key>
+			<string>Configures encrypted DNS through declarations</string>
+			<key>PayloadDisplayName</key>
+			<string>Encrypted DNS (DoH, DoT)</string>
+			<key>PayloadIdentifier</key>
+			<string>com.apple.declarations.00000000-0000-4000-8000-000000000003</string>
+			<key>PayloadType</key>
+			<string>com.apple.declarations</string>
+			<key>PayloadUUID</key>
+			<string>00000000-0000-4000-8000-000000000004</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDescription</key>
+	<string>DNS Profile Creator (.mobileconfig) iOS/macOS 27</string>
+	<key>PayloadDisplayName</key>
+	<string>Encrypted DNS (DoH, DoT)</string>
+	<key>PayloadIdentifier</key>
+	<string>local.encrypted-dns.00000000-0000-4000-8000-000000000001</string>
+	<key>PayloadRemovalDisallowed</key>
+	<false/>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>00000000-0000-4000-8000-000000000002</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

@@ -2,6 +2,7 @@ mod dialog;
 mod menu;
 mod navigation;
 mod opened;
+mod profile;
 mod save;
 mod share;
 mod signing;
@@ -94,6 +95,7 @@ async fn save_profile(
     xml: String,
     sign_with: Option<String>,
 ) -> Result<(), String> {
+    profile::check(&xml)?;
     let (contents, signed_by) = match sign_with {
         Some(id) => {
             let signature = blocking(move || signing::keychain().sign(&xml, &id)).await?;
@@ -163,6 +165,7 @@ async fn share_profile(
     sign_with: Option<String>,
     anchor: share::Anchor,
 ) -> Result<(), String> {
+    profile::check(&xml)?;
     let contents = match sign_with {
         Some(id) => {
             blocking(move || signing::keychain().sign(&xml, &id))

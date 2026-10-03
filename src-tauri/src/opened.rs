@@ -13,7 +13,7 @@ use crate::signing::unwrap_signed;
 pub const OPENED_EVENT: &str = "profiles-opened";
 
 /// Far above any real profile, which is a few kilobytes.
-const MAX_PROFILE_BYTES: u64 = 5 * 1024 * 1024;
+pub const MAX_PROFILE_BYTES: u64 = 5 * 1024 * 1024;
 
 /// The page's `OpenedProfile` in src/desktop/bindings.ts.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
