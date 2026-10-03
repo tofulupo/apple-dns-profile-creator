@@ -8,13 +8,13 @@ import { dirname, join, resolve } from "@std/path";
 
 import { PAGES, SITE_URL } from "../../pages/pages.ts";
 import {
+  fontPreloads,
   inlineScript,
   pageHref,
   pageUrl,
   presetFeatures,
   presetHost,
   renderPage,
-  textFontPreload,
 } from "../../scripts/build.ts";
 import { THEME_KEY } from "../../src/ui/theme.ts";
 import { PIXEL_KEY } from "../../src/ui/pixel.ts";
@@ -117,8 +117,8 @@ describe("presetFeatures", () => {
   });
 });
 
-describe("textFontPreload", () => {
-  it("leaves Geist out of the desktop app, which uses Söhne", async () => {
+describe("fontPreloads", () => {
+  it("preloads Lilex in the desktop app, not Berkeley Mono", async () => {
     const [page] = PAGES;
     if (page === undefined) throw new Error("No pages");
     const html = await renderPage(page, {
@@ -127,9 +127,19 @@ describe("textFontPreload", () => {
       version: "0.0.0-test",
       desktop: true,
     });
-    expect(textFontPreload(true)).toBe("");
-    expect(html).not.toContain("Geist-Latin.woff2");
+    expect(html).toContain(fontPreloads(true));
+    expect(html).toContain('href="fonts/Soehne-Buch.woff2"');
     expect(html).toContain('href="fonts/Lilex-Latin.woff2"');
+    expect(html).not.toContain("Berkeley_Mono");
+  });
+
+  // Local builds lack the website's licensed fonts.
+  it("preloads only fonts the build ships", () => {
+    expect(fontPreloads(false, ["Lilex-Latin.woff2"])).toBe("");
+    expect(fontPreloads(false, ["Soehne-Buch.woff2"])).toBe(
+      `<link rel="preload" href="fonts/Soehne-Buch.woff2" as="font"\n` +
+        `      type="font/woff2" crossorigin>`,
+    );
   });
 });
 
@@ -180,11 +190,14 @@ for (const { page, html } of rendered) {
       );
     });
 
-    it("preloads the website's text font, which the stylesheet names", () => {
-      expect(html).toContain(textFontPreload(false));
-      expect(html).toContain('href="fonts/Geist-Latin.woff2"');
+    it("preloads the website's fonts, which the stylesheet names", () => {
+      expect(html).toContain(fontPreloads(false));
+      expect(html).not.toContain("Lilex-Latin.woff2");
       const css = Deno.readTextFileSync(join(ROOT, "css", "app.css"));
-      expect(css).toContain('url("fonts/Geist-Latin.woff2")');
+      for (const file of ["Soehne-Buch.woff2", "Berkeley_Mono.woff2"]) {
+        expect(html).toContain(`href="fonts/${file}"`);
+        expect(css).toContain(`url("fonts/${file}")`);
+      }
     });
 
     it("applies a saved theme before first paint with the module's key", () => {

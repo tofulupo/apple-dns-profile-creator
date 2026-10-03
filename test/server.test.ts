@@ -1,7 +1,3 @@
-/**
- * The website's server (scripts/server.ts): the files as built, with the
- * caching and security headers the static deployment could not send.
- */
 import { afterAll, beforeAll, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join } from "@std/path";
@@ -37,7 +33,7 @@ describe("cacheControl", () => {
   });
 
   it("keeps fonts for a year and icons for a week, without immutable", () => {
-    expect(cacheControl("/fonts/Geist-Latin.woff2")).toBe(
+    expect(cacheControl("/fonts/Soehne-Buch.woff2")).toBe(
       "public, max-age=31536000",
     );
     expect(cacheControl("/icons/favicon.ico")).toBe("public, max-age=604800");
@@ -60,7 +56,6 @@ describe("contentSecurityPolicy", () => {
     expect(csp).toContain("frame-ancestors 'none'");
   });
 
-  // Lighthouse fetches them from inside the page, under its policy.
   it("lets the page fetch robots.txt and llms.txt from its own origin", async () => {
     expect(await contentSecurityPolicy(HTML)).toContain("connect-src 'self'");
   });
@@ -80,7 +75,6 @@ describe("DISABLED_FEATURES", () => {
     }
   });
 
-  // Unknown to Chrome, which then warns in the console.
   it("leaves out the features Chrome does not recognise", () => {
     for (
       const feature of [
@@ -150,7 +144,6 @@ describe("createHandler", () => {
         ...SELF_FEATURES.map((feature) => `${feature}=(self)`),
       ].join(", "),
     );
-    // The profile page's Share button.
     expect(response.headers.get("Permissions-Policy")).toContain(
       "web-share=(self)",
     );

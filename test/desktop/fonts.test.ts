@@ -1,8 +1,3 @@
-/**
- * Tests for the fonts: how they are copied into the build, that the
- * stylesheet refers to them by the names they are served under, and the check
- * that keeps a desktop release from shipping without Söhne.
- */
 import { afterEach, beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join, resolve } from "@std/path";
@@ -12,8 +7,10 @@ import {
   fontUrls,
   missingFonts,
   servedFontName,
+  withoutMissingFonts,
 } from "../../scripts/build.ts";
 import { SOEHNE_FACES } from "../../scripts/fonts.ts";
+import { BERKELEY_MONO } from "../../scripts/web_fonts.ts";
 
 const here = import.meta.dirname;
 if (here === undefined) throw new Error("Must be loaded from a file URL");
@@ -23,7 +20,6 @@ const CSS = Deno.readTextFileSync(join(ROOT, "css", "app.css"));
 
 describe("servedFontName", () => {
   it("spells out umlauts, however they are stored", () => {
-    // Composed, and as the Klim download stores them: o + combining diaeresis.
     for (const name of ["Söhne-Kräftig.ttf", "So\u0308hne-Kra\u0308ftig.ttf"]) {
       expect(servedFontName(name)).toBe("Soehne-Kraeftig.ttf");
     }
@@ -73,7 +69,6 @@ describe("copyFonts", () => {
     expect(await copyFonts(from, to)).toEqual([]);
   });
 
-  // fonts/subset/ does not exist in a fresh clone or on CI.
   it("copies nothing from a folder that does not exist", async () => {
     expect(await copyFonts(join(from, "missing"), to)).toEqual([]);
   });
@@ -93,6 +88,24 @@ describe("missingFonts", () => {
   });
 });
 
+describe("withoutMissingFonts", () => {
+  const css =
+    `@font-face {\n  font-family: "A";\n  src: url("fonts/A.woff2");\n}\n` +
+    `@font-face {\n  font-family: "B";\n  src: url("fonts/B.woff2");\n}\n` +
+    `body {\n  font-family: "A", "B", sans-serif;\n}\n`;
+
+  it("drops the rules for fonts the build does not have", () => {
+    expect(withoutMissingFonts(css, ["A.woff2"])).toBe(
+      `@font-face {\n  font-family: "A";\n  src: url("fonts/A.woff2");\n}\n` +
+        `body {\n  font-family: "A", "B", sans-serif;\n}\n`,
+    );
+  });
+
+  it("keeps everything when every font shipped", () => {
+    expect(withoutMissingFonts(css, ["A.woff2", "B.woff2"])).toBe(css);
+  });
+});
+
 describe("the stylesheet's fonts", () => {
   const urls = fontUrls(CSS);
 
@@ -101,40 +114,55 @@ describe("the stylesheet's fonts", () => {
     for (const url of urls) expect(servedFontName(url)).toBe(url);
   });
 
-  // Exactly what `deno task fonts` produces, so a desktop release that ran
-  // it has every face, and nothing is asked for that it does not make.
-  it("are Lilex and Geist plus the Söhne faces scripts/fonts.ts makes", () => {
+  it("are Lilex, Geist Pixel, Berkeley Mono and the Söhne faces scripts/fonts.ts makes", () => {
     expect(urls).toEqual(
       [
-        "Geist-Latin.woff2",
         "GeistPixel-Square.woff2",
         "Lilex-Latin.woff2",
+        BERKELEY_MONO,
         ...Object.values(SOEHNE_FACES),
       ].sort(),
     );
   });
 
-  // The app's pixel font; covered by Geist's licence, from the same package.
+  // Covered by Geist's licence, from the same package.
   it("include Geist Pixel", () => {
     expect(Deno.statSync(join(FONTS, "GeistPixel-Square.woff2")).isFile)
       .toBe(true);
   });
 
-  // Söhne is licensed and kept out of the repository, so only the OFL fonts
-  // have to be here.
-  for (const font of ["Lilex", "Geist"]) {
-    it(`include ${font}, with the licence the OFL requires to ship with it`, () => {
-      for (const file of [`${font}-Latin.woff2`, `${font}-OFL.txt`]) {
-        expect(Deno.statSync(join(FONTS, file)).isFile).toBe(true);
-      }
-    });
-  }
+  // Söhne and Berkeley Mono are licensed and kept out of the repository.
+  // Geist's licence stays for Geist Pixel.
+  it("include Lilex, with the licences the OFL requires to ship", () => {
+    for (
+      const file of ["Lilex-Latin.woff2", "Lilex-OFL.txt", "Geist-OFL.txt"]
+    ) {
+      expect(Deno.statSync(join(FONTS, file)).isFile).toBe(true);
+    }
+  });
 
-  // The website's text, while the app's is Söhne.
-  it("set the website's text in Geist, and the app's in Söhne", () => {
-    expect(CSS).toMatch(/:root \{[^}]*--font: "Geist",/);
+  it("leave no licensed font in the repository", () => {
+    const { stdout } = new Deno.Command("git", {
+      args: ["ls-files", "fonts"],
+      cwd: ROOT,
+      stdout: "piped",
+    }).outputSync();
+    const committed = new TextDecoder().decode(stdout).trim().split("\n")
+      .sort();
+    expect(committed).toEqual([
+      "fonts/Geist-OFL.txt",
+      "fonts/GeistPixel-Square.woff2",
+      "fonts/Lilex-Latin.woff2",
+      "fonts/Lilex-OFL.txt",
+    ]);
+  });
+
+  // Berkeley Mono is licensed for the website only.
+  it("set the text in Söhne, the website's monospace in Berkeley Mono and the app's in Lilex", () => {
+    expect(CSS).toMatch(/:root \{[^}]*--font: "Söhne",/);
+    expect(CSS).toMatch(/:root \{[^}]*--font-mono: "Berkeley Mono",/);
     expect(CSS).toMatch(
-      /:root\[data-app="desktop"\] \{\s*--font: "Söhne",/,
+      /:root\[data-app="desktop"\] \{\s*--font-mono: "Lilex",/,
     );
   });
 });
