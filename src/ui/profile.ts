@@ -221,7 +221,7 @@ function card(config: DnsConfig): HTMLElement {
     // Quoted, since a network name can contain the comma between them.
     body.append(
       row(
-        "Skip for SSiD",
+        "Skip for SSID",
         config.excludedWifi.map((ssid) => `“${ssid}”`).join(", "),
         true,
       ),
