@@ -1,14 +1,10 @@
-//! Tauri desktop app: shows the static site from dist/ in a native window.
-//!
-//! The commands the page calls are declared in src/desktop/bindings.ts and
-//! wrapped for the page in src/ui/desktop.ts.
-
 mod certificate;
 mod dialog;
 mod menu;
 mod navigation;
 mod opened;
 mod save;
+mod share;
 mod signing;
 mod window_size;
 
@@ -31,22 +27,17 @@ use crate::opened::{OPENED_EVENT, OpenedProfile, OpenedProfiles};
 use crate::signing::SigningIdentity;
 use crate::window_size::WindowSize;
 
-/// The app's window, defined in tauri.conf.json and created in `run`.
+/// Defined in tauri.conf.json.
 pub(crate) const MAIN_WINDOW: &str = "main";
-/// Settings (⌘,), defined in tauri.conf.json and created when first opened.
+/// Defined in tauri.conf.json.
 pub(crate) const SETTINGS_WINDOW: &str = "settings";
 
-/// The window starts hidden (see tauri.conf.json) and is shown by the page's
-/// `page_ready`. After this long it is shown anyway, in case the page fails
-/// before it can say so.
+/// Shows a window anyway if its page fails before calling `page_ready`.
 const SHOW_ANYWAY_AFTER: Duration = Duration::from_secs(3);
 
-/// Whether the window has been shown, so neither a later page nor the
-/// fallback shows it again after the user has minimized or hidden it.
 #[derive(Default)]
 struct Shown(AtomicBool);
 
-/// The window's latest size, saved when the app quits.
 #[derive(Default)]
 struct LastSize(Mutex<Option<WindowSize>>);
 
@@ -58,14 +49,7 @@ fn show_once(window: &WebviewWindow) -> tauri::Result<()> {
     window.set_focus()
 }
 
-/// Called by each page once its styles apply, and whenever its background
-/// changes, with that background colour.
-///
-/// A hidden webview paints nothing, so the page's first frame only comes after
-/// the window is shown. Until then the webview shows its own background, white
-/// by default; given the page's colour instead, that frame is indistinguishable
-/// from the page. The colour also shows when scrolling past the page's ends,
-/// hence the updates.
+/// Called by each page once its styles apply, with its background colour.
 #[tauri::command]
 fn page_ready(window: WebviewWindow, background: Option<[u8; 3]>) -> Result<(), String> {
     if let Some([red, green, blue]) = background {
@@ -81,8 +65,6 @@ fn page_ready(window: WebviewWindow, background: Option<[u8; 3]>) -> Result<(), 
     .map_err(|error| error.to_string())
 }
 
-/// Settings is shown each time it opens, but not focused again when its page
-/// reports a new background, which a theme chosen elsewhere also causes.
 fn show_if_hidden(window: &WebviewWindow) -> tauri::Result<()> {
     if window.is_visible()? {
         return Ok(());
@@ -91,8 +73,6 @@ fn show_if_hidden(window: &WebviewWindow) -> tauri::Result<()> {
     window.set_focus()
 }
 
-/// Runs `work` off the async runtime's threads: it waits on files, on
-/// `security`, or on the user answering a Keychain prompt.
 async fn blocking<T: Send + 'static>(
     work: impl FnOnce() -> Result<T, String> + Send + 'static,
 ) -> Result<T, String> {
@@ -107,10 +87,7 @@ async fn list_signing_identities() -> Result<Vec<SigningIdentity>, String> {
     blocking(|| signing::keychain().list()).await
 }
 
-/// Saves the profile to ~/Downloads under `filename`, numbering it instead of
-/// overwriting an existing file, then offers to open it for installation.
-/// With `sign_with`, the id of a listed identity, the profile is signed with
-/// that Keychain identity first.
+/// Saves the profile to ~/Downloads, signed with `sign_with` if given.
 #[tauri::command]
 async fn save_profile(
     window: WebviewWindow,
@@ -143,8 +120,6 @@ async fn save_profile(
         |signer| format!(", signed with “{signer}”."),
     );
 
-    // Opening a .mobileconfig hands it to System Settings, which is where the
-    // profile has to be installed anyway.
     let open = show(
         alert(
             &window,
@@ -180,15 +155,36 @@ async fn save_profile(
     Ok(())
 }
 
+/// Opens the share menu for the profile below `anchor`, signed with `sign_with` if given.
+#[tauri::command]
+async fn share_profile(
+    window: WebviewWindow,
+    filename: String,
+    xml: String,
+    sign_with: Option<String>,
+    anchor: share::Anchor,
+) -> Result<(), String> {
+    let contents = match sign_with {
+        Some(id) => {
+            blocking(move || signing::keychain().sign(&xml, &id))
+                .await?
+                .signed
+        }
+        None => xml.into_bytes(),
+    };
+    let path = blocking(move || {
+        share::write(&share::folder(), &filename, &contents).map_err(|error| error.to_string())
+    })
+    .await?;
+    share::show(&window, path, anchor)
+}
+
 /// The oldest profile opened with the app that the page has not taken yet.
 #[tauri::command]
 fn take_opened_profile(opened: State<'_, OpenedProfiles>) -> Option<OpenedProfile> {
     opened.take()
 }
 
-/// Queues profiles opened with the app for the page, tells it, and brings the
-/// window forward. Reads on its own thread, off the main one; files that
-/// cannot be read are reported in an alert each.
 pub(crate) fn open_profiles(app: AppHandle, paths: Vec<PathBuf>) {
     if paths.is_empty() {
         return;
@@ -209,8 +205,6 @@ pub(crate) fn open_profiles(app: AppHandle, paths: Vec<PathBuf>) {
     });
 }
 
-/// Unminimizes and focuses the window, unless it has not been shown yet: on a
-/// launch by opening a file, the page shows it once it is ready.
 fn bring_to_front(app: &AppHandle) {
     let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
         return;
@@ -223,8 +217,6 @@ fn bring_to_front(app: &AppHandle) {
     }
 }
 
-/// A window from tauri.conf.json, which only describes it (`"create":
-/// false`): the navigation handlers can only be given here.
 fn create_window(
     app: &AppHandle,
     label: &str,
@@ -247,8 +239,6 @@ fn create_window(
         .build()?)
 }
 
-/// Opens Settings, or brings it forward if it is open. It starts hidden and
-/// is shown by its page's `page_ready`, or after a while anyway.
 pub(crate) fn open_settings(app: &AppHandle) {
     if let Some(window) = app.get_webview_window(SETTINGS_WINDOW) {
         if let Err(error) = window.show().and_then(|()| window.set_focus()) {
@@ -273,8 +263,6 @@ fn window_size_path(app: &AppHandle) -> tauri::Result<PathBuf> {
     Ok(app.path().app_config_dir()?.join(window_size::FILENAME))
 }
 
-/// Remembers the window's size as the user resizes it; written on quit.
-/// Full screen and minimized are left out, as they are not sizes to reopen at.
 fn remember_size(window: &tauri::Window, size: PhysicalSize<u32>) {
     if window.is_fullscreen().unwrap_or(true) || window.is_minimized().unwrap_or(true) {
         return;
@@ -303,9 +291,7 @@ fn save_last_size(app: &AppHandle) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        // Its script for links would call the opener from the page, which is
-        // not allowed to (capabilities/default.json); `navigation` handles
-        // links instead.
+        // The page has no opener permission (capabilities/default.json).
         .plugin(
             tauri_plugin_opener::Builder::new()
                 .open_js_links_on_click(false)
@@ -317,6 +303,7 @@ pub fn run() {
         .menu(menu::build)
         .on_menu_event(|app, event| menu::handle(app, &event))
         .setup(|app| {
+            share::clean_up(&share::folder());
             let window = create_window(app.handle(), MAIN_WINDOW)?;
             if let Some(size) = window_size::load(&window_size_path(app.handle())?) {
                 window.set_size(size.logical())?;
@@ -335,8 +322,7 @@ pub fn run() {
             }
             match event {
                 WindowEvent::Resized(size) => remember_size(window, *size),
-                // The app quits with its window, which it only does once
-                // Settings is closed too.
+
                 WindowEvent::Destroyed => {
                     if let Some(settings) = window.app_handle().get_webview_window(SETTINGS_WINDOW)
                         && let Err(error) = settings.close()
@@ -351,20 +337,23 @@ pub fn run() {
             page_ready,
             list_signing_identities,
             save_profile,
+            share_profile,
             take_opened_profile,
             dialog::ask,
             dialog::tell,
             menu::set_save_action,
+            menu::set_share_enabled,
             menu::set_appearance,
             menu::show_card_menu
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| match event {
-            // Also after closing the window, since the app then quits.
-            RunEvent::Exit => save_last_size(app),
-            // Finder's Open With, or files dropped on the Dock icon; also what
-            // launched the app, if it was not running.
+            RunEvent::Exit => {
+                save_last_size(app);
+                share::clean_up(&share::folder());
+            }
+
             #[cfg(target_os = "macos")]
             RunEvent::Opened { urls } => open_profiles(app.clone(), opened::file_paths(&urls)),
             _ => {}

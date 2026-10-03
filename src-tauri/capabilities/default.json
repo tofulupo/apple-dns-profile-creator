@@ -10,10 +10,12 @@
     "allow-page-ready",
     "allow-list-signing-identities",
     "allow-save-profile",
+    "allow-share-profile",
     "allow-take-opened-profile",
     "allow-ask",
     "allow-tell",
     "allow-set-save-action",
+    "allow-set-share-enabled",
     "allow-set-appearance",
     "allow-show-card-menu"
   ]

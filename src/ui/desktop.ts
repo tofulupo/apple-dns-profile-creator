@@ -1,6 +1,3 @@
-/**
- * The desktop app's bindings, as the pages see them.
- */
 import type {
   Appearance,
   CardAction,
@@ -19,10 +16,7 @@ export type Listen = (
   handler: (event: unknown) => void,
 ) => Promise<unknown>;
 
-/**
- * What the Tauri app injects as `__TAURI__` (`withGlobalTauri` in
- * src-tauri/tauri.conf.json). Only the part used here is declared.
- */
+/** Injected by `withGlobalTauri` in src-tauri/tauri.conf.json. */
 export interface TauriGlobal {
   readonly core: { readonly invoke: Invoke };
   readonly event: { readonly listen: Listen };
@@ -32,6 +26,8 @@ export interface TauriGlobal {
 export const OPENED_EVENT = "profiles-opened";
 /** Must match `SAVE_EVENT` in src-tauri/src/menu.rs; a test checks both. */
 export const SAVE_EVENT = "save-requested";
+/** Must match `SHARE_EVENT` in src-tauri/src/menu.rs; a test checks both. */
+export const SHARE_EVENT = "share-requested";
 /** Must match `APPEARANCE_EVENT` in src-tauri/src/menu.rs; a test checks both. */
 export const APPEARANCE_EVENT = "appearance-chosen";
 /** Must match `CARD_MENU_EVENT` in src-tauri/src/menu.rs; a test checks both. */
@@ -47,7 +43,6 @@ const CARD_ACTIONS: readonly unknown[] = [
   "delete",
 ] satisfies CardAction[];
 
-/** What an event carries, as Tauri hands it to a listener. */
 function payloadOf(event: unknown): unknown {
   return typeof event === "object" && event !== null && "payload" in event
     ? event.payload
@@ -55,10 +50,8 @@ function payloadOf(event: unknown): unknown {
 }
 
 /**
- * The Tauri app's commands (src-tauri/src/lib.rs) as bindings. Tauri passes
- * arguments by name, camelCase here for snake_case on the Rust side, so each
- * is mapped here.
- * The results are cast: the Rust signatures are what guarantees them.
+ * Commands must match src-tauri/src/lib.rs, with argument names in camelCase
+ * here for snake_case there.
  */
 export function tauriBindings(
   { core: { invoke }, event: { listen } }: TauriGlobal,
@@ -74,6 +67,18 @@ export function tauriBindings(
         xml,
         signWith: signWith ?? null,
       }) as Promise<void>,
+    shareProfile: (filename, xml, signWith, { x, y, width, height }) =>
+      invoke("share_profile", {
+        filename,
+        xml,
+        signWith: signWith ?? null,
+        anchor: { x, y, width, height },
+      }) as Promise<void>,
+    setShareEnabled: (enabled) =>
+      invoke("set_share_enabled", { enabled }) as Promise<void>,
+    onShareRequested: async (listener) => {
+      await listen(SHARE_EVENT, () => listener());
+    },
     listSigningIdentities: () =>
       invoke("list_signing_identities") as Promise<SigningIdentity[]>,
     ask: (message) => invoke("ask", { message }) as Promise<boolean>,
@@ -108,10 +113,6 @@ export function tauriBindings(
   };
 }
 
-/**
- * The desktop app's bindings, or undefined in a browser, where there is no
- * `__TAURI__`.
- */
 export function desktopBindings(): Partial<DesktopBindings> | undefined {
   const tauri = (globalThis as { __TAURI__?: TauriGlobal }).__TAURI__;
   return typeof tauri?.core?.invoke === "function" &&

@@ -1,12 +1,3 @@
-//! The menu bar: the standard macOS menus, plus Settings… (⌘,), File > Open
-//! Profile… and Save,
-//! View > Tool (⌘1), Profile (⌘2) and Appearance, a link to the source code in
-//! Help, and the context menu of the profile page's cards.
-//!
-//! The page decides what Save does and which appearance is chosen, since it
-//! owns the form, the list and the theme switch; it keeps the menu in step
-//! through the commands here, and hears about choices through the events.
-
 use serde::{Deserialize, Serialize};
 use tauri::menu::{
     AboutMetadata, CheckMenuItem, CheckMenuItemBuilder, HELP_SUBMENU_ID, Menu, MenuBuilder,
@@ -21,38 +12,35 @@ use crate::MAIN_WINDOW;
 /// The same as `REPOSITORY_URL` in scripts/build.ts.
 const REPOSITORY_URL: &str = "https://github.com/tofulupo/apple-dns-profile-creator";
 
-/// Emitted when File > Save (⌘S) is chosen. Must match `SAVE_EVENT` in
-/// src/ui/desktop.ts; a test checks both.
+/// Must match `SAVE_EVENT` in src/ui/desktop.ts; a test checks both.
 pub const SAVE_EVENT: &str = "save-requested";
-/// Emitted with the chosen `Appearance`. Must match `APPEARANCE_EVENT` in
-/// src/ui/desktop.ts; a test checks both.
+/// Must match `SHARE_EVENT` in src/ui/desktop.ts; a test checks both.
+pub const SHARE_EVENT: &str = "share-requested";
+/// Must match `APPEARANCE_EVENT` in src/ui/desktop.ts; a test checks both.
 pub const APPEARANCE_EVENT: &str = "appearance-chosen";
-/// Emitted with `"edit"` or `"delete"` when a card's context menu item is
-/// chosen. Must match `CARD_MENU_EVENT` in src/ui/desktop.ts; a test checks
-/// both.
+/// Sent with `"edit"` or `"delete"`. Must match `CARD_MENU_EVENT` in
+/// src/ui/desktop.ts; a test checks both.
 pub const CARD_MENU_EVENT: &str = "card-menu-chosen";
 
 const SETTINGS: &str = "settings";
 const OPEN_PROFILE: &str = "open-profile";
 const SAVE: &str = "save";
+const SHARE: &str = "share";
 
 const SOURCE_CODE: &str = "source-code";
 const CARD_EDIT: &str = "card-edit";
 const CARD_DELETE: &str = "card-delete";
 
-/// One of the app's pages, as View lists it.
 struct Page {
     menu_id: &'static str,
     label: &'static str,
-    /// The page's file in dist/.
     file: &'static str,
-    /// Its address relative to the site root, as `pageHref` in
-    /// scripts/build.ts links it.
+    /// As `pageHref` in scripts/build.ts links it.
     href: &'static str,
 }
 
 /// The same pages, labels and order as `PAGES` in pages/pages.ts; a test
-/// checks both. The first is ⌘1, the next ⌘2.
+/// checks both.
 const PAGES: [Page; 2] = [
     Page {
         menu_id: "page-tool",
@@ -72,7 +60,6 @@ fn page_by_menu_id(id: &str) -> Option<usize> {
     PAGES.iter().position(|page| page.menu_id == id)
 }
 
-/// Which of `PAGES` `url` shows, the start page also at the site root.
 fn page_at(url: &Url) -> Option<usize> {
     let file = match url.path_segments()?.next_back()? {
         "" => "index.html",
@@ -81,7 +68,7 @@ fn page_at(url: &Url) -> Option<usize> {
     PAGES.iter().position(|page| page.file == file)
 }
 
-/// The page's theme switch, as View > Appearance offers it.
+/// Crosses as the page's theme switch names it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Appearance {
@@ -115,8 +102,6 @@ impl Appearance {
             .find(|appearance| appearance.menu_id() == id)
     }
 
-    /// The app's appearance: what the title bar, menus, dialogs and the
-    /// webview's `prefers-color-scheme` follow. None follows the system.
     fn theme(self) -> Option<tauri::Theme> {
         match self {
             Self::System => None,
@@ -126,11 +111,10 @@ impl Appearance {
     }
 }
 
-/// The menu items the page changes, kept to update them.
 struct MenuItems {
     save: MenuItem<Wry>,
+    share: MenuItem<Wry>,
     appearance: Vec<(Appearance, CheckMenuItem<Wry>)>,
-    /// In the order of `PAGES`.
     pages: Vec<CheckMenuItem<Wry>>,
 }
 
@@ -139,10 +123,8 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let about = AboutMetadata {
         name: Some(info.name.clone()),
         version: Some(info.version.to_string()),
-        // macOS shows the build number in brackets after the version, read from
-        // CFBundleVersion when unset. It's the same number, so blank it.
+        // Blank, or macOS repeats the version in brackets from CFBundleVersion.
         short_version: Some(String::new()),
-        // Also names the licence, so no credits line repeating it.
         copyright: app.config().bundle.copyright.clone(),
         ..Default::default()
     };
@@ -166,20 +148,23 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let open = MenuItemBuilder::with_id(OPEN_PROFILE, "Open Profile…")
         .accelerator("CmdOrCtrl+O")
         .build(app)?;
-    // Named and enabled by each page (`set_save_action`), for what its main
-    // button does.
+
     let save = MenuItemBuilder::with_id(SAVE, "Save Profile")
         .accelerator("CmdOrCtrl+S")
+        .enabled(false)
+        .build(app)?;
+
+    let share = MenuItemBuilder::with_id(SHARE, "Share…")
         .enabled(false)
         .build(app)?;
     let file = SubmenuBuilder::new(app, "File")
         .item(&open)
         .item(&save)
+        .item(&share)
         .separator()
         .close_window()
         .build()?;
-    // Without these, copy and paste would not work in the page's fields.
-    // Named "Edit", macOS adds AutoFill, Dictation and Emoji & Symbols itself.
+
     let edit = SubmenuBuilder::new(app, "Edit")
         .undo()
         .redo()
@@ -189,7 +174,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .paste()
         .select_all()
         .build()?;
-    // Checked by the page on load (`set_appearance`), which knows the choice.
+
     let appearance = Appearance::ALL
         .into_iter()
         .map(|appearance| {
@@ -203,7 +188,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     for (_, item) in &appearance {
         appearance_menu = appearance_menu.item(item);
     }
-    // Checked for the page shown, as each page loads (`show_page`).
+
     let pages = PAGES
         .iter()
         .enumerate()
@@ -224,8 +209,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .separator()
         .fullscreen()
         .build()?;
-    // The ids make macOS treat these as the Window and Help menus: the window
-    // list, and the search field.
+
     let window = SubmenuBuilder::with_id(app, WINDOW_SUBMENU_ID, "Window")
         .minimize()
         .maximize()
@@ -238,6 +222,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
 
     app.manage(MenuItems {
         save,
+        share,
         appearance,
         pages,
     });
@@ -251,6 +236,7 @@ pub fn handle(app: &AppHandle, event: &MenuEvent) {
         SETTINGS => crate::open_settings(app),
         OPEN_PROFILE => choose_profiles(app),
         SAVE => emit(app, SAVE_EVENT, ()),
+        SHARE => emit(app, SHARE_EVENT, ()),
 
         SOURCE_CODE => open_url(app, REPOSITORY_URL),
         CARD_EDIT => emit(app, CARD_MENU_EVENT, "edit"),
@@ -259,8 +245,6 @@ pub fn handle(app: &AppHandle, event: &MenuEvent) {
             if let Some(page) = page_by_menu_id(id) {
                 go_to_page(app, page);
             } else if let Some(appearance) = Appearance::from_menu_id(id) {
-                // Applied here too, so the check marks are right even if the
-                // page does not answer; it confirms with `set_appearance`.
                 apply_appearance(app, appearance);
                 emit(app, APPEARANCE_EVENT, appearance);
             }
@@ -274,8 +258,6 @@ fn emit<S: Serialize + Clone>(app: &AppHandle, event: &str, payload: S) {
     }
 }
 
-/// Checks `appearance` alone (a check item also toggles itself when chosen)
-/// and gives it to the app's title bar, menus and dialogs.
 fn apply_appearance(app: &AppHandle, appearance: Appearance) {
     let items = app.state::<MenuItems>();
     for (each, item) in &items.appearance {
@@ -286,7 +268,6 @@ fn apply_appearance(app: &AppHandle, appearance: Appearance) {
     app.set_theme(appearance.theme());
 }
 
-/// Opens one of `PAGES` in the window, as its tab would.
 fn go_to_page(app: &AppHandle, page: usize) {
     let Some(window) = app.get_webview_window(MAIN_WINDOW) else {
         return;
@@ -294,8 +275,7 @@ fn go_to_page(app: &AppHandle, page: usize) {
     let Ok(current) = window.url() else {
         return;
     };
-    // A check item also toggles itself when chosen; the current page's stays
-    // checked, and another's until its page loads.
+
     if page_at(&current) == Some(page) {
         check_page(app, page);
         return;
@@ -309,16 +289,18 @@ fn go_to_page(app: &AppHandle, page: usize) {
     }
 }
 
-/// Checks the page `url` shows in View, if it is one of `PAGES`. Called as
-/// each of the app's pages loads, however it was reached.
 pub fn show_page(app: &AppHandle, url: &Url) {
     if let Some(page) = page_at(url) {
         check_page(app, page);
+        if let Some(items) = app.try_state::<MenuItems>()
+            && let Err(error) = items.share.set_enabled(false)
+        {
+            eprintln!("Could not turn off Share: {error}");
+        }
     }
 }
 
 fn check_page(app: &AppHandle, page: usize) {
-    // Not managed yet while the menu is still being built.
     let Some(items) = app.try_state::<MenuItems>() else {
         return;
     };
@@ -329,8 +311,7 @@ fn check_page(app: &AppHandle, page: usize) {
     }
 }
 
-/// Renames File > Save for what the page's main button does, and enables it
-/// while that button can be used.
+/// Names and enables File > Save for the page's main button.
 #[tauri::command]
 pub async fn set_save_action(app: AppHandle, label: String, enabled: bool) -> Result<(), String> {
     let items = app.state::<MenuItems>();
@@ -341,14 +322,22 @@ pub async fn set_save_action(app: AppHandle, label: String, enabled: bool) -> Re
         .map_err(|error| error.to_string())
 }
 
+/// Enables File > Share… while the profile page's Share button can be used.
+#[tauri::command]
+pub async fn set_share_enabled(app: AppHandle, enabled: bool) -> Result<(), String> {
+    app.state::<MenuItems>()
+        .share
+        .set_enabled(enabled)
+        .map_err(|error| error.to_string())
+}
+
 /// The theme switch's choice, for the menu and the app's appearance.
 #[tauri::command]
 pub async fn set_appearance(app: AppHandle, appearance: Appearance) {
     apply_appearance(&app, appearance);
 }
 
-/// A profile card's context menu at the pointer: its Edit (or Fix) and Delete
-/// buttons. The choice arrives as `CARD_MENU_EVENT`.
+/// A profile card's context menu. The choice arrives as `CARD_MENU_EVENT`.
 #[tauri::command]
 pub async fn show_card_menu(window: WebviewWindow, fix: bool) -> Result<(), String> {
     let menu = MenuBuilder::new(&window)
@@ -357,15 +346,13 @@ pub async fn show_card_menu(window: WebviewWindow, fix: bool) -> Result<(), Stri
         .text(CARD_DELETE, "Delete")
         .build()
         .map_err(|error| error.to_string())?;
-    // Waits on the main thread, which runs the menu until it closes.
+
     tauri::async_runtime::spawn_blocking(move || window.popup_menu(&menu))
         .await
         .map_err(|error| error.to_string())?
         .map_err(|error| error.to_string())
 }
 
-/// The system's Open panel, limited to profiles; the chosen files are opened
-/// as if from Finder.
 fn choose_profiles(app: &AppHandle) {
     let mut dialog = app
         .dialog()
@@ -386,7 +373,6 @@ fn choose_profiles(app: &AppHandle) {
     });
 }
 
-/// Opens `url` in the default browser, or whichever app handles its scheme.
 pub fn open_url(app: &AppHandle, url: &str) {
     if let Err(error) = app.opener().open_url(url, None::<&str>) {
         eprintln!("Could not open {url}: {error}");

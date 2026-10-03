@@ -1,7 +1,4 @@
-/**
- * Local file download, and sharing through the system share sheet.
- */
-import type { DesktopBindings } from "../desktop/bindings.ts";
+import type { Anchor, DesktopBindings } from "../desktop/bindings.ts";
 import { desktopBindings } from "./desktop.ts";
 
 const MOBILECONFIG_MIME = "application/x-apple-aspen-config";
@@ -13,19 +10,17 @@ function desktopSave(): DesktopBindings["saveProfile"] | undefined {
     : undefined;
 }
 
-/**
- * A failed desktop command rejects with the Rust side's message as a plain
- * string rather than an `Error`. Turned into one here, so callers can rely on
- * `.message`.
- */
+function desktopShare(): DesktopBindings["shareProfile"] | undefined {
+  const bindings = desktopBindings();
+  return typeof bindings?.shareProfile === "function"
+    ? bindings.shareProfile
+    : undefined;
+}
+
 export function asError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
-/**
- * Saves the profile. `signWith`, the id of a Keychain identity, is only
- * possible in the desktop app, which signs before saving.
- */
 export async function downloadProfile(
   filename: string,
   xml: string,
@@ -59,23 +54,15 @@ export async function downloadProfile(
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-/** The profile as a file, the same for a download and a share. */
 export function profileFile(filename: string, xml: string): File {
   return new File([xml], filename, { type: MOBILECONFIG_MIME });
 }
 
-/**
- * Whether the share sheet can take the profile file. Never in the desktop
- * app, where a signed profile only exists on the Rust side. Elsewhere it
- * needs a secure context (`navigator.share` is missing on a plain http:// LAN
- * address) and a browser that accepts the file type: browsers only share
- * the types they allow, and Chrome's list may well leave .mobileconfig out.
- */
 export function canShareProfile(
   filename: string,
   nav: Navigator = navigator,
 ): boolean {
-  if (desktopSave() !== undefined) return false;
+  if (desktopSave() !== undefined) return desktopShare() !== undefined;
   if (typeof nav.share !== "function" || typeof nav.canShare !== "function") {
     return false;
   }
@@ -86,12 +73,23 @@ export function canShareProfile(
   }
 }
 
-/**
- * Opens the share sheet with the profile file alone: some targets drop a
- * file that comes with text. Resolves false when the user closed the sheet
- * without sharing, which is not an error. Must be called straight from the
- * click, with nothing awaited before it, or the browser refuses it.
- */
+export async function shareProfileInApp(
+  filename: string,
+  xml: string,
+  signWith: string | undefined,
+  anchor: Anchor,
+): Promise<void> {
+  const share = desktopShare();
+  if (share === undefined) {
+    throw new Error("Sharing from the app needs the desktop app.");
+  }
+  try {
+    await share(filename, xml, signWith, anchor);
+  } catch (error) {
+    throw asError(error);
+  }
+}
+
 export async function shareProfile(
   filename: string,
   xml: string,

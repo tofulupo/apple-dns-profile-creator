@@ -1,14 +1,14 @@
-/// The commands in src-tauri/src/ the page may call. Declaring them makes each
-/// one need a permission (`allow-<command>`), which capabilities/default.json
-/// grants; without this, every command would be open to any page.
+/// Each needs its `allow-<command>` permission granted in capabilities/default.json.
 const COMMANDS: &[&str] = &[
     "page_ready",
     "list_signing_identities",
     "save_profile",
+    "share_profile",
     "take_opened_profile",
     "ask",
     "tell",
     "set_save_action",
+    "set_share_enabled",
     "set_appearance",
     "show_card_menu",
 ];

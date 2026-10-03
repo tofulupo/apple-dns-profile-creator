@@ -1,7 +1,3 @@
-/**
- * Tests for the Tauri app's commands as the pages call them, and for the
- * native-dialog fallbacks.
- */
 import { afterEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
@@ -11,13 +7,13 @@ import {
   type Invoke,
   OPENED_EVENT,
   SAVE_EVENT,
+  SHARE_EVENT,
   tauriBindings,
   type TauriGlobal,
 } from "../../src/ui/desktop.ts";
 import { ask, dialogOpen, tell } from "../../src/ui/dialogs.ts";
 import { parseRgb } from "../../src/ui/page_ready.ts";
 
-/** A `__TAURI__` whose event listening is never used. */
 function tauriWith(invoke: Invoke): TauriGlobal {
   return {
     core: { invoke },
@@ -49,6 +45,13 @@ describe("tauriBindings", () => {
     await bindings.listSigningIdentities?.();
     await bindings.takeOpenedProfile?.();
     await bindings.setSaveAction?.("Add to Profile", true);
+    await bindings.shareProfile?.("a.mobileconfig", "<x/>", undefined, {
+      x: 1,
+      y: 2,
+      width: 3,
+      height: 4,
+    });
+    await bindings.setShareEnabled?.(true);
     await bindings.setAppearance?.("dark");
     await bindings.showCardMenu?.(true);
     expect(calls).toEqual([
@@ -69,6 +72,13 @@ describe("tauriBindings", () => {
       ["list_signing_identities", undefined],
       ["take_opened_profile", undefined],
       ["set_save_action", { label: "Add to Profile", enabled: true }],
+      ["share_profile", {
+        filename: "a.mobileconfig",
+        xml: "<x/>",
+        signWith: null,
+        anchor: { x: 1, y: 2, width: 3, height: 4 },
+      }],
+      ["set_share_enabled", { enabled: true }],
       ["set_appearance", { appearance: "dark" }],
       ["show_card_menu", { fix: true }],
     ]);
@@ -87,16 +97,18 @@ describe("tauriBindings", () => {
     });
     const heard: unknown[] = [];
     await bindings.onSaveRequested?.(() => heard.push("save"));
+    await bindings.onShareRequested?.(() => heard.push("share"));
     await bindings.onAppearanceChosen?.((appearance) => heard.push(appearance));
     await bindings.onCardMenuChosen?.((action) => heard.push(action));
 
     handlers.get(SAVE_EVENT)?.({ payload: null });
+    handlers.get(SHARE_EVENT)?.({ payload: null });
     handlers.get(APPEARANCE_EVENT)?.({ payload: "light" });
     handlers.get(APPEARANCE_EVENT)?.({ payload: "sepia" });
     handlers.get(CARD_MENU_EVENT)?.({ payload: "delete" });
     handlers.get(CARD_MENU_EVENT)?.({ payload: "rename" });
     handlers.get(CARD_MENU_EVENT)?.(null);
-    expect(heard).toEqual(["save", "light", "delete"]);
+    expect(heard).toEqual(["save", "share", "light", "delete"]);
 
     const rust = await Deno.readTextFile(
       new URL("../../src-tauri/src/menu.rs", import.meta.url),
@@ -104,6 +116,7 @@ describe("tauriBindings", () => {
     for (
       const [name, value] of Object.entries({
         SAVE_EVENT,
+        SHARE_EVENT,
         APPEARANCE_EVENT,
         CARD_MENU_EVENT,
       })
@@ -170,7 +183,6 @@ describe("ask and tell", () => {
   });
 
   it("answer no when the dialog fails", async () => {
-    // What a failed Tauri command rejects with: the Rust error as a string.
     fakeTauri(() => Promise.reject("no window"));
     const error = console.error;
     console.error = () => {};

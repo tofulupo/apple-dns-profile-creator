@@ -1,100 +1,78 @@
 /**
  * The desktop app's commands (src-tauri/src/lib.rs) as the pages call them.
- *
- * The one declaration the page side uses: `src/ui/desktop.ts` maps each to its
- * Rust command, and `src/ui/download.ts`, `src/ui/signing.ts`,
- * `src/ui/dialogs.ts` and `src/ui/page_ready.ts` type their calls with it.
- * Arguments and results cross as JSON; a failed command rejects with the Rust
- * side's error message as a plain string rather than an `Error`.
+ * `src/ui/desktop.ts` maps each to its Rust command. A failed command rejects
+ * with the Rust error message as a plain string, not an `Error`.
  */
 
-/**
- * Whether macOS trusts a certificate's chain. Expired certificates are never
- * offered, so they have no status.
- */
 export type IdentityStatus = "trusted" | "untrusted";
 
-/** A Keychain certificate with its private key, usable for signing. */
 export interface SigningIdentity {
-  /** SHA-1 fingerprint of the certificate: unique, unlike the name. */
+  /** SHA-1 fingerprint of the certificate, passed back as `signWith`. */
   readonly id: string;
-  /** The certificate's name as Keychain Access shows it. */
   readonly name: string;
   readonly status: IdentityStatus;
 }
 
-/** A profile opened with the app, from Finder, the Dock or File > Open. */
 export interface OpenedProfile {
-  /** The file name. */
   readonly name: string;
-  /** The file's content, decoded as a dropped file's `text()` would be. */
   readonly text: string;
 }
 
-/** The theme switch's choices, as View > Appearance offers them. */
 export type Appearance = "system" | "light" | "dark";
 
-/** The items of a profile card's context menu. */
 export type CardAction = "edit" | "delete";
 
+/** CSS pixels from the viewport's top left, as `getBoundingClientRect()`. */
+export interface Anchor {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface DesktopBindings {
-  /**
-   * Saves the profile to ~/Downloads under `filename`, numbering it instead
-   * of overwriting an existing file, then offers to open it for installation.
-   * With `signWith`, the id of a listed identity, the profile is signed with
-   * that Keychain identity first.
-   */
+  /** Saves to ~/Downloads without overwriting, signed with `signWith` if set. */
   saveProfile(filename: string, xml: string, signWith?: string): Promise<void>;
 
-  /** Identities in the Keychain that can sign, expired ones left out. */
+  /** Opens the share menu below `anchor`; resolves once the menu is open. */
+  shareProfile(
+    filename: string,
+    xml: string,
+    signWith: string | undefined,
+    anchor: Anchor,
+  ): Promise<void>;
+
+  /** Enables File > Share…, which is off after each page load. */
+  setShareEnabled(enabled: boolean): Promise<void>;
+
+  /** Calls `listener` whenever File > Share… is chosen. */
+  onShareRequested(listener: () => void): Promise<void>;
+
+  /** Keychain identities that can sign, expired ones left out. */
   listSigningIdentities(): Promise<SigningIdentity[]>;
 
-  /**
-   * Called by each page once it is ready to paint, and again whenever its
-   * background changes. The window starts hidden, since until then it shows
-   * an empty white webview, even in dark mode; only the first call shows it.
-   * `background` is the page's background colour as red, green and blue,
-   * which the app gives the webview so no white shows before the page's first
-   * frame.
-   */
+  /** Shows the window on the first call and sets the webview background. */
   pageReady(background?: readonly [number, number, number]): Promise<void>;
 
-  /**
-   * `confirm()` as a native dialog: whether the user chose OK. The app's
-   * webview shows no `confirm()` dialog of its own. Call `ask` in
-   * src/ui/dialogs.ts rather than this.
-   */
+  /** Native `confirm()`. Call `ask` in src/ui/dialogs.ts instead. */
   ask(message: string): Promise<boolean>;
 
-  /** `alert()` as a native dialog; see `ask`. Call `tell` in src/ui/dialogs.ts. */
+  /** Native `alert()`. Call `tell` in src/ui/dialogs.ts instead. */
   tell(message: string): Promise<void>;
 
-  /**
-   * The oldest profile opened with the app that no page has taken yet, or
-   * null. Each is handed out once. Use `receiveOpenedProfiles` in
-   * src/ui/opened.ts rather than this.
-   */
+  /** The oldest opened profile not yet taken, or null. Use src/ui/opened.ts. */
   takeOpenedProfile(): Promise<OpenedProfile | null>;
 
-  /**
-   * Calls `listener` whenever profiles are opened with the app while the
-   * page is open. Resolves once listening.
-   */
+  /** Calls `listener` when profiles are opened; resolves once listening. */
   onProfilesOpened(listener: () => void): Promise<void>;
 
-  /**
-   * Names File > Save (⌘S) for what the page's main button does, and enables
-   * it while that button can be used.
-   */
+  /** Names and enables File > Save (⌘S). */
   setSaveAction(label: string, enabled: boolean): Promise<void>;
 
   /** Calls `listener` whenever File > Save (⌘S) is chosen. */
   onSaveRequested(listener: () => void): Promise<void>;
 
-  /**
-   * Checks `appearance` in View > Appearance and gives it to the app's title
-   * bar, menus and dialogs, which otherwise follow the system.
-   */
+  /** Sets the title bar, menus and dialogs to `appearance`. */
   setAppearance(appearance: Appearance): Promise<void>;
 
   /** Calls `listener` with what is chosen in View > Appearance. */
@@ -102,10 +80,7 @@ export interface DesktopBindings {
     listener: (appearance: Appearance) => void,
   ): Promise<void>;
 
-  /**
-   * Shows a profile card's context menu at the pointer, with Fix rather than
-   * Edit when `fix`. The choice arrives through `onCardMenuChosen`.
-   */
+  /** Shows a card's context menu, with Fix instead of Edit when `fix`. */
   showCardMenu(fix: boolean): Promise<void>;
 
   /** Calls `listener` with the item chosen in a card's context menu. */

@@ -7,8 +7,7 @@ edition = "2024"
 publish = false
 
 [lib]
-# The `_lib` suffix keeps the lib name distinct from the bin name, which
-# otherwise collide on Windows: https://github.com/rust-lang/cargo/issues/8519
+# Distinct from the bin name: https://github.com/rust-lang/cargo/issues/8519
 name = "dns_profile_creator_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
@@ -23,6 +22,23 @@ tauri-plugin-dialog = "2"
 tauri-plugin-opener = "2"
 regex = "1"
 base64 = "0.22"
+
+# The share menu (src/share.rs), at the versions Tauri itself uses.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSArray",
+  "NSGeometry",
+  "NSString",
+  "NSURL",
+] }
+objc2-app-kit = { version = "0.3", default-features = false, features = [
+  "std",
+  "NSResponder",
+  "NSSharingService",
+  "NSView",
+] }
 
 # https://tauri.app/concept/size/#cargo-configuration
 [profile.release]
