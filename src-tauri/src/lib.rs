@@ -1,4 +1,3 @@
-mod certificate;
 mod dialog;
 mod menu;
 mod navigation;
@@ -19,7 +18,7 @@ use tauri::{
     AppHandle, Emitter, Manager, PhysicalSize, RunEvent, State, WebviewWindow,
     WebviewWindowBuilder, WindowEvent,
 };
-use tauri_plugin_dialog::MessageDialogButtons;
+use tauri_plugin_dialog::{MessageDialogButtons, MessageDialogKind};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::dialog::{alert, show};
@@ -190,8 +189,19 @@ pub(crate) fn open_profiles(app: AppHandle, paths: Vec<PathBuf>) {
         return;
     }
     std::thread::spawn(move || {
-        let failures = app.state::<OpenedProfiles>().add(&paths);
-        if failures.len() < paths.len() {
+        let mut failures = Vec::new();
+        let mut queued = false;
+        for path in &paths {
+            match opened::read_profile(path) {
+                Ok(read) if read.broken_signature && !open_anyway(&app, &read.profile.name) => {}
+                Ok(read) => {
+                    app.state::<OpenedProfiles>().push(read.profile);
+                    queued = true;
+                }
+                Err(message) => failures.push(message),
+            }
+        }
+        if queued {
             if let Err(error) = app.emit(OPENED_EVENT, ()) {
                 eprintln!("Could not tell the page about opened profiles: {error}");
             }
@@ -203,6 +213,23 @@ pub(crate) fn open_profiles(app: AppHandle, paths: Vec<PathBuf>) {
                 .blocking_show();
         }
     });
+}
+
+fn open_anyway(app: &AppHandle, name: &str) -> bool {
+    bring_to_front(app);
+    dialog::app_alert(
+        app,
+        &format!(
+            "“{name}” has a broken signature.\n\nIt was changed after it was signed, or the \
+             signature is damaged. Open it anyway?"
+        ),
+    )
+    .kind(MessageDialogKind::Warning)
+    .buttons(MessageDialogButtons::OkCancelCustom(
+        "Open Anyway".into(),
+        "Cancel".into(),
+    ))
+    .blocking_show()
 }
 
 fn bring_to_front(app: &AppHandle) {

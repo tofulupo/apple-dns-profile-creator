@@ -7,6 +7,8 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::Url;
 
+use crate::signing::unwrap_signed;
+
 /// Must match `OPENED_EVENT` in src/ui/desktop.ts; a test checks both.
 pub const OPENED_EVENT: &str = "profiles-opened";
 
@@ -21,19 +23,20 @@ pub struct OpenedProfile {
     pub text: String,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct ReadProfile {
+    pub profile: OpenedProfile,
+    pub broken_signature: bool,
+}
+
 #[derive(Default)]
 pub struct OpenedProfiles(Mutex<VecDeque<OpenedProfile>>);
 
 impl OpenedProfiles {
-    pub fn add(&self, paths: &[PathBuf]) -> Vec<String> {
-        let (read, failures): (Vec<_>, Vec<_>) = paths
-            .iter()
-            .map(|path| read_profile(path))
-            .partition(Result::is_ok);
+    pub fn push(&self, profile: OpenedProfile) {
         if let Ok(mut queue) = self.0.lock() {
-            queue.extend(read.into_iter().flatten());
+            queue.push_back(profile);
         }
-        failures.into_iter().filter_map(Result::err).collect()
     }
 
     pub fn take(&self) -> Option<OpenedProfile> {
@@ -48,7 +51,7 @@ pub fn file_paths(urls: &[Url]) -> Vec<PathBuf> {
         .collect()
 }
 
-pub fn read_profile(path: &Path) -> Result<OpenedProfile, String> {
+pub fn read_profile(path: &Path) -> Result<ReadProfile, String> {
     let name = path.file_name().map_or_else(
         || path.display().to_string(),
         |name| name.to_string_lossy().into_owned(),
@@ -71,9 +74,16 @@ pub fn read_profile(path: &Path) -> Result<OpenedProfile, String> {
         return Err(failed("It is too large to be a configuration profile."));
     }
 
-    Ok(OpenedProfile {
-        name,
-        text: String::from_utf8_lossy(&bytes).into_owned(),
+    let (bytes, broken_signature) = match unwrap_signed(&bytes) {
+        Some(unwrapped) => (unwrapped.content, !unwrapped.intact),
+        None => (bytes, false),
+    };
+    Ok(ReadProfile {
+        profile: OpenedProfile {
+            name,
+            text: String::from_utf8_lossy(&bytes).into_owned(),
+        },
+        broken_signature,
     })
 }
 
@@ -90,23 +100,44 @@ mod tests {
         fs::write(&path, "<plist>profile</plist>").unwrap();
         assert_eq!(
             read_profile(&path),
-            Ok(OpenedProfile {
-                name: "Quad9 ü.mobileconfig".into(),
-                text: "<plist>profile</plist>".into(),
+            Ok(ReadProfile {
+                profile: OpenedProfile {
+                    name: "Quad9 ü.mobileconfig".into(),
+                    text: "<plist>profile</plist>".into(),
+                },
+                broken_signature: false,
             })
         );
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
-    fn keeps_the_plist_of_a_signed_profile() {
+    fn reads_the_profile_inside_a_signed_one() {
+        let read = read_profile("tests/fixtures/signed.mobileconfig".as_ref()).unwrap();
+        assert!(!read.broken_signature);
+        assert!(
+            read.profile.text.starts_with("<?xml"),
+            "{:.40}",
+            read.profile.text
+        );
+        assert!(read.profile.text.ends_with("</plist>\n"));
+    }
+
+    #[test]
+    fn keeps_the_plist_of_a_damaged_signed_profile_and_flags_it() {
         let folder = tempfile::tempdir().unwrap();
         let path = folder.path().join("signed.mobileconfig");
         let mut bytes = vec![0x30, 0x82, 0xff, 0xfe];
         bytes.extend_from_slice(b"<plist>profile</plist>");
         bytes.extend_from_slice(&[0xa0, 0x00]);
         fs::write(&path, bytes).unwrap();
-        let text = read_profile(&path).unwrap().text;
-        assert!(text.contains("<plist>profile</plist>"), "{text:?}");
+        let read = read_profile(&path).unwrap();
+        assert!(read.broken_signature);
+        assert!(
+            read.profile.text.contains("<plist>profile</plist>"),
+            "{:?}",
+            read.profile.text
+        );
     }
 
     #[test]
@@ -135,19 +166,14 @@ mod tests {
     }
 
     #[test]
-    fn queues_readable_files_in_order_and_hands_each_out_once() {
-        let folder = tempfile::tempdir().unwrap();
-        let first = folder.path().join("a.mobileconfig");
-        let second = folder.path().join("b.mobileconfig");
-        fs::write(&first, "a").unwrap();
-        fs::write(&second, "b").unwrap();
-        let missing = folder.path().join("missing.mobileconfig");
-
+    fn queues_profiles_in_order_and_hands_each_out_once() {
         let queue = OpenedProfiles::default();
-        let failures = queue.add(&[first, missing, second]);
-
-        assert_eq!(failures.len(), 1);
-        assert!(failures[0].contains("missing.mobileconfig"));
+        for name in ["a.mobileconfig", "b.mobileconfig"] {
+            queue.push(OpenedProfile {
+                name: name.into(),
+                text: String::new(),
+            });
+        }
         assert_eq!(queue.take().map(|p| p.name), Some("a.mobileconfig".into()));
         assert_eq!(queue.take().map(|p| p.name), Some("b.mobileconfig".into()));
         assert_eq!(queue.take(), None);
