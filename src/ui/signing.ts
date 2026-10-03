@@ -1,19 +1,11 @@
-/**
- * The Signature choice on the profile page: unsigned, or signed with a
- * Keychain identity. Desktop app only; in a browser the section stays hidden
- * and every profile is unsigned.
- */
-
 import type { SigningIdentity } from "../desktop/bindings.ts";
 import { element } from "./dom.ts";
 import { desktopBindings } from "./desktop.ts";
 import { browserStorage } from "./storage.ts";
 
-/** The identity id last signed with; absent means unsigned. */
 const SIGN_WITH_KEY = "dns-mobileconfig:sign-with";
 
 export interface Signing {
-  /** The identity id to sign with, or undefined for an unsigned profile. */
   selected(): string | undefined;
 }
 
@@ -46,8 +38,6 @@ function optionLabel(
   identity: SigningIdentity,
   all: readonly SigningIdentity[],
 ): string {
-  // Renewed certificates keep their name, so repeated names get a short
-  // fingerprint to tell them apart.
   const repeated = all.filter((other) => other.name === identity.name)
     .length > 1;
   const parts = [identity.name];
@@ -56,10 +46,6 @@ function optionLabel(
   return parts.join(" \u00b7 ");
 }
 
-/**
- * Shows and runs the Signature section in the desktop app. `onChange` is
- * called whenever what `selected()` returns may have changed.
- */
 export function enableSigning(onChange: () => void): Signing {
   const bindings = desktopBindings();
   const binding = bindings?.listSigningIdentities;
@@ -115,7 +101,7 @@ export function enableSigning(onChange: () => void): Signing {
       ? "identity__status"
       : `identity__status identity__status--${current.status}`;
 
-    noteUnsigned.hidden = current !== undefined;
+    noteUnsigned.hidden = true;
     noteSigned.hidden = current === undefined;
     onChange();
   }
@@ -128,8 +114,6 @@ export function enableSigning(onChange: () => void): Signing {
       identities = [];
       failed = true;
     }
-    // The first load restores the remembered choice; later ones, after the
-    // user may have added or removed certificates, keep the current one.
     const preferred = restored ? select.value : readPreference();
     fillSelect(preferred);
     if (!restored) {
@@ -149,7 +133,6 @@ export function enableSigning(onChange: () => void): Signing {
   unsigned.addEventListener("change", choose);
   keychain.addEventListener("change", choose);
   select.addEventListener("change", choose);
-  // Picks up certificates added in Keychain Access while the app is open.
   globalThis.addEventListener("focus", () => void refresh());
 
   section.hidden = false;

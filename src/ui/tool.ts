@@ -20,7 +20,14 @@ import {
   withHttpsScheme,
 } from "../lib/validate.ts";
 import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
-import { element, input, setFieldError, showNotices, textarea } from "./dom.ts";
+import {
+  element,
+  input,
+  setFieldError,
+  setFieldValid,
+  showNotices,
+  textarea,
+} from "./dom.ts";
 
 import { ask } from "./dialogs.ts";
 import { desktopBindings } from "./desktop.ts";
@@ -43,12 +50,13 @@ import { enableThemeSwitch } from "./theme.ts";
 const store = createConfigStore(browserStorage());
 
 const form = element<HTMLFormElement>("mainForm");
-const submit = input("btn_addToProfile");
+const submitButton = element<HTMLButtonElement>("btn_addToProfile");
+const submit = element("addToProfileLabel");
 const dropzone = element("dropzone");
 const uploadStatus = element("uploadStatus");
 const uploadHint = uploadStatus.textContent;
 const uploadNotice = element<HTMLUListElement>("uploadNotice");
-const serverCheck = element("serverCheck");
+
 const serverCheckText = element("serverCheckText");
 const nameField = element("field-provName");
 const presetToggle = element<HTMLButtonElement>("presetToggle");
@@ -56,6 +64,14 @@ const presetMenu = element<HTMLUListElement>("presetMenu");
 const presetButtons = [
   ...presetMenu.querySelectorAll<HTMLButtonElement>("button.preset"),
 ];
+const serverField = element("field-serverUrl");
+const protocolToggle = element<HTMLButtonElement>("protocolToggle");
+const protocolToggleText = element("protocolToggleText");
+const protocolMenu = element<HTMLUListElement>("protocolMenu");
+const protocolButtons = [
+  ...protocolMenu.querySelectorAll<HTMLButtonElement>("button.preset"),
+];
+const protocolNote = element("protocolNote");
 const quickInsert = element("quickInsert");
 const insertScheme = element<HTMLButtonElement>("insertScheme");
 const insertPath = element<HTMLButtonElement>("insertPath");
@@ -91,13 +107,34 @@ const addressPairs = [
     swap: element<HTMLButtonElement>("swapIpv6"),
   },
 ];
-const submitLabel = submit.value;
+const submitLabel = submit.textContent ?? "";
+
+/** A field with a button inside it that opens a menu below it. */
+interface Picker {
+  field: HTMLElement;
+  toggle: HTMLButtonElement;
+  menu: HTMLElement;
+}
+
+const presetPicker: Picker = {
+  field: nameField,
+  toggle: presetToggle,
+  menu: presetMenu,
+};
+const protocolPicker: Picker = {
+  field: serverField,
+  toggle: protocolToggle,
+  menu: protocolMenu,
+};
+const pickers = [presetPicker, protocolPicker];
+
+let protocol: DnsProtocol = "HTTPS";
 
 /** File > Save (⌘S) in the desktop app, named after the submit button. */
 let updateSaveMenu: UpdateSaveMenu = () => {};
 
 function setSubmitLabel(label: string): void {
-  submit.value = label;
+  submit.textContent = label;
   updateSaveMenu(label, true);
 }
 
@@ -129,7 +166,7 @@ function readForm(): DnsConfig {
 
 function writeForm(config: DnsConfig): void {
   input("provName").value = config.name;
-  input(config.protocol === "HTTPS" ? "doh" : "dot").checked = true;
+  protocol = config.protocol;
   input("serverUrl").value = config.serverUrl;
   // Imports are already cut down to what the fields hold; what is left to
   // drop here comes from entries stored before that.
@@ -212,15 +249,22 @@ function bindRules(): void {
 }
 
 function selectedProtocol(): DnsProtocol {
-  return input("doh").checked ? "HTTPS" : "TLS";
+  return protocol;
 }
 
 function applyProtocol(): void {
-  const doh = input("doh").checked;
+  const doh = protocol === "HTTPS";
   element("dohdotServerLabel").textContent = doh ? "DoH URL" : "DoT hostname";
   input("serverUrl").placeholder = doh
     ? "https://example.com/dns-query"
     : "dot.example.com";
+  protocolToggleText.textContent = doh ? "DoH" : "DoT";
+  for (const button of protocolButtons) {
+    button.setAttribute(
+      "aria-pressed",
+      String(button.dataset["protocol"] === protocol),
+    );
+  }
   updateServerCheck();
   updateQuickInsert();
   syncPresets();
@@ -241,11 +285,20 @@ function onServerInput(event?: Event): void {
 
 /**
  * The quick inserts only make sense for a DoH URL; a DoT server is a bare
- * host name. Each is disabled while it would change nothing: its part is
- * already there, or, for the path, there is no host yet to follow.
+ * host name, and gets the note on how easily DoT is blocked in their place.
+ * Each insert is disabled while it would change nothing: its part is already
+ * there, or, for the path, there is no host yet to follow.
  */
 function updateQuickInsert(): void {
-  quickInsert.hidden = selectedProtocol() !== "HTTPS";
+  const doh = selectedProtocol() === "HTTPS";
+  quickInsert.hidden = !doh;
+  protocolNote.hidden = doh;
+  // A description is read even while hidden, so the note is only linked
+  // while it shows.
+  input("serverUrl").setAttribute(
+    "aria-describedby",
+    doh ? "serverCheckText" : "serverCheckText protocolNote",
+  );
   const server = input("serverUrl").value.trim();
   insertScheme.disabled = withHttpsScheme(server) === server;
   insertPath.disabled = withDnsQueryPath(server) === server;
@@ -331,8 +384,9 @@ function removeButtonOf(field: HTMLInputElement): HTMLButtonElement {
 
 /**
  * Brings the section's summary and buttons up to date with the fields: a
- * remove button on each filled field, and a swap button where both of a
- * family's fields are filled.
+ * remove button on each filled field, a green number on each holding an
+ * address of its family, and a swap button where both of a family's fields
+ * are filled.
  */
 function updateAddresses(): void {
   const count = formAddresses().length;
@@ -346,6 +400,10 @@ function updateAddresses(): void {
     const remove = removeButtonOf(field);
     remove.hidden = address === "";
     remove.setAttribute("aria-label", `Remove ${address}`);
+    setFieldValid(
+      addressFieldOf(field),
+      address !== "" && addressError(field) === null,
+    );
   }
   for (const { fields, swap } of addressPairs) {
     swap.classList.toggle(
@@ -496,19 +554,19 @@ function bindAddressFields(): void {
 }
 
 /**
- * Turns the shield in the server field into a green check once the value is
- * usable. Only ever reassures: a mistake is reported on submit, and cleared
- * here as soon as it is fixed.
+ * Marks the server field valid, a green check and protocol on its protocol
+ * button, once the value is usable. Only ever reassures: a mistake is
+ * reported on submit, and cleared here as soon as it is fixed.
  */
 function updateServerCheck(): void {
   const protocol = selectedProtocol();
   const valid = serverError(protocol, input("serverUrl").value.trim()) ===
     null;
-  serverCheck.classList.toggle("input-check--valid", valid);
+  setFieldValid(serverField, valid);
   serverCheckText.textContent = valid
     ? protocol === "HTTPS" ? "Valid DoH server URL." : "Valid DoT server name."
     : "";
-  if (valid) setFieldError(element("field-serverUrl"), null);
+  if (valid) setFieldError(serverField, null);
 }
 
 /**
@@ -559,7 +617,7 @@ async function applyPreset(preset: DnsPreset): Promise<boolean> {
   }
 
   if (!keepName) name.value = preset.name;
-  input(preset.protocol === "HTTPS" ? "doh" : "dot").checked = true;
+  protocol = preset.protocol;
   input("serverUrl").value = preset.serverUrl;
   // Always replaced, never kept: addresses from another provider would point
   // the profile at the wrong resolver.
@@ -581,7 +639,9 @@ async function applyPreset(preset: DnsPreset): Promise<boolean> {
  * preset's server only speaks the preset's protocol (all DoH at the moment),
  * and leaving the URL in place would just fail the DoT check.
  */
-function changeProtocol(): void {
+function changeProtocol(next: DnsProtocol): void {
+  if (next === protocol) return;
+  protocol = next;
   const server = input("serverUrl");
   const leftPreset = appConfig.presets.some((preset) =>
     preset.serverUrl === server.value.trim() &&
@@ -591,17 +651,54 @@ function changeProtocol(): void {
   applyProtocol();
 }
 
-function setPresetMenuOpen(open: boolean): void {
-  presetMenu.hidden = !open;
-  presetToggle.setAttribute("aria-expanded", String(open));
+/** Opens or closes `picker`'s menu. Only one is open at a time. */
+function setMenuOpen(picker: Picker, open: boolean): void {
+  if (open) {
+    for (const other of pickers) {
+      if (other !== picker) setMenuOpen(other, false);
+    }
+  }
+  picker.menu.hidden = !open;
+  picker.toggle.setAttribute("aria-expanded", String(open));
 }
 
-function closePresetMenu(): void {
-  const hadFocus = presetMenu.contains(document.activeElement);
-  setPresetMenuOpen(false);
+function closeMenu(picker: Picker): void {
+  const hadFocus = picker.menu.contains(document.activeElement);
+  setMenuOpen(picker, false);
   // The focused entry just disappeared; the button that opened it is where
   // the user was.
-  if (hadFocus) presetToggle.focus();
+  if (hadFocus) picker.toggle.focus();
+}
+
+function bindPicker(picker: Picker): void {
+  picker.toggle.addEventListener(
+    "click",
+    () => setMenuOpen(picker, picker.toggle.ariaExpanded !== "true"),
+  );
+  picker.field.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || picker.menu.hidden) return;
+    event.preventDefault();
+    closeMenu(picker);
+  });
+}
+
+/**
+ * Menus close on a click or tap anywhere outside their field. Not on focus
+ * loss: Safari does not focus buttons it taps, so that would close the menu
+ * mid-tap.
+ */
+function bindPickers(): void {
+  for (const picker of pickers) bindPicker(picker);
+  document.addEventListener("pointerdown", (event) => {
+    for (const picker of pickers) {
+      if (
+        !picker.menu.hidden && event.target instanceof Node &&
+        !picker.field.contains(event.target)
+      ) {
+        setMenuOpen(picker, false);
+      }
+    }
+  });
 }
 
 /**
@@ -612,29 +709,19 @@ function closePresetMenu(): void {
 function bindPresets(): void {
   appConfig.presets.forEach((preset, index) => {
     presetButtons[index]?.addEventListener("click", async () => {
-      if (await applyPreset(preset)) closePresetMenu();
+      if (await applyPreset(preset)) closeMenu(presetPicker);
     });
   });
-  presetToggle.addEventListener(
-    "click",
-    () => setPresetMenuOpen(presetToggle.ariaExpanded !== "true"),
-  );
-  nameField.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || presetMenu.hidden) return;
-    event.preventDefault();
-    closePresetMenu();
-  });
-  // Closed by a click or tap anywhere else. Not on focus loss: Safari does
-  // not focus buttons it taps, so that would close the menu mid-tap.
-  document.addEventListener("pointerdown", (event) => {
-    if (
-      !presetMenu.hidden && event.target instanceof Node &&
-      !nameField.contains(event.target)
-    ) {
-      setPresetMenuOpen(false);
-    }
-  });
   presetToggle.hidden = appConfig.presets.length === 0;
+}
+
+function bindProtocols(): void {
+  for (const button of protocolButtons) {
+    button.addEventListener("click", () => {
+      changeProtocol(button.dataset["protocol"] === "TLS" ? "TLS" : "HTTPS");
+      closeMenu(protocolPicker);
+    });
+  }
 }
 
 /**
@@ -755,15 +842,14 @@ function init(): void {
   // Only in the app, where fields should behave like native ones; a browser
   // page is expected to leave Escape alone.
   if (desktopBindings() !== undefined) enableEscapeRevert();
-  updateSaveMenu = enableSaveMenu(() => form.requestSubmit(submit));
+  updateSaveMenu = enableSaveMenu(() => form.requestSubmit(submitButton));
+  bindPickers();
   bindPresets();
+  bindProtocols();
   bindQuickInsert();
   bindAddressFields();
   bindRules();
 
-  for (const id of ["doh", "dot"]) {
-    input(id).addEventListener("change", changeProtocol);
-  }
   input("serverUrl").addEventListener("input", onServerInput);
 
   const fileInput = input("fileupload");
@@ -803,7 +889,7 @@ function init(): void {
   }
 
   applyProtocol();
-  updateSaveMenu(submit.value, true);
+  updateSaveMenu(submit.textContent ?? "", true);
 }
 
 init();

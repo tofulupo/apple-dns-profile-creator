@@ -1,10 +1,102 @@
 /**
- * Tests for turning a save failure into a readable message.
+ * Tests for turning a save failure into a readable message, and for sharing
+ * the profile file.
  */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { asError } from "../../src/ui/download.ts";
+import {
+  asError,
+  canShareProfile,
+  profileFile,
+  shareProfile,
+} from "../../src/ui/download.ts";
+
+const FILENAME = "encrypted-dns.mobileconfig";
+
+/** A navigator with only the Web Share parts, as the tests need them. */
+function fakeNavigator(parts: Partial<Navigator>): Navigator {
+  return parts as Navigator;
+}
+
+describe("profileFile", () => {
+  it("is the profile under its name, typed as a configuration profile", async () => {
+    const file = profileFile(FILENAME, "<plist/>");
+    expect(file.name).toBe(FILENAME);
+    expect(file.type).toBe("application/x-apple-aspen-config");
+    expect(await file.text()).toBe("<plist/>");
+  });
+});
+
+describe("canShareProfile", () => {
+  it("is false without Web Share, as on a plain http:// address", () => {
+    expect(canShareProfile(FILENAME, fakeNavigator({}))).toBe(false);
+  });
+
+  it("asks the browser about the profile file itself", () => {
+    let asked: ShareData | undefined;
+    const nav = fakeNavigator({
+      share: () => Promise.resolve(),
+      canShare: (data) => {
+        asked = data;
+        return true;
+      },
+    });
+    expect(canShareProfile(FILENAME, nav)).toBe(true);
+    expect(asked?.files?.[0]?.name).toBe(FILENAME);
+    expect(asked?.files?.[0]?.type).toBe("application/x-apple-aspen-config");
+  });
+
+  it("is false when the browser does not share that file type", () => {
+    const nav = fakeNavigator({
+      share: () => Promise.resolve(),
+      canShare: () => false,
+    });
+    expect(canShareProfile(FILENAME, nav)).toBe(false);
+  });
+
+  it("is false when the check itself throws", () => {
+    const nav = fakeNavigator({
+      share: () => Promise.resolve(),
+      canShare: () => {
+        throw new TypeError("nope");
+      },
+    });
+    expect(canShareProfile(FILENAME, nav)).toBe(false);
+  });
+});
+
+describe("shareProfile", () => {
+  it("shares the file alone, with no text that could replace it", async () => {
+    let shared: ShareData | undefined;
+    const nav = fakeNavigator({
+      share: (data) => {
+        shared = data;
+        return Promise.resolve();
+      },
+    });
+    expect(await shareProfile(FILENAME, "<plist/>", nav)).toBe(true);
+    expect(Object.keys(shared ?? {})).toEqual(["files"]);
+    expect(await shared?.files?.[0]?.text()).toBe("<plist/>");
+  });
+
+  it("resolves false when the share sheet is closed", async () => {
+    const nav = fakeNavigator({
+      share: () => Promise.reject(new DOMException("closed", "AbortError")),
+    });
+    expect(await shareProfile(FILENAME, "<plist/>", nav)).toBe(false);
+  });
+
+  it("rejects with any other failure", async () => {
+    const nav = fakeNavigator({
+      share: () =>
+        Promise.reject(new DOMException("no gesture", "NotAllowedError")),
+    });
+    await expect(shareProfile(FILENAME, "<plist/>", nav)).rejects.toThrow(
+      "no gesture",
+    );
+  });
+});
 
 describe("asError", () => {
   it("passes an Error through unchanged", () => {

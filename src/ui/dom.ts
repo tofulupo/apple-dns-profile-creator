@@ -1,7 +1,3 @@
-/**
- * Small typed DOM helpers.
- */
-
 export function element<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
   if (found === null) {
@@ -16,10 +12,6 @@ export const input = (id: string): HTMLInputElement =>
 export const textarea = (id: string): HTMLTextAreaElement =>
   element<HTMLTextAreaElement>(id);
 
-/**
- * Lists `messages` as the items of `list`, hiding it when there are none.
- * Used for import warnings: things left out that are not errors.
- */
 export function showNotices(
   list: HTMLElement,
   messages: readonly string[],
@@ -45,14 +37,13 @@ export function setFieldError(
     error.hidden = message === null;
   }
 
-  // A field inside a collapsed <details> would report its error invisibly,
-  // leaving the submit button looking inert for no stated reason. Every
-  // enclosing one is opened, since rows of Behavior & rules sit inside the
-  // section's own.
   if (message !== null) openEnclosing(field);
 }
 
-/** Opens every `<details>` around `element`, so it can be seen. */
+export function setFieldValid(field: HTMLElement, valid: boolean): void {
+  field.classList.toggle("field--valid", valid);
+}
+
 export function openEnclosing(element: Element): void {
   for (
     let disclosure = element.closest("details");

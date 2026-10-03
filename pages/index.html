@@ -31,10 +31,10 @@
 
     <div class="field name-field" id="field-provName">
       <label for="provName">Choose a Name</label>
-      <div class="name-picker">
+      <div class="picker">
         <input type="text" id="provName" autocomplete="off"
           placeholder="My DNS Provider">
-        <button type="button" class="name-picker__toggle" id="presetToggle"
+        <button type="button" class="picker__toggle" id="presetToggle"
           aria-expanded="false" aria-controls="presetMenu">
           Presets
           <span class="icon icon--chevron" aria-hidden="true"></span>
@@ -46,34 +46,45 @@
       <p class="field__error" hidden></p>
     </div>
 
-    <fieldset class="field">
-      <legend>Query protocol</legend>
-      <div class="segmented">
-        <label class="segmented__option">
-          <input type="radio" id="doh" name="encryption" value="HTTPS"
-            class="visually-hidden" checked>
-          DNS over HTTPS
-        </label>
-        <label class="segmented__option">
-          <input type="radio" id="dot" name="encryption" value="TLS"
-            class="visually-hidden">
-          DNS over TLS
-        </label>
-      </div>
-    </fieldset>
-
     <div class="field" id="field-serverUrl">
       <label for="serverUrl"
         id="dohdotServerLabel">DoH URL</label>
-      <div class="input-check" id="serverCheck">
+      <div class="picker">
         <input type="text" id="serverUrl" inputmode="url"
           autocapitalize="off" autocorrect="off" spellcheck="false"
           writingsuggestions="false"
           autocomplete="off" placeholder="https://example.com/dns-query"
           aria-describedby="serverCheckText">
-        <span class="icon input-check__icon" aria-hidden="true"></span>
+        <button type="button" class="picker__toggle" id="protocolToggle"
+          aria-expanded="false" aria-controls="protocolMenu"><span
+            class="icon picker__status" aria-hidden="true"></span><span
+            class="visually-hidden">Protocol: </span><span
+            class="picker__label" id="protocolToggleText">DoH</span>
+          <span class="icon icon--chevron" aria-hidden="true"></span>
+        </button>
         <span class="visually-hidden" id="serverCheckText"></span>
       </div>
+      <ul class="preset-menu" id="protocolMenu" aria-label="Protocol"
+        hidden>
+        <li><button type="button" class="preset preset--protocol"
+            data-protocol="HTTPS" aria-pressed="true"><span
+              class="preset__protocol">DoH</span><span
+              class="preset__head"><span
+                class="preset__name">DNS over HTTPS</span></span><span
+              class="preset__server">URL, port 443</span><span
+              class="icon icon--check preset__check"
+              aria-hidden="true"></span></button></li>
+        <li><button type="button" class="preset preset--protocol"
+            data-protocol="TLS" aria-pressed="false"><span
+              class="preset__protocol">DoT</span><span
+              class="preset__head"><span
+                class="preset__name">DNS over TLS</span></span><span
+              class="preset__server">Host name, port 853</span><span
+              class="icon icon--check preset__check"
+              aria-hidden="true"></span></button></li>
+      </ul>
+      <p class="protocol-note" id="protocolNote" hidden>DoH blends in with
+        normal HTTPS; DoT is easier to detect and block.</p>
       <div class="quick-insert" id="quickInsert" role="group"
         aria-labelledby="quickInsertLabel">
         <span class="quick-insert__label"
@@ -275,6 +286,8 @@
     </details>
   </section>
 
-  <input id="btn_addToProfile" type="submit"
-    class="btn btn--primary btn--block" value="Add to profile">
+  <button id="btn_addToProfile" type="submit"
+    class="btn btn--primary btn--block"><span
+      class="icon icon--receipt" aria-hidden="true"></span><span
+      id="addToProfileLabel">Add to profile</span></button>
 </form>
