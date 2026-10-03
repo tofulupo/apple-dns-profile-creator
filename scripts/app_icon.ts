@@ -1,19 +1,4 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run
-/**
- * Regenerates the app's single-image icons after `desktop/AppIcon.icon` (an
- * Icon Composer document) changes. The app bundle gets the .icon itself,
- * compiled by Tauri's bundler with Xcode's `actool`, for its light, dark and
- * tinted looks; macOS before 26 cannot read that and uses these instead:
- *
- * 1. Renders `desktop/AppIcon.png` from the .icon with Icon Composer's
- *    `ictool`, which ships inside Xcode.
- * 2. Generates the icons listed in `src-tauri/tauri.conf.json` from it with
- *    `tauri icon`, leaving out the many others it makes for other platforms.
- *
- *   deno task desktop:icon
- *
- * Unscoped --allow-run, as ictool's path depends on where Xcode is installed.
- */
 import { dirname, fromFileUrl, join, relative, resolve } from "@std/path";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
@@ -36,7 +21,6 @@ async function must(command: string, args: string[]): Promise<string> {
   return output;
 }
 
-/** Icon Composer's renderer, which ships inside Xcode. */
 async function ictoolPath(): Promise<string> {
   const developer = await must("xcode-select", ["-p"]).catch(() => {
     throw new Error("Xcode is needed to render the icon.");
@@ -72,7 +56,6 @@ async function renderFallback(): Promise<void> {
   console.log(`app icon: rendered ${relative(ROOT, FALLBACK_PNG)}`);
 }
 
-/** The icon files in `src-tauri/icons/` that tauri.conf.json lists. */
 function listedIconFiles(config: unknown): string[] {
   const icons = (config as { bundle?: { icon?: unknown } }).bundle?.icon;
   if (!Array.isArray(icons)) return [];
@@ -92,7 +75,7 @@ async function generateTauriIcons(): Promise<void> {
     await must(Deno.execPath(), [
       "run",
       "-A",
-      "npm:@tauri-apps/cli@^2",
+      "@tauri-apps/cli",
       "icon",
       FALLBACK_PNG,
       "--output",
