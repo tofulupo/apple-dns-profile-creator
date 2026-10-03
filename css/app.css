@@ -1,51 +1,30 @@
-/* ==========================================================================
-   DNS Profile Creator - single stylesheet
-   A light theme and a real dark one (near-black, not pure black). Every
-   colour is a light-dark() pair, resolved by `color-scheme` on the root: the
-   system setting by default, or the choice made with the header's theme
-   switch.
-   ========================================================================== */
-
 :root {
-  /* Also themes native controls (checkboxes, radios, scrollbars, the file
-     picker), which the old stylesheet hand-patched per input. */
   color-scheme: light dark;
 
-  /* Light: slate greys. Dark: near-black greys with only a hint of blue, so
-     the accent stands out rather than tinting everything. Accents follow the
-     Ayu palette, darkened in the light theme wherever they carry text or
-     icons, to keep WCAG contrast: 4.5:1 for text, 3:1 for icons and the
-     focus ring. Dark keeps a light blue with dark text on it. */
+  /* Accents are darkened in the light theme for WCAG contrast: 4.5:1 for
+     text, 3:1 for icons and the focus ring. */
   --bg: light-dark(#f8fafc, #0e1013);
   --surface: light-dark(#ffffff, #171a1f);
   --surface-sunken: light-dark(#f8f9fa, #11151b);
-  /* Form fields (text inputs, textareas, selects) sit inside panels
-     (--surface), so they get their own, slightly deeper well to stand
-     out from it. */
   --textinput-sunken: light-dark(#f1f4f7, #0f1216);
   --border: light-dark(#e2e8f0, #2a2e35);
-  /* Hover borders and field outlines: always darker than --border. */
+
   --border-strong: light-dark(#cbd5e1, #3b414b);
   --text: light-dark(#0f172a, #e5e7eb);
   --muted: light-dark(#475569, #9ca3af);
-  /* Links, selected tabs and options, the primary button: 5:1 against white
-     text and white surfaces in the light theme. */
+  /* 5:1 against white in the light theme. */
   --accent: light-dark(#1a73b8, #59c2ff);
   --accent-hover: light-dark(#17629d, #3fb0f0);
-  /* The lighter brand blue, for large fills and outlines that carry no text:
-     the checked switch, the upload zone. */
+
   --accent-fill: light-dark(#399ee6, #59c2ff);
-  /* Text and icons on an accent fill: primary buttons and selected pills. */
+
   --accent-contrast: light-dark(#ffffff, #0e1013);
-  /* Accent as text on the sunken and tinted surfaces (section icons, the
-     profile cards' flags), where plain --accent gets close to 4.5:1. */
+  /* For sunken and tinted surfaces, where --accent gets close to 4.5:1. */
   --accent-text: light-dark(#17629d, #59c2ff);
-  /* The upload zone's dashed outline. */
+
   --zone-border: light-dark(#94a3b8, #6b7280);
   --success: light-dark(#1a7f37, #3fb950);
-  /* Success as an icon (the server field's check): lighter than the text
-     colour, since a dark green shield barely differs from the grey one it
-     replaces, while keeping the 3:1 icons need. */
+  /* Lighter than --success, keeping the 3:1 icons need. */
   --success-icon: light-dark(#249a74, #3fb950);
   --warning: light-dark(#a8580b, #ffb454);
   --danger: light-dark(#c93a3a, #f28779);
@@ -58,34 +37,27 @@
     0 1px 2px light-dark(rgb(16 24 40 / 6%), rgb(0 0 0 / 30%)),
     0 1px 3px light-dark(rgb(16 24 40 / 8%), rgb(0 0 0 / 25%));
   --gap: 1rem;
-  /* Inset of a profile card's content; the list footer lines up with it. */
+
   --card-padding: 1.1rem;
   --panel-padding-x: 1.35rem;
-  /* The button inside a field's right edge (Presets), and the upload zone's
-     Load button, which on phones matches it in size and right edge. */
+
   --inline-btn-width: 6rem;
   --inline-btn-height: 2.125rem;
   --inline-btn-inset: 0.3rem;
 
-  --font: "Söhne", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
-    sans-serif;
+  --font: "Söhne", "Söhne Fallback", -apple-system, BlinkMacSystemFont,
+    "Segoe UI", system-ui, sans-serif;
   --font-mono: "Berkeley Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
     monospace;
 }
 
-/* The desktop app's monospace: Berkeley Mono is licensed for the website
-   only, and the app never requests it. */
+/* Berkeley Mono is licensed for the website only. */
 :root[data-app="desktop"] {
   --font-mono: "Lilex", ui-monospace, SFMono-Regular, "SF Mono", Menlo,
     monospace;
 }
 
-/* Söhne, the text everywhere: Latin subsets made from the licensed webfonts
-   by `deno task fonts` (fonts/source/ -> fonts/subset/), kept out of git. The
-   app's build copies them in, and fails a release without them; the website's
-   build downloads them from R2 (scripts/web_fonts.ts). Three weights: 700 and
-   up (the h1) resolve to Halbfett. swap, since on the website they arrive
-   over the network; the build preloads Buch. */
+/* Söhne: subsets of licensed webfonts, kept out of git. */
 @font-face {
   font-family: "Söhne";
   src: url("fonts/Soehne-Buch.woff2") format("woff2");
@@ -107,9 +79,41 @@
   font-display: swap;
 }
 
-/* Berkeley Mono, the website's monospace: the variable font from US
-   Graphics (TX-02), weights 400 to 700, licensed for the website only and
-   downloaded from R2 like Söhne. */
+/* Arial scaled to Söhne's width and given its ascent and descent, so nothing
+   shifts when Söhne swaps in. The overrides are Söhne's 117% and 42% divided
+   by the size-adjust. */
+@font-face {
+  font-family: "Söhne Fallback";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans");
+  font-weight: 400;
+  size-adjust: 97.8%;
+  ascent-override: 119.6%;
+  descent-override: 42.9%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Söhne Fallback";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans");
+  font-weight: 500;
+  size-adjust: 98.5%;
+  ascent-override: 118.8%;
+  descent-override: 42.6%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "Söhne Fallback";
+  src:
+    local("Arial Bold"), local("Arial-BoldMT"), local("Liberation Sans Bold");
+  font-weight: 600 900;
+  size-adjust: 94.6%;
+  ascent-override: 123.7%;
+  descent-override: 44.4%;
+  line-gap-override: 0%;
+}
+
+/* Berkeley Mono (US Graphics, TX-02): licensed for the website only. */
 @font-face {
   font-family: "Berkeley Mono";
   src: url("fonts/Berkeley_Mono.woff2") format("woff2");
@@ -117,7 +121,7 @@
   font-display: swap;
 }
 
-/* Lilex (OFL, committed in fonts/ with its licence): the app's monospace. */
+/* Lilex: OFL, licence in fonts/. */
 @font-face {
   font-family: "Lilex";
   src: url("fonts/Lilex-Latin.woff2") format("woff2");
@@ -125,11 +129,8 @@
   font-display: swap;
 }
 
-/* The desktop app's pixel font (src/ui/pixel.ts): ⌘G six times sets all
-   text in Geist Pixel Square (OFL, from the same `geist` package as Geist,
-   under the same licence). It has one weight, and a faked bold smudges the
-   pixels, so headings stay regular. Characters it lacks fall back to Söhne
-   and Lilex. */
+/* Geist Pixel Square: OFL, from the `geist` package. data-pixel is set by
+   src/ui/pixel.ts. */
 @font-face {
   font-family: "Geist Pixel";
   src: url("fonts/GeistPixel-Square.woff2") format("woff2");
@@ -145,18 +146,16 @@
   font-synthesis-weight: none;
 }
 
-/* The app's page never bounces sideways, where there is nothing to scroll,
-   nor up and down while it fits the window: `data-fits`, from
-   src/ui/overscroll.ts. */
 :root[data-app="desktop"] {
   overscroll-behavior-x: none;
 }
 
+/* Set by src/ui/overscroll.ts. */
 :root[data-app="desktop"][data-fits] {
   overscroll-behavior-y: none;
 }
 
-/* Set before first paint by the inline script in pages/_layout.html. */
+/* Set before first paint by the inline script in pages/_prepaint.html. */
 :root[data-theme="light"] {
   color-scheme: light;
 }
@@ -178,8 +177,7 @@
   box-sizing: border-box;
 }
 
-/* The inline padding grows past a landscape iPhone's notch, which the page
-   runs under with viewport-fit=cover (pages/_layout.html). */
+/* Relies on viewport-fit=cover in pages/_layout.html. */
 body {
   margin: 0;
   padding: 0 max(1.25rem, env(safe-area-inset-right)) 4rem
@@ -199,10 +197,6 @@ h3 {
   margin: 0;
 }
 
-/* The lockup, with the theme switch and version beside it and the tabs under
-   both (on the Tool page, under the upload zone, below). The dock (pages/_layout.html) groups the tabs with the switch and
-   version for the floating bar on phones and tablets; here it steps aside,
-   and its children take their places in the grid. */
 .page {
   --header-padding-top: 2rem;
   --header-padding-bottom: 1.25rem;
@@ -227,12 +221,6 @@ main {
   grid-column: 1 / -1;
 }
 
-/* The Tool page has the tabs between the upload zone and the form: <main>
-   spans three rows as a subgrid, the zone in the first and the form in the
-   last, and leaves the middle one to the tabs (after .tabs further down),
-   which are raised above <main> so it does not take their clicks. In the
-   floating bar the tabs leave the grid and the row stays empty; :where()
-   keeps these rules from outweighing the bar's. */
 :where(.page:has(> main > #mainForm)) main {
   display: grid;
   grid-row: 2 / span 3;
@@ -244,14 +232,10 @@ main {
   grid-row: 3;
 }
 
-/* The tool's name as a lockup: a solid bar in the accent down the name and
-   the protocols, which sit under it as a footnote in Lilex, the face of the
-   version badge and the server addresses. Size and weight carry the name.
-   The bar's width and gap, and the footnote's size, follow --name. */
 .brand {
   --name: 2.1rem;
-  /* The space before Söhne's bold D, and before the monospace E, in em, from
-     the fonts' metrics: Berkeley Mono's here, Lilex's in the app. */
+  /* The space before Söhne's bold D and the monospace E, in em, from the
+     fonts' metrics: Berkeley Mono's here, Lilex's in the app. */
   --name-indent: 0.062;
   --mono-indent: 0.131;
 
@@ -261,7 +245,6 @@ main {
   min-width: 0;
 }
 
-/* Past the capitals' top and the footnote's baseline, rather than flush. */
 .brand::before {
   content: "";
   grid-row: 1 / span 2;
@@ -282,9 +265,6 @@ main {
   --mono-indent: 0.09;
 }
 
-/* Muted, so the bar stays the lockup's one accent. Never under 14px. Its E
-   starts where the name's D does: the footnote moves by the difference
-   between the two letters' spaces. */
 .brand__protocols {
   grid-column: 2;
   margin: calc(var(--name) * 0.16) 0 0;
@@ -299,17 +279,13 @@ main {
   white-space: nowrap;
 }
 
-/* Narrow app windows (360px): beside the badge and switch the name takes two
-   lines, and the bar runs down both and the footnote. On the website the
-   floating bar takes them away first (.dock). */
+/* Narrow app windows (360px). */
 @media (max-width: 30rem) {
   .brand {
     --name: 1.55rem;
   }
 }
 
-/* A link to the source on GitHub, which the code icon in front tells, so it
-   is no surprise when it opens. */
 .version {
   display: inline-flex;
   align-items: center;
@@ -340,9 +316,6 @@ main {
   --icon: url("icons/source-code.svg");
 }
 
-/* The theme switch and version badge in one row, centred on the lockup: the
-   same padding as the header's, so the centre is the lockup's, not the
-   header's. */
 .site-header__actions {
   grid-area: 1 / 2;
   display: flex;
@@ -351,8 +324,7 @@ main {
   padding-block: var(--header-padding-top) var(--header-padding-bottom);
 }
 
-/* Narrow app windows (360px): narrower gaps leave the footnote its one
-   line. */
+/* Narrow app windows (360px). */
 @media (max-width: 30rem) {
   .page {
     column-gap: 0.5rem;
@@ -363,7 +335,6 @@ main {
   }
 }
 
-/* Round icon button beside the version badge. */
 .theme-switch {
   display: grid;
   place-items: center;
@@ -387,8 +358,6 @@ main {
   height: 1rem;
 }
 
-/* The icon shows the current choice, driven by the same attribute as the
-   colours, so it is right from the first paint. */
 .icon--theme {
   --icon: url("icons/monitor.svg");
 }
@@ -401,7 +370,6 @@ main {
   --icon: url("icons/moon.svg");
 }
 
-/* Panel titles (h2) and the cards' titles (h3, sized by their own class). */
 h2,
 h3 {
   font-size: 1.05rem;
@@ -426,8 +394,6 @@ code {
   text-wrap: pretty;
 }
 
-/* An icon drawn from an SVG in icons/, painted in the current text colour so
-   it follows the theme and hover states like the text beside it. */
 .icon {
   display: inline-block;
   flex: none;
@@ -494,30 +460,21 @@ code {
   padding: var(--header-padding-top) 0 var(--header-padding-bottom);
 }
 
-/* The app's unified title bar. The page runs under the window buttons
-   (titleBarStyle Overlay, src-tauri/tauri.conf.json), and the bar is part of
-   it: the page's own background, flat, with the tabs in the middle, as in a
-   macOS toolbar. The theme and version are in Settings (⌘,), which leaves
-   the header to the name and the protocols under it.
-
-   --titlebar must stay twice the window buttons' centre, which AppKit puts
-   2px above trafficLightPosition's y of 28: 26px from the top. Pixels, since
-   AppKit's are. */
 .titlebar {
   display: none;
 }
 
 :root[data-app="desktop"] {
+  /* Twice the window buttons' centre, which AppKit puts 2px above
+     trafficLightPosition's y of 28 (src-tauri/tauri.conf.json): 26px from
+     the top. Pixels, since AppKit's are. */
   --titlebar: 52px;
-  /* The tabs' segments, equal like a macOS segmented control's, and wide
-     enough for "Profile (9+)". */
+  /* Wide enough for "Profile (9+)". */
   --segment: 7.5rem;
 
-  /* Focus and in-page jumps stop clear of the bar. */
   scroll-padding-top: var(--titlebar);
 }
 
-/* The drag region (data-tauri-drag-region), under the items on it. */
 :root[data-app="desktop"] .titlebar {
   display: block;
   position: fixed;
@@ -528,8 +485,6 @@ code {
   border-bottom: 1px solid transparent;
 }
 
-/* A hairline once the page scrolls under the bar, as macOS draws it; at the
-   top the bar and page stay one surface. */
 @supports (animation-timeline: scroll()) {
   :root[data-app="desktop"] .titlebar {
     animation: titlebar-edge linear both;
@@ -544,16 +499,12 @@ code {
   }
 }
 
-/* In Settings instead (pages/_settings.html). The switch stays in the page,
-   hidden, as it gives the app the saved theme (src/ui/theme.ts). */
+/* Hidden, not removed: src/ui/theme.ts needs the switch to give the app the
+   saved theme. */
 :root[data-app="desktop"] .site-header__actions {
   display: none;
 }
 
-/* The tabs, centred in the window as a segmented control, as tall as a
-   toolbar's controls. The current page keeps its
-   solid accent pill (.tab[aria-current="page"]); View > Tool (⌘1) and
-   Profile (⌘2) switch between them, src-tauri/src/menu.rs. */
 :root[data-app="desktop"] .tabs {
   position: fixed;
   top: calc((var(--titlebar) - 1.75rem) / 2);
@@ -568,8 +519,6 @@ code {
   translate: -50% 0;
 }
 
-/* A width rather than a flex basis, which WebKit leaves out of the
-   container's own width. */
 :root[data-app="desktop"] .tab {
   flex: none;
   width: var(--segment);
@@ -586,15 +535,11 @@ code {
   height: 0.95rem;
 }
 
-/* With the bar carrying the rest, the header holds only the name and the
-   protocols. */
 :root[data-app="desktop"] .site-header {
   padding-top: calc(var(--titlebar) + 1rem);
   padding-bottom: 1.75rem;
 }
 
-/* The lockup (.brand) at a larger size, which its bar and footnote follow:
-   the header has nothing else beside it in the app. */
 :root[data-app="desktop"] .brand {
   --name: clamp(1.85rem, 0.9rem + 2.7vw, 2.6rem);
 }
@@ -603,11 +548,6 @@ code {
   line-height: 1;
 }
 
-/* The app's mascot (pages/_mascot.html), in front of the bar: its foot level
-   with the bar's, its ears above the name. The first row is flexible, and a
-   flexible row only gets what the items spanning it leave over: exactly the
-   height the mascot needs beyond the name and protocols. The name moves down
-   by that, so the ears keep the header's space under the title bar. */
 .brand:has(> .brand__mascot) {
   grid-template-columns: auto calc(var(--name) * 0.32) minmax(0, 1fr);
   grid-template-rows: 1fr auto auto;
@@ -629,13 +569,13 @@ code {
 }
 
 .brand__mascot {
-  /* The fills that differ between public/icons/mascot-light.svg and
+  /* Must match the fills in public/icons/mascot-light.svg and
      mascot-dark.svg. */
   --mascot-ear: light-dark(#1a73b8, #59c2ff);
   --mascot-ear-inner: light-dark(#0f4a78, #1b4b69);
   --mascot-bezel: light-dark(#94a3b8, #3b414b);
   --mascot-bezel-inner: light-dark(#e2e8f0, #22262d);
-  /* How far apart the drawing's layers stand, which shows as it turns. */
+
   --mascot-depth: calc(var(--name) * 0.12);
 
   position: relative;
@@ -644,7 +584,7 @@ code {
   align-self: end;
   width: calc(var(--name) * 2.29);
   aspect-ratio: 64 / 65;
-  /* The bar runs past the protocols' line by as much. */
+
   margin-bottom: calc(var(--name) * -0.1);
 }
 
@@ -655,9 +595,7 @@ code {
   inset: 0;
 }
 
-/* Leaning toward the name and looking down at the page, from its foot; its
-   own perspective, so the pose is the same on every page. src/ui/mascot.ts
-   turns it further toward the focused field (--mascot-turn-*). */
+/* --mascot-turn-* is set by src/ui/mascot.ts. */
 .mascot__body {
   transform-origin: 50% 100%;
   transform-style: preserve-3d;
@@ -710,7 +648,6 @@ code {
   fill: var(--mascot-bezel-inner);
 }
 
-/* It floats, unless motion is reduced. */
 :root:not([data-motion="reduce"]) .mascot__float {
   animation: mascot-float 3.8s ease-in-out infinite;
 }
@@ -725,9 +662,6 @@ code {
   transition: none;
 }
 
-/* The desktop app's Settings window (pages/_settings.html, ⌘,): a section
-   of rows in one rounded group, as macOS's own settings lay them out, with
-   the app's name and version at the foot. */
 body.settings-window {
   padding: calc(var(--titlebar, 0px) + 0.25rem) 1.5rem 1.25rem;
 }
@@ -784,8 +718,6 @@ body.settings-window {
   line-height: 1.4;
 }
 
-/* Theme: a small picture of the app's window in each theme, drawn with the
-   app's own colours, which color-scheme pins to light or dark. */
 .theme-cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -810,7 +742,7 @@ body.settings-window {
   aspect-ratio: 8 / 5;
   overflow: hidden;
   border-radius: 8px;
-  /* Rings rather than a border, so choosing one does not shift it. */
+
   box-shadow: 0 0 0 1px var(--border);
   transition: box-shadow 0.15s ease;
 }
@@ -851,7 +783,6 @@ body.settings-window {
   color-scheme: dark;
 }
 
-/* System: light on the left, dark on the right, as macOS draws it. */
 .theme-card__picture--system .theme-picture--dark {
   clip-path: inset(0 0 0 50%);
 }
@@ -861,7 +792,6 @@ body.settings-window {
   display: block;
 }
 
-/* The window buttons, in their own colours in both themes. */
 .theme-picture__lights {
   top: 7%;
   left: 5%;
@@ -920,7 +850,6 @@ body.settings-window {
   background: var(--surface);
 }
 
-/* Running off the bottom, as the form does below the fold. */
 .theme-picture__panel {
   top: 76%;
   right: 7%;
@@ -931,7 +860,6 @@ body.settings-window {
   background: var(--surface);
 }
 
-/* Motion: a segmented control, its choice raised like a macOS one's. */
 .segmented {
   display: inline-flex;
   flex: none;
@@ -998,8 +926,6 @@ body.settings-window {
   box-shadow: var(--shadow);
 }
 
-/* The Tool page's tabs (see main above), as far from the form as the zone is
-   from them. After .tabs, which would otherwise win the margin. */
 :where(.page:has(> main > #mainForm)) .tabs {
   z-index: 1;
   grid-row: 3;
@@ -1025,10 +951,6 @@ body.settings-window {
   color: var(--text);
 }
 
-/* The configuration count on the Profile tab, "3" or "9+", as a filled
-   accent pill after the label, the same in the header, the app's title bar
-   and the floating bar. Tabular figures keep it from changing width as the
-   number changes. */
 .tab__count {
   display: grid;
   place-items: center;
@@ -1044,39 +966,29 @@ body.settings-window {
   line-height: 1;
 }
 
-/* On the selected tab's accent pill, the colours swap. */
 .tab[aria-current="page"] .tab__count {
   background: var(--accent-contrast);
   color: var(--accent);
 }
 
-/* The selected tab: a solid accent pill. Declared after the hover rules,
-   which must not recolour it. */
 .tab[aria-current="page"] {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
 }
 
-/* Phones and tablets, up to 912px: the tabs, theme switch and version leave
-   the header for one bar floating at the bottom, in reach of a thumb, and the
-   header keeps only the lockup. The tabs sit in the middle, the switch and
-   version flat on either side, as on the desktop app's title bar. The bar has
-   the profile cards' head colour, a little translucent over a blur, so the
-   page shows through as it scrolls under. Not in the desktop app, which keeps
-   the header at any width. */
+/* Phones and tablets, up to 912px. */
 @media (width <= 57rem) {
   :root:not([data-app="desktop"]) {
     --dock-item: 2.75rem;
     --dock-padding: 0.25rem;
-    /* Clear of the home indicator, where there is one. */
+
     --dock-offset: max(1rem, env(safe-area-inset-bottom));
-    /* How far up from the bottom edge the bar reaches. */
+
     --dock-reach: calc(
       var(--dock-offset) + var(--dock-item) + 2 * var(--dock-padding) + 2px
     );
 
-    /* Focus and in-page jumps stop clear of the bar. */
     scroll-padding-bottom: calc(var(--dock-reach) + 1rem);
   }
 
@@ -1084,21 +996,16 @@ body.settings-window {
     padding-bottom: calc(var(--dock-reach) + 2rem);
   }
 
-  /* The lockup larger, with nothing beside it: on one line from 360px. */
   :root:not([data-app="desktop"]) .brand {
     --name: clamp(1.55rem, 8vw, 2.1rem);
   }
 
-  /* With the tabs gone from under it, the header leaves more room below. */
   :root:not([data-app="desktop"]) .page {
     --header-padding-bottom: 1.75rem;
 
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* Centred by the auto margins between the zero insets, as wide as its
-     items. The two 1fr columns either side of the tabs come out as wide as
-     the wider of switch and version, which keeps the tabs in the middle. */
   :root:not([data-app="desktop"]) .dock {
     position: fixed;
     inset-inline: 0;
@@ -1138,8 +1045,6 @@ body.settings-window {
     box-shadow: none;
   }
 
-  /* Hairlines either side of the tabs: between the switch and Tool, and
-     between Profile and the version. */
   :root:not([data-app="desktop"]) .tabs::before,
   :root:not([data-app="desktop"]) .tabs::after {
     content: "";
@@ -1162,13 +1067,10 @@ body.settings-window {
     white-space: nowrap;
   }
 
-  /* Out of the way, so the switch and version take the outer columns. */
   :root:not([data-app="desktop"]) .site-header__actions {
     display: contents;
   }
 
-  /* Flat on the bar, without fill or border; a fill only shows under the
-     pointer or a finger. */
   :root:not([data-app="desktop"]) .theme-switch,
   :root:not([data-app="desktop"]) .version {
     height: var(--dock-item);
@@ -1176,11 +1078,6 @@ body.settings-window {
     border-color: transparent;
   }
 
-  /* The switch names the current choice beside its icon, set like the
-     version opposite, so the two sides match in weight as well as in
-     width. The name follows data-theme like the icon, so it is right from
-     the first paint; the button's aria-label (src/ui/theme.ts) carries
-     the same word. */
   :root:not([data-app="desktop"]) .theme-switch {
     grid-area: 1 / 1;
     justify-self: center;
@@ -1195,6 +1092,7 @@ body.settings-window {
     white-space: nowrap;
   }
 
+  /* The same words as the button's aria-label in src/ui/theme.ts. */
   :root:not([data-app="desktop"]) .theme-switch::after {
     content: "System";
   }
@@ -1225,17 +1123,13 @@ body.settings-window {
     background: var(--surface);
   }
 
-  /* Phones, up to 480px: labels beside the icons, and the version's width on
-     both sides of them, need about 440px with the count at "9+", so the tabs
-     keep their icons, round like the switch, and the labels only for
-     assistive tech. Tablets get the labels. */
+  /* Phones, up to 480px: the labels need about 440px with the count at
+     "9+". */
   @media (width <= 30rem) {
     :root:not([data-app="desktop"]) .tab {
       --tab-padding: calc((var(--dock-item) - 1.25rem) / 2);
     }
 
-    /* The count as a badge on the icon's corner instead, ringed in the
-       colour under it so it stands clear of the icon. */
     :root:not([data-app="desktop"]) .tab__count {
       position: absolute;
       top: 0.3rem;
@@ -1261,7 +1155,7 @@ body.settings-window {
     }
   }
 
-  /* While an on-screen keyboard is open (data-keyboard, src/ui/dock.ts). */
+  /* data-keyboard is set by src/ui/dock.ts. */
   :root[data-keyboard]:not([data-app="desktop"]) .dock {
     visibility: hidden;
     opacity: 0;
@@ -1331,7 +1225,6 @@ legend {
   font-weight: 500;
 }
 
-/* `hidden` must win over components that set `display`, such as .note. */
 [hidden] {
   display: none !important;
 }
@@ -1394,9 +1287,6 @@ textarea {
   font-size: 0.95rem;
 }
 
-/* Identifiers (IP addresses, domains, network names) are typed in monospace,
-   one size for inputs and textareas. Before the touch rules below, which
-   must still raise it to 16px. */
 textarea,
 input.mono {
   font-family: var(--font-mono);
@@ -1408,11 +1298,8 @@ textarea {
   min-height: 5.5rem;
 }
 
-/* iOS Safari zooms the page into any focused field whose text is smaller
-   than 16px, so fields get exactly 16px on touch screens and on every iOS
-   and iPadOS browser (-webkit-touch-callout exists only there, which also
-   covers an iPad driven by a trackpad). The viewport stays zoomable: a
-   maximum-scale would stop the jump but also block pinch-zoom. */
+/* 16px: iOS zooms into focused fields with smaller text. -webkit-touch-callout
+   exists only on iOS and iPadOS. */
 @media (pointer: coarse) {
   input[type="text"],
   textarea {
@@ -1434,8 +1321,6 @@ textarea::placeholder {
   font-family: var(--font);
 }
 
-/* IP address fields show their example addresses in the same monospace font
-   the addresses are typed in. */
 .mono::placeholder {
   font-family: var(--font-mono);
 }
@@ -1447,7 +1332,6 @@ textarea::placeholder {
   text-wrap: pretty;
 }
 
-/* Import warnings: parts of an uploaded profile that were left out. */
 .notices {
   margin: 0.4rem 0 0;
   padding-left: 1.2rem;
@@ -1464,8 +1348,6 @@ textarea::placeholder {
   border-color: var(--danger);
 }
 
-/* A field with a button inside its right edge, which opens a menu below it:
-   presets on the name, the protocol on the server. */
 .picker {
   position: relative;
 }
@@ -1477,7 +1359,6 @@ textarea::placeholder {
     0.5rem);
 }
 
-/* No presets configured, so no button to make room for. */
 .picker:has(> button[hidden]) input {
   padding-right: 0.75rem;
 }
@@ -1495,7 +1376,7 @@ textarea::placeholder {
   padding: 0 0.6rem;
   translate: 0 -50%;
   background: var(--surface);
-  /* Border and hover as .btn, so it matches the upload zone's Load button. */
+
   border: 1px solid var(--border-strong);
   border-radius: calc(var(--radius-sm) - 2px);
   color: var(--text);
@@ -1518,14 +1399,6 @@ textarea::placeholder {
   color: var(--accent-text);
 }
 
-/* Validation of a field whose format matters (server, addresses) shows in
-   its own small marker: the protocol on the server's button, the number in
-   front of an address. Green once the value is usable; a red x once submit
-   finds it is not, so the two differ in shape as well as colour, and empty
-   (no value at all) stays grey.
-
-   On the server: [✓ DoH ▾] or [× DoH ▾], kept while the menu is open,
-   inside its accent. */
 .picker__status {
   display: none;
   width: 0.85rem;
@@ -1569,9 +1442,6 @@ textarea::placeholder {
   --icon: url("icons/check.svg");
 }
 
-/* The presets, in the input's own well so the menu reads as part of the
-   field. Opens in the flow rather than floating, where the phone keyboard
-   would cover it. */
 .preset-menu {
   display: grid;
   gap: 0.125rem;
@@ -1593,8 +1463,6 @@ textarea::placeholder {
   }
 }
 
-/* Narrow (phones): the name with its feature pills, which move under it as
-   a group when they do not fit beside it, then the server on its own line. */
 .preset {
   display: grid;
   grid-template-areas: "mark head check" ". server check";
@@ -1623,8 +1491,6 @@ textarea::placeholder {
   border-color: var(--accent);
 }
 
-/* A flag, or a globe for a resolver that answers from everywhere. Sized to
-   the name's line, where the eye starts reading. */
 .preset__mark {
   grid-area: mark;
   justify-self: center;
@@ -1636,8 +1502,7 @@ textarea::placeholder {
   height: 0.9375rem;
   border-radius: 2px;
   object-fit: cover;
-  /* A hairline edge, so white and pale flags keep their shape on the light
-     theme's well. */
+
   outline: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
   outline-offset: -1px;
 }
@@ -1692,8 +1557,6 @@ textarea::placeholder {
   color: var(--muted);
 }
 
-/* The protocol, squared and in the code font like the host after it, so it
-   reads as part of the address rather than as another feature. */
 .preset__protocol {
   flex: none;
   padding: 0 0.3rem;
@@ -1706,8 +1569,6 @@ textarea::placeholder {
   line-height: 1.45;
 }
 
-/* The protocol menu: the protocol's tag where a preset has its flag, so the
-   column is as wide as the tag. */
 .preset--protocol {
   grid-template-columns: auto 1fr auto;
 }
@@ -1727,8 +1588,6 @@ textarea::placeholder {
   overflow-wrap: anywhere;
 }
 
-/* Wide (tablets, desktop): one line per preset, with name, server and
-   features lined up in columns across the menu through subgrid. */
 .name-field {
   container: name-field / inline-size;
 }
@@ -1746,7 +1605,6 @@ textarea::placeholder {
     grid-template-columns: subgrid;
   }
 
-  /* normal: the menu's gaps, so the columns line up across rows. */
   .preset {
     grid-template-areas: "mark name server features check";
     gap: normal;
@@ -1770,7 +1628,6 @@ textarea::placeholder {
   visibility: visible;
 }
 
-/* The parts of a DoH URL that are tedious to type on a phone. */
 .quick-insert {
   display: flex;
   flex-wrap: wrap;
@@ -1779,8 +1636,7 @@ textarea::placeholder {
   margin-top: 0.5rem;
 }
 
-/* In the quick inserts' place for DoT, and no taller: two lines of this
-   size fill their 2rem, so switching protocol moves nothing below. */
+/* Two lines of this size fill the quick inserts' 2rem. */
 .protocol-note {
   display: flex;
   align-items: center;
@@ -1822,15 +1678,12 @@ textarea::placeholder {
   transform: scale(0.96);
 }
 
-/* Already in the URL. */
 .quick-insert__btn:disabled {
   color: var(--muted);
   opacity: 0.6;
   cursor: default;
 }
 
-/* A collapsible part of a panel: a row under a hairline rather than a card
-   of its own, which inside the panel would be a card in a card. */
 .panel-disclosure {
   border-top: 1px solid var(--border);
 }
@@ -1851,9 +1704,6 @@ textarea::placeholder {
   display: none;
 }
 
-/* An icon rather than the › character, whose size and shape change with the
-   font: tiny in Söhne, and different again on Windows and Android. Narrower
-   than the icon and centred on it, so opening rotates it in place. */
 .panel-disclosure > summary::before {
   content: "";
   flex: none;
@@ -1889,9 +1739,6 @@ textarea::placeholder {
   margin-top: 0.85rem;
 }
 
-/* Behavior & rules: one grouped list. Each row shows its current state at a
-   glance; list rows open in place, interfaces and switches work right in
-   the row. */
 .rule-list {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -1910,7 +1757,6 @@ textarea::placeholder {
   padding: 0.7rem 0.9rem;
 }
 
-/* Interfaces: the chips move under the title when the row is too narrow. */
 .rule__head--wrap {
   flex-wrap: wrap;
 }
@@ -1964,9 +1810,6 @@ summary.rule__head::-webkit-details-marker {
   gap: 0.35rem;
 }
 
-/* An on/off chip: a real checkbox inside, visually hidden. On shows the
-   accent and a check, so the state is not told by colour alone; the check's
-   space is kept when off, so switching does not shift the row. */
 .toggle-chip {
   display: inline-flex;
   align-items: center;
@@ -2021,8 +1864,6 @@ summary.rule__head::-webkit-details-marker {
   margin-bottom: 0.5rem;
 }
 
-/* Two IPv4 and two IPv6 fields: side by side where an IPv6 address fits in
-   half the panel, stacked on phones, with the swap button between them. */
 .address-grid {
   --address-height: 2.75rem;
 
@@ -2043,8 +1884,6 @@ summary.rule__head::-webkit-details-marker {
   }
 }
 
-/* The field's place in the order on the left, its remove button on the
-   right. A fixed height, so the swap button beside it can match. */
 .address-input {
   position: relative;
 }
@@ -2055,8 +1894,6 @@ summary.rule__head::-webkit-details-marker {
   padding-right: 2.6rem;
 }
 
-/* The number in an outlined circle: green once the address is usable, an x
-   instead of the number once submit finds it is not (see .picker__status). */
 .address-input__index {
   position: absolute;
   top: 50%;
@@ -2094,8 +1931,6 @@ summary.rule__head::-webkit-details-marker {
   mask: url("icons/close.svg") center / 0.6rem no-repeat;
 }
 
-/* Grey until hovered: it clears one field, which is less than the red X on a
-   profile card, which deletes a whole configuration. */
 .address-input__remove,
 .address-swap {
   display: inline-flex;
@@ -2131,9 +1966,6 @@ summary.rule__head::-webkit-details-marker {
   color: var(--danger-hover);
 }
 
-/* Stacked on phones, so its arrows point up and down there. Kept in place
-   while there is nothing to swap, so the fields do not move when it
-   appears. */
 .address-swap {
   justify-self: center;
   width: 2.75rem;
@@ -2166,21 +1998,11 @@ summary.rule__head::-webkit-details-marker {
   }
 }
 
-/* The profile cards' flags list only options that are on. Tinted rather than
-   filled: they describe a card, they are not a choice to make, and a row of
-   solid pills on every card would outshout the Edit buttons. */
 .profile-card__flags .badge {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-sunken));
   border-color: var(--accent);
   color: var(--accent-text);
 }
-
-/* --------------------------------------------------------------------------
-   Zone: the dashed box at the top of both pages. The tool page's is a <label>
-   around a visually hidden file input, so a click or tap anywhere opens the
-   picker and keyboard focus stays on the real control; the profile page's
-   empty state is a link back to the tool. Both take dropped files.
-   -------------------------------------------------------------------------- */
 
 .zone {
   --zone-title: 1.05rem;
@@ -2260,8 +2082,6 @@ summary.rule__head::-webkit-details-marker {
   transform: translateY(-3px) scale(1.06);
 }
 
-/* Always as tall as a title plus a status line, so a zone without a status
-   line matches one with it and switching pages does not shift the layout. */
 .zone__text {
   display: grid;
   align-content: center;
@@ -2289,8 +2109,6 @@ summary.rule__head::-webkit-details-marker {
   white-space: nowrap;
 }
 
-/* Profile file names are long and hyphenated; one truncated line beats five
-   wrapped ones, and the full name is in the title attribute. */
 .zone__status strong {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2302,8 +2120,6 @@ summary.rule__head::-webkit-details-marker {
   pointer-events: none;
 }
 
-/* Dragging a file is a pointer idea; on touch screens the zone only opens the
-   picker, so the heading says that instead. */
 .zone__title-touch {
   display: none;
 }
@@ -2318,8 +2134,7 @@ summary.rule__head::-webkit-details-marker {
   }
 }
 
-/* Below 768px (phones, small tablets, narrow desktop windows) the form is the
-   main job, so the zone collapses to one row. */
+/* Below 768px: phones, small tablets, narrow desktop windows. */
 @media (width < 48rem) {
   .zone {
     --zone-title: 0.95rem;
@@ -2329,10 +2144,7 @@ summary.rule__head::-webkit-details-marker {
     align-items: center;
     justify-items: start;
     gap: 0.85rem;
-    /* Lined up with the panel below: the icon with the panel's content, and
-       the Load button's right edge with the Presets button's (the panel's
-       border and padding plus the button's inset from the field's outer
-       edge). Each side less this zone's thicker border. */
+    /* Lined up with the panel below, less this zone's 1.5px border. */
     padding: 0.9rem
       calc(var(--panel-padding-x) + var(--inline-btn-inset) + 1px - 1.5px)
       0.9rem calc(var(--panel-padding-x) + 1px - 1.5px);
@@ -2344,9 +2156,6 @@ summary.rule__head::-webkit-details-marker {
     height: 2.25rem;
   }
 
-  /* The row leaves the text little width, so the tool's title wraps to two
-     lines on narrow phones. Reserve that for every zone so both pages' zones
-     stay the same height at any width. */
   .zone__text {
     min-height: calc(
       var(--zone-title) * 1.3 * 2 + 0.15rem + var(--zone-status) * 1.55
@@ -2367,8 +2176,7 @@ summary.rule__head::-webkit-details-marker {
   }
 }
 
-/* Below ~360px the row cannot fit icon, ".mobileconfig" and the button, and
-   the word ran under the button. The icon is the one part that is decorative. */
+/* Below ~360px the row cannot fit icon, ".mobileconfig" and the button. */
 @media (max-width: 22.4rem) {
   .zone {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -2391,13 +2199,6 @@ summary.rule__head::-webkit-details-marker {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
-
-/* --------------------------------------------------------------------------
-   Settings-style on/off rows: title and hint on the left, a switch on the
-   right, the whole row one tap target. Each switch is a real checkbox with
-   role="switch", so scripts, keyboard (Space) and screen readers (on/off)
-   work unchanged; only its look is drawn here, identically in every browser.
-   -------------------------------------------------------------------------- */
 
 .switch-list {
   background: var(--surface);
@@ -2449,8 +2250,6 @@ summary.rule__head::-webkit-details-marker {
   color: var(--warning);
 }
 
-/* The knob is a gradient rather than a pseudo-element, which Firefox does not
-   draw on inputs; sliding its background-position animates it everywhere. */
 .switch {
   --knob: 1.25rem;
 
@@ -2480,8 +2279,6 @@ summary.rule__head::-webkit-details-marker {
   background-position: calc(100% - 0.1875rem) 50%;
 }
 
-/* Held in place by another option, such as system scope by the declaration
-   format. */
 .switch:disabled {
   opacity: 0.5;
 }
@@ -2546,9 +2343,6 @@ summary.rule__head::-webkit-details-marker {
   line-height: 1;
 }
 
-/* One line of the button's text tall, so an icon button is exactly as high as
-   a text one beside it. The close icon's cross spans 11.2px of it, the size
-   the ✕ character it replaces had on macOS. */
 .btn--icon .icon {
   width: 1em;
   height: 1em;
@@ -2563,20 +2357,14 @@ summary.rule__head::-webkit-details-marker {
   font-size: 0.875rem;
 }
 
-/* Profile page: the configurations, then a footer with their exact count
-   and the one action that applies to all of them. */
 .config-list {
   margin-bottom: 1.5rem;
 }
 
-/* Closer to the cards than the cards are to each other, so the footer reads
-   as part of the list rather than of Download below it. */
 .config-list .profile-card:last-child {
   margin-bottom: 0.5rem;
 }
 
-/* Inset like the cards' content, border included, so the count lines up with
-   the provider names and Delete all with the cards' buttons. */
 .list-footer {
   display: flex;
   flex-wrap: wrap;
@@ -2599,7 +2387,6 @@ summary.rule__head::-webkit-details-marker {
   font-variant-numeric: tabular-nums;
 }
 
-/* The cards' icon buttons' side padding, so both right edges match. */
 .list-footer .btn--danger {
   padding-inline: 0.6rem;
 }
@@ -2613,8 +2400,6 @@ summary.rule__head::-webkit-details-marker {
   margin-top: 0.25rem;
 }
 
-/* Download, and Share beside it in two equal halves where the browser can
-   share the file; Download alone takes the whole row. */
 .download-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2625,8 +2410,6 @@ summary.rule__head::-webkit-details-marker {
   grid-template-columns: 1fr;
 }
 
-/* The unsigned-profile note under Download, with its explanation inline. */
-/* Signature choice in the desktop app: two option cards, then the identity. */
 .choice-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
@@ -2797,7 +2580,6 @@ summary.rule__head::-webkit-details-marker {
   border-color: var(--danger);
 }
 
-/* What stops an imported or stored entry from being downloaded. */
 .profile-card__problems {
   margin: 0;
   padding: 0.8rem var(--card-padding) 0 2.3rem;
@@ -2836,9 +2618,6 @@ summary.rule__head::-webkit-details-marker {
   font-size: 0.85rem;
 }
 
-/* One address per line behind its tag ("IPv4 1"), styled like the numbers
-   in the tool page's fields. The tags share a column, so the addresses line
-   up, and a long IPv6 address wraps under itself. */
 .resolver-list {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -2884,9 +2663,6 @@ summary.rule__head::-webkit-details-marker {
   font-weight: 500;
 }
 
-/* Something to keep an eye on, in the warning colour: the Beta of the
-   declaration format, and a card's Deprecated. Doubled up to win over the
-   cards' accent-tinted flags. */
 .badge.badge--warning {
   background: color-mix(in srgb, var(--warning) 10%, var(--surface));
   border-color: color-mix(in srgb, var(--warning) 45%, transparent);
