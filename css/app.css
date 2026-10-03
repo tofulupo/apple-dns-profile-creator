@@ -496,9 +496,9 @@ code {
 
 /* The app's unified title bar. The page runs under the window buttons
    (titleBarStyle Overlay, src-tauri/tauri.conf.json), and the bar is part of
-   it: the page's own background, flat, with the tabs in the middle and the
-   theme switch and version at the far end, as in a macOS toolbar. That
-   leaves the header to the name and the protocols under it.
+   it: the page's own background, flat, with the tabs in the middle, as in a
+   macOS toolbar. The theme and version are in Settings (⌘,), which leaves
+   the header to the name and the protocols under it.
 
    --titlebar must stay twice the window buttons' centre, which AppKit puts
    2px above trafficLightPosition's y of 28: 26px from the top. Pixels, since
@@ -509,7 +509,6 @@ code {
 
 :root[data-app="desktop"] {
   --titlebar: 52px;
-  --titlebar-end: 20px;
   /* The tabs' segments, equal like a macOS segmented control's, and wide
      enough for "Profile (9+)". */
   --segment: 7.5rem;
@@ -545,44 +544,14 @@ code {
   }
 }
 
+/* In Settings instead (pages/_settings.html). The switch stays in the page,
+   hidden, as it gives the app the saved theme (src/ui/theme.ts). */
 :root[data-app="desktop"] .site-header__actions {
-  position: fixed;
-  top: 0;
-  right: var(--titlebar-end);
-  z-index: 11;
-  flex-direction: row;
-  align-items: center;
-  gap: 0.15rem;
-  height: var(--titlebar);
-  /* Both: the header row pads them top and bottom to centre them on the
-     lockup, which on the title bar would push them off its middle. */
-  padding-block: 0;
+  display: none;
 }
 
-/* Flat on the bar, without fill or border, so its edge stays clean; a fill
-   only shows under the pointer, as a toolbar button's does. */
-:root[data-app="desktop"] .theme-switch,
-:root[data-app="desktop"] .site-header__actions .version {
-  height: 1.75rem;
-  background: transparent;
-  border-color: transparent;
-  border-radius: var(--radius-sm);
-}
-
-:root[data-app="desktop"] .theme-switch:hover,
-:root[data-app="desktop"] .site-header__actions .version:hover {
-  background: var(--surface);
-  border-color: transparent;
-}
-
-:root[data-app="desktop"] .site-header__actions .version {
-  display: inline-flex;
-  align-items: center;
-  padding: 0 0.45rem;
-}
-
-/* The tabs, centred in the window as a segmented control, as tall as the
-   switch and version beside them. The current page keeps its
+/* The tabs, centred in the window as a segmented control, as tall as a
+   toolbar's controls. The current page keeps its
    solid accent pill (.tab[aria-current="page"]); View > Tool (⌘1) and
    Profile (⌘2) switch between them, src-tauri/src/menu.rs. */
 :root[data-app="desktop"] .tabs {
@@ -627,7 +596,7 @@ code {
 /* The lockup (.brand) at a larger size, which its bar and footnote follow:
    the header has nothing else beside it in the app. */
 :root[data-app="desktop"] .brand {
-  --name: clamp(2.1rem, 1rem + 3.2vw, 3rem);
+  --name: clamp(1.85rem, 0.9rem + 2.7vw, 2.6rem);
 }
 
 :root[data-app="desktop"] .brand__name {
@@ -742,10 +711,8 @@ code {
 }
 
 /* It floats, unless motion is reduced. */
-@media (prefers-reduced-motion: no-preference) {
-  .mascot__float {
-    animation: mascot-float 3.8s ease-in-out infinite;
-  }
+:root:not([data-motion="reduce"]) .mascot__float {
+  animation: mascot-float 3.8s ease-in-out infinite;
 }
 
 @keyframes mascot-float {
@@ -754,10 +721,270 @@ code {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .mascot__body {
-    transition: none;
+:root[data-motion="reduce"] .mascot__body {
+  transition: none;
+}
+
+/* The desktop app's Settings window (pages/_settings.html, ⌘,): a section
+   of rows in one rounded group, as macOS's own settings lay them out, with
+   the app's name and version at the foot. */
+body.settings-window {
+  padding: calc(var(--titlebar, 0px) + 0.25rem) 1.5rem 1.25rem;
+}
+
+.settings-window main {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.settings-section__title {
+  margin: 0 0 0.5rem 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.settings-group {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+}
+
+.settings-row + .settings-row {
+  border-top: 1px solid var(--border);
+}
+
+.settings-row--stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.8rem;
+}
+
+.settings-row__text {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.settings-row__title {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.settings-row__hint {
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+/* Theme: a small picture of the app's window in each theme, drawn with the
+   app's own colours, which color-scheme pins to light or dark. */
+.theme-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.theme-card {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.theme-card__picture {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 8 / 5;
+  overflow: hidden;
+  border-radius: 8px;
+  /* Rings rather than a border, so choosing one does not shift it. */
+  box-shadow: 0 0 0 1px var(--border);
+  transition: box-shadow 0.15s ease;
+}
+
+@media (hover: hover) {
+  .theme-card:not(:has(:checked)):hover .theme-card__picture {
+    box-shadow: 0 0 0 1px var(--border-strong);
   }
+}
+
+.theme-card:has(:checked) {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.theme-card:has(:checked) .theme-card__picture {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--accent);
+}
+
+.theme-card:has(:focus-visible) .theme-card__picture {
+  outline: 2px solid var(--focus);
+  outline-offset: 6px;
+}
+
+.theme-picture {
+  position: absolute;
+  inset: 0;
+  background: var(--bg);
+}
+
+.theme-picture--light {
+  color-scheme: light;
+}
+
+.theme-picture--dark {
+  color-scheme: dark;
+}
+
+/* System: light on the left, dark on the right, as macOS draws it. */
+.theme-card__picture--system .theme-picture--dark {
+  clip-path: inset(0 0 0 50%);
+}
+
+.theme-picture > span {
+  position: absolute;
+  display: block;
+}
+
+/* The window buttons, in their own colours in both themes. */
+.theme-picture__lights {
+  top: 7%;
+  left: 5%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow:
+    7px 0 #febc2e,
+    14px 0 #28c840;
+}
+
+.theme-picture__tabs {
+  top: 5%;
+  left: 38%;
+  width: 24%;
+  height: 9%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent) 50%, var(--surface) 50%);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.theme-picture__bar {
+  top: 27%;
+  left: 7%;
+  width: 2.5%;
+  height: 18%;
+  background: var(--accent);
+}
+
+.theme-picture__name {
+  top: 28.5%;
+  left: 12.5%;
+  width: 46%;
+  height: 8%;
+  border-radius: 2px;
+  background: var(--text);
+}
+
+.theme-picture__protocols {
+  top: 40%;
+  left: 12.5%;
+  width: 30%;
+  height: 4%;
+  border-radius: 2px;
+  background: var(--muted);
+}
+
+.theme-picture__zone {
+  top: 52%;
+  right: 7%;
+  left: 7%;
+  height: 19%;
+  border: 1px dashed var(--zone-border);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+/* Running off the bottom, as the form does below the fold. */
+.theme-picture__panel {
+  top: 76%;
+  right: 7%;
+  left: 7%;
+  height: 40%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+/* Motion: a segmented control, its choice raised like a macOS one's. */
+.segmented {
+  display: inline-flex;
+  flex: none;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.segmented__option {
+  margin: 0;
+  padding: 0.3rem 0.75rem;
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  .segmented__option:not(:has(:checked)):hover {
+    color: var(--text);
+  }
+}
+
+.segmented__option:has(:checked) {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow:
+    inset 0 0 0 1px var(--border),
+    var(--shadow);
+}
+
+.segmented__option:has(:focus-visible) {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-inline: 0.25rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+:root[data-motion="reduce"] .theme-card__picture {
+  transition: none;
 }
 
 .tabs {
@@ -1065,10 +1292,8 @@ code {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  :root:not([data-app="desktop"]) .dock {
-    transition: none;
-  }
+:root[data-motion="reduce"]:not([data-app="desktop"]) .dock {
+  transition: none;
 }
 
 .panel {
@@ -2169,21 +2394,12 @@ summary.rule__head::-webkit-details-marker {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .zone,
-  .zone__icon,
-  .preset-menu,
-  .icon--chevron,
-  .quick-insert__btn,
-  .toggle-chip,
-  .address-input__remove,
-  .address-swap {
-    transition: none;
-  }
+:root[data-motion="reduce"] :is(.zone, .zone__icon, .preset-menu, .icon--chevron, .quick-insert__btn, .toggle-chip, .address-input__remove, .address-swap) {
+  transition: none;
+}
 
-  .zone--over .zone__icon {
-    transform: none;
-  }
+:root[data-motion="reduce"] .zone--over .zone__icon {
+  transform: none;
 }
 
 :is(input, button, a, summary, select):focus-visible {
@@ -2289,10 +2505,8 @@ summary.rule__head::-webkit-details-marker {
   cursor: default;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .switch {
-    transition: none;
-  }
+:root[data-motion="reduce"] .switch {
+  transition: none;
 }
 
 .btn {

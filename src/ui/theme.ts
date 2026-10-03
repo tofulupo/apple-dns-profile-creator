@@ -1,12 +1,6 @@
 /**
- * The header's theme switch: follow the system, or force light or dark.
- *
- * The choice is applied as `data-theme` on the root element. The inline script
- * in `pages/_layout.html` does that before first paint, reading the same
- * storage key; this module only handles switching and the toolbar colour.
- *
- * In the desktop app View > Appearance offers the same choice, and the app's
- * title bar, menus and dialogs follow it too.
+ * The inline script in `pages/_prepaint.html` also applies `data-theme`,
+ * reading the same storage key.
  */
 
 import { desktopBindings } from "./desktop.ts";
@@ -29,7 +23,6 @@ export function readTheme(storage: Pick<Storage, "getItem">): Theme {
     const stored = storage.getItem(THEME_KEY);
     return stored === "light" || stored === "dark" ? stored : "system";
   } catch {
-    // Storage can throw when disabled; the system theme is the safe default.
     return "system";
   }
 }
@@ -47,11 +40,6 @@ function saveTheme(storage: StorageArea, theme: Theme): void {
   }
 }
 
-/**
- * The toolbar colour comes from two media-dependent `theme-color` tags, which
- * a forced theme would contradict. Pin both to the page background then, and
- * restore their own values for the system theme.
- */
 function syncThemeColor(theme: Theme): void {
   const background = getComputedStyle(document.body).backgroundColor;
   for (
@@ -74,11 +62,14 @@ function describe(button: HTMLButtonElement, theme: Theme): void {
   button.title = label;
 }
 
+function tellApp(theme: Theme): void {
+  desktopBindings()?.setAppearance?.(theme).catch((error) =>
+    console.error("Could not set the app's appearance:", error)
+  );
+}
+
 function applyTheme(theme: Theme): void {
   const root = document.documentElement;
-  // Colours with a transition (the upload zone's background) would fade
-  // while text flips at once, leaving it unreadable for a moment. Switch
-  // everything in one frame instead.
   root.classList.add("theme-switching");
   if (theme === "system") delete root.dataset["theme"];
   else root.dataset["theme"] = theme;
@@ -86,31 +77,40 @@ function applyTheme(theme: Theme): void {
   requestAnimationFrame(() => root.classList.remove("theme-switching"));
 }
 
+export function chooseTheme(theme: Theme): void {
+  applyTheme(theme);
+  saveTheme(browserStorage(), theme);
+  syncThemeColor(theme);
+  tellApp(theme);
+}
+
+export function followThemeChanges(onChange: (theme: Theme) => void): void {
+  addEventListener("storage", (event) => {
+    if (event.key !== THEME_KEY && event.key !== null) return;
+    const theme = readTheme(browserStorage());
+    applyTheme(theme);
+    syncThemeColor(theme);
+    onChange(theme);
+  });
+}
+
 export function enableThemeSwitch(button: HTMLButtonElement): void {
-  // Deferred lookup: reading the `localStorage` global itself throws when
-  // storage is blocked, which the try blocks above would not catch.
-  const storage = browserStorage();
-  let theme = readTheme(storage);
-  const desktop = desktopBindings();
-  const tellApp = (chosen: Theme): void => {
-    desktop?.setAppearance?.(chosen).catch((error) =>
-      console.error("Could not set the app's appearance:", error)
-    );
-  };
+  let theme = readTheme(browserStorage());
   describe(button, theme);
   syncThemeColor(theme);
   tellApp(theme);
 
   const choose = (chosen: Theme): void => {
     theme = chosen;
-    applyTheme(theme);
-    saveTheme(storage, theme);
+    chooseTheme(theme);
     describe(button, theme);
-    syncThemeColor(theme);
-    tellApp(theme);
   };
   button.addEventListener("click", () => choose(nextTheme(theme)));
-  desktop?.onAppearanceChosen?.(choose).catch((error) =>
+  desktopBindings()?.onAppearanceChosen?.(choose).catch((error) =>
     console.error("Could not follow View > Appearance:", error)
   );
+  followThemeChanges((chosen) => {
+    theme = chosen;
+    describe(button, theme);
+  });
 }

@@ -2,9 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <!-- viewport-fit=cover hands the screen's edges to the page, which keeps
-      the floating bar clear of the home indicator with env(safe-area-inset-*)
-      (css/app.css). -->
+    <!-- viewport-fit=cover: css/app.css relies on env(safe-area-inset-*). -->
     <meta name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ title }}</title>
@@ -17,8 +15,6 @@
     <meta property="og:url" content="{{ canonical }}">
     {{ structuredData }}
     <link rel="stylesheet" href="{{ stylesheet }}">
-    <!-- The fonts every page shows (scripts/build.ts). Fonts are always
-      requested in CORS mode, hence crossorigin even on the same origin. -->
     {{ fontPreloads }}
 
     <link rel="icon" type="image/png" sizes="96x96"
@@ -33,32 +29,10 @@
       media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#0e1013"
       media="(prefers-color-scheme: dark)">
-    <script>
-    // Marks the desktop app, whose fonts differ (css/app.css). Tauri injects
-    // __TAURI__ before any of the page's scripts run.
-    if ("__TAURI__" in window) document.documentElement.dataset.app = "desktop";
-    // The app's pixel font, kept from page to page until it quits. Key and
-    // value must match src/ui/pixel.ts.
-    try {
-      if (sessionStorage.getItem("dns-mobileconfig:pixel") === "on") {
-        document.documentElement.dataset.pixel = "";
-      }
-    } catch {}
-    // Applies a chosen theme before first paint, so it never flashes the
-    // other one. Key and values must match src/ui/storage.ts and theme.ts.
-    try {
-      const theme = localStorage.getItem("dns-mobileconfig:theme");
-      if (theme === "light" || theme === "dark") {
-        document.documentElement.dataset.theme = theme;
-      }
-    } catch {}
-    </script>
+    {{ prepaint }}
   </head>
 
   <body>
-    <!-- The desktop app's title bar, which moves the window like a native one.
-      The protocols, theme switch and version badge sit on it (css/app.css);
-      on the website it is not shown. -->
     <div class="titlebar" data-tauri-drag-region aria-hidden="true"></div>
     <div class="page">
       <header class="site-header">
@@ -69,9 +43,6 @@
         </div>
       </header>
 
-      <!-- On wide screens the tabs run under the header, and the theme switch
-        and version sit beside the name. On phones and tablets they are one
-        floating bar at the bottom (css/app.css). -->
       <div class="dock">
         <nav class="tabs" aria-label="Pages">
           {{ nav }}

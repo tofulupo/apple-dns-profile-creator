@@ -31,8 +31,10 @@ use crate::opened::{OPENED_EVENT, OpenedProfile, OpenedProfiles};
 use crate::signing::SigningIdentity;
 use crate::window_size::WindowSize;
 
-/// The app's one window, defined in tauri.conf.json and created in `run`.
+/// The app's window, defined in tauri.conf.json and created in `run`.
 pub(crate) const MAIN_WINDOW: &str = "main";
+/// Settings (⌘,), defined in tauri.conf.json and created when first opened.
+pub(crate) const SETTINGS_WINDOW: &str = "settings";
 
 /// The window starts hidden (see tauri.conf.json) and is shown by the page's
 /// `page_ready`. After this long it is shown anyway, in case the page fails
@@ -71,7 +73,22 @@ fn page_ready(window: WebviewWindow, background: Option<[u8; 3]>) -> Result<(), 
             .set_background_color(Some(Color(red, green, blue, 255)))
             .map_err(|error| error.to_string())?;
     }
-    show_once(&window).map_err(|error| error.to_string())
+    if window.label() == MAIN_WINDOW {
+        show_once(&window)
+    } else {
+        show_if_hidden(&window)
+    }
+    .map_err(|error| error.to_string())
+}
+
+/// Settings is shown each time it opens, but not focused again when its page
+/// reports a new background, which a theme chosen elsewhere also causes.
+fn show_if_hidden(window: &WebviewWindow) -> tauri::Result<()> {
+    if window.is_visible()? {
+        return Ok(());
+    }
+    window.show()?;
+    window.set_focus()
 }
 
 /// Runs `work` off the async runtime's threads: it waits on files, on
@@ -206,16 +223,19 @@ fn bring_to_front(app: &AppHandle) {
     }
 }
 
-/// The window from tauri.conf.json, which only describes it (`"create":
+/// A window from tauri.conf.json, which only describes it (`"create":
 /// false`): the navigation handlers can only be given here.
-fn create_main_window(app: &AppHandle) -> Result<WebviewWindow, Box<dyn std::error::Error>> {
+fn create_window(
+    app: &AppHandle,
+    label: &str,
+) -> Result<WebviewWindow, Box<dyn std::error::Error>> {
     let config = app
         .config()
         .app
         .windows
         .iter()
-        .find(|window| window.label == MAIN_WINDOW)
-        .ok_or("tauri.conf.json defines no window labelled main")?;
+        .find(|window| window.label == label)
+        .ok_or_else(|| format!("tauri.conf.json defines no window labelled {label}"))?;
     let navigating = app.clone();
     let opening = app.clone();
     Ok(WebviewWindowBuilder::from_config(app, config)?
@@ -225,6 +245,28 @@ fn create_main_window(app: &AppHandle) -> Result<WebviewWindow, Box<dyn std::err
             NewWindowResponse::Deny
         })
         .build()?)
+}
+
+/// Opens Settings, or brings it forward if it is open. It starts hidden and
+/// is shown by its page's `page_ready`, or after a while anyway.
+pub(crate) fn open_settings(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window(SETTINGS_WINDOW) {
+        if let Err(error) = window.show().and_then(|()| window.set_focus()) {
+            eprintln!("Could not bring Settings forward: {error}");
+        }
+        return;
+    }
+    match create_window(app, SETTINGS_WINDOW) {
+        Ok(window) => {
+            std::thread::spawn(move || {
+                std::thread::sleep(SHOW_ANYWAY_AFTER);
+                if let Err(error) = show_if_hidden(&window) {
+                    eprintln!("Could not show Settings: {error}");
+                }
+            });
+        }
+        Err(error) => eprintln!("Could not open Settings: {error}"),
+    }
 }
 
 fn window_size_path(app: &AppHandle) -> tauri::Result<PathBuf> {
@@ -275,7 +317,7 @@ pub fn run() {
         .menu(menu::build)
         .on_menu_event(|app, event| menu::handle(app, &event))
         .setup(|app| {
-            let window = create_main_window(app.handle())?;
+            let window = create_window(app.handle(), MAIN_WINDOW)?;
             if let Some(size) = window_size::load(&window_size_path(app.handle())?) {
                 window.set_size(size.logical())?;
             }
@@ -288,8 +330,21 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            if let WindowEvent::Resized(size) = event {
-                remember_size(window, *size);
+            if window.label() != MAIN_WINDOW {
+                return;
+            }
+            match event {
+                WindowEvent::Resized(size) => remember_size(window, *size),
+                // The app quits with its window, which it only does once
+                // Settings is closed too.
+                WindowEvent::Destroyed => {
+                    if let Some(settings) = window.app_handle().get_webview_window(SETTINGS_WINDOW)
+                        && let Err(error) = settings.close()
+                    {
+                        eprintln!("Could not close Settings: {error}");
+                    }
+                }
+                _ => {}
             }
         })
         .invoke_handler(tauri::generate_handler![

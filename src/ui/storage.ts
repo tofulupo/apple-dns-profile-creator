@@ -1,27 +1,19 @@
-/**
- * Persists configurations between the tool page and the profile page.
- */
-
 import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
 import { tell } from "./dialogs.ts";
 
-/** Every key this app stores starts with this. */
 export const KEY_PREFIX = "dns-mobileconfig:";
 const CONFIGS_KEY = `${KEY_PREFIX}configs:v1`;
 const EDIT_TARGET_KEY = `${KEY_PREFIX}edit-target`;
 const IMPORT_WARNINGS_KEY = `${KEY_PREFIX}import-warnings`;
 /** Also hardcoded in the layout's inline script; the markup test checks both. */
 export const THEME_KEY = `${KEY_PREFIX}theme`;
-/**
- * In `sessionStorage`, so it lasts until the app quits. Also hardcoded in the
- * layout's inline script; the markup test checks both.
- */
+/** Also hardcoded in the layout's inline script; the markup test checks both. */
 export const PIXEL_KEY = `${KEY_PREFIX}pixel`;
+/** Also hardcoded in the layout's inline script; the markup test checks both. */
+export const SETTINGS_KEY = `${KEY_PREFIX}settings:v1`;
 
-/** The part of `Storage` the app uses, so tests and stand-ins stay small. */
 export type StorageArea = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-/** A write the browser refused: storage disabled, blocked, or full. */
 export class StorageUnavailableError extends Error {
   constructor(options?: ErrorOptions) {
     super(
@@ -34,13 +26,6 @@ export class StorageUnavailableError extends Error {
   }
 }
 
-/**
- * `localStorage`, looked up on every call. Merely reading the global throws
- * a SecurityError when the browser blocks storage, which at module level
- * would stop the whole page; deferred, it becomes an error the store handles.
- * The desktop app serves the pages from a fixed origin, so its
- * `localStorage` lasts between launches just as a browser's does.
- */
 export function browserStorage(): StorageArea {
   return {
     getItem: (key) => globalThis.localStorage.getItem(key),
@@ -49,10 +34,6 @@ export function browserStorage(): StorageArea {
   };
 }
 
-/**
- * Runs a store write, and tells the user when the browser refused it.
- * Returns whether the write happened, so the caller can stay put if not.
- */
 export function persist(write: () => void): boolean {
   try {
     write();
@@ -64,30 +45,17 @@ export function persist(write: () => void): boolean {
   }
 }
 
-/**
- * Entries are addressed by content rather than list position: another tab
- * can add or delete in between, and a stale index would then edit or delete
- * the wrong configuration. Identical entries are interchangeable, so matching
- * the first equal one is always right.
- */
 export interface ConfigStore {
   list(): DnsConfig[];
-  /** Whether an entry equal to `config` is stored. */
   has(config: DnsConfig): boolean;
-  /** Appends in one write, so a refused write leaves none of them behind. */
   add(...configs: readonly DnsConfig[]): void;
-  /** Replaces the entry equal to `original`; appends when it has gone. */
   update(original: DnsConfig, next: DnsConfig): void;
-  /** Removes the entry equal to `config`, if there still is one. */
   remove(config: DnsConfig): void;
   clear(): void;
-  /** Hands the configuration to edit to the tool page, which takes it once. */
   startEdit(config: DnsConfig): void;
   takeEditTarget(): DnsConfig | undefined;
-  /** Hands an import's warnings to the next page, which takes them once. */
   setImportWarnings(warnings: readonly string[]): void;
   takeImportWarnings(): string[];
-  /** Calls `listener` when another tab changes the list. */
   subscribe(listener: () => void): void;
 }
 
@@ -113,11 +81,6 @@ function optional<T>(guard: Guard<T>): Guard<T | undefined> {
   return (value): value is T | undefined => value === undefined || guard(value);
 }
 
-/**
- * One guard per field. Typed against `DnsConfig`, so a field added there
- * without a guard here, or a new required field given an `optional` guard,
- * is a compile error rather than silently unchecked stored data.
- */
 const FIELD_GUARDS: {
   readonly [K in keyof DnsConfig]-?: Guard<DnsConfig[K]>;
 } = {
@@ -131,8 +94,6 @@ const FIELD_GUARDS: {
   useCellular: isBoolean,
   useEthernet: isBoolean,
   prohibitDisablement: isBoolean,
-  // Added after v1 shipped. Absent in stored entries, so optional here; the
-  // shape stays a superset and needs no migration.
   allowFailover: optional(isBoolean),
   supplementalMatchDomains: optional(isStringArray),
   fromDeprecatedPayload: optional(isBoolean),
@@ -146,11 +107,6 @@ function isDnsConfig(value: unknown): value is DnsConfig {
   );
 }
 
-/**
- * Content equality, independent of the order keys were written in. Where a
- * configuration came from is left out: the same settings loaded from an old
- * and a new profile are the same entry.
- */
 function sameConfig(a: DnsConfig, b: DnsConfig): boolean {
   const canonical = (
     { fromDeprecatedPayload: _source, ...config }: DnsConfig,
@@ -168,7 +124,6 @@ function decodeJson(raw: string | null): unknown {
 }
 
 export function createConfigStore(storage: StorageArea): ConfigStore {
-  /** Unreadable storage reads as empty, so the pages still render. */
   function get(key: string): string | null {
     try {
       return storage.getItem(key);
@@ -193,7 +148,6 @@ export function createConfigStore(storage: StorageArea): ConfigStore {
     }
   }
 
-  /** Reads a hand-over key once. Failing to delete it is harmless. */
   function take(key: string): unknown {
     const decoded = decodeJson(get(key));
     try {
@@ -266,7 +220,6 @@ export function createConfigStore(storage: StorageArea): ConfigStore {
     },
 
     subscribe(listener) {
-      // Fired only in other tabs; `key` is null when storage was cleared.
       globalThis.addEventListener("storage", (event) => {
         if (event.key === null || event.key === CONFIGS_KEY) listener();
       });

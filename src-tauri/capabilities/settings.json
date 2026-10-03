@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "settings",
+  "description": "What the Settings window's page may call: showing the window once painted, setting the app's appearance, and dragging and zooming the window from the title bar (data-tauri-drag-region). Nothing else.",
+  "windows": ["settings"],
+  "permissions": [
+    "core:window:allow-start-dragging",
+    "core:window:allow-internal-toggle-maximize",
+    "allow-page-ready",
+    "allow-set-appearance"
+  ]
+}

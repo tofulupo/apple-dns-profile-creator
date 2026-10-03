@@ -1,7 +1,3 @@
-/**
- * Guards the desktop app's configuration: the settings that fixed bugs stay
- * set, and it stays in step with deno.json and the icon sources.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join, resolve } from "@std/path";
@@ -21,6 +17,8 @@ interface TauriConfig {
     readonly windows: readonly {
       readonly label?: string;
       readonly create?: boolean;
+      readonly url?: string;
+      readonly resizable?: boolean;
       readonly visible?: boolean;
       readonly dragDropEnabled?: boolean;
       readonly titleBarStyle?: string;
@@ -60,46 +58,52 @@ describe("src-tauri/tauri.conf.json", () => {
     expect(config.productName).toBe("DNS Profile Creator");
   });
 
-  it("starts the window hidden, so no empty webview shows", () => {
+  it("starts the windows hidden, so no empty webview shows", () => {
     expect(config.app.windows.map((window) => window.visible)).toEqual([
+      false,
       false,
     ]);
   });
 
-  // Tauri's own drop handling swallows the drop, so the page's drop zones
-  // would never see the file.
   it("leaves dropping files to the page", () => {
     expect(config.app.windows.map((window) => window.dragDropEnabled))
-      .toEqual([false]);
+      .toEqual([false, false]);
   });
 
-  // Created in src-tauri/src/lib.rs instead, which gives it the handlers
-  // that open links outside the app; created here too, it would open twice.
-  it("only describes the main window, which the app creates", () => {
+  it("only describes the main and Settings windows, which the app creates", () => {
     expect(config.app.windows.map(({ label, create }) => ({ label, create })))
-      .toEqual([{ label: "main", create: false }]);
+      .toEqual([
+        { label: "main", create: false },
+        { label: "settings", create: false },
+      ]);
   });
 
-  // css/app.css draws the title bar as part of the page, with its own items
-  // and drag region (pages/_layout.html), around the window buttons.
-  it("runs the page under the window buttons, without a title", () => {
-    const [window] = config.app.windows;
-    expect(window?.titleBarStyle).toBe("Overlay");
-    expect(window?.hiddenTitle).toBe(true);
+  it("opens Settings on its own page, at a fixed size", () => {
+    const settings = config.app.windows[1];
+    expect(settings?.url).toBe("settings.html");
+    expect(settings?.resizable).toBe(false);
+  });
+
+  it("runs the pages under the window buttons, without a title", () => {
+    for (const window of config.app.windows) {
+      expect(window.titleBarStyle).toBe("Overlay");
+      expect(window.hiddenTitle).toBe(true);
+    }
   });
 
   // AppKit centres the buttons 2px above trafficLightPosition's y.
-  it("centres the window buttons in the page's title bar", () => {
+  it("centres the window buttons in the pages' title bar", () => {
     const css = Deno.readTextFileSync(
       resolve(SRC_TAURI, "..", "css", "app.css"),
     );
     const height = Number(/--titlebar:\s*(\d+)px/.exec(css)?.[1]);
-    const y = config.app.windows[0]?.trafficLightPosition?.y ?? NaN;
     expect(height).toBeGreaterThan(0);
-    expect(y - 2).toBe(height / 2);
+    for (const window of config.app.windows) {
+      const y = window.trafficLightPosition?.y ?? NaN;
+      expect(y - 2).toBe(height / 2);
+    }
   });
 
-  // Merged into the app's Info.plist by Tauri.
   it("keeps the content clear of the camera housing by default", () => {
     const plist = Deno.readTextFileSync(join(SRC_TAURI, "Info.plist"));
     expect(plist).toMatch(
@@ -116,22 +120,17 @@ describe("src-tauri/tauri.conf.json", () => {
       }),
     );
     expect(directives.get("default-src")).toEqual(["'self'"]);
-    // Tauri adds the hashes of the pages' inline scripts itself.
     expect(directives.get("script-src")).toEqual(["'self'"]);
     expect(directives.get("style-src")).toEqual(["'self'"]);
     expect(csp).not.toContain("unsafe");
   });
 
-  // The About panel and Info.plist show this line; macOS has no license field.
   it("names the app's license in its copyright line", () => {
     const license = Deno.readTextFileSync(join(SRC_TAURI, "LICENSE"));
     expect(license.startsWith("BSD 3-Clause License")).toBe(true);
     expect(config.bundle.copyright).toContain("BSD 3-Clause License");
   });
 
-  // Opening a profile normally installs it through System Settings, which
-  // must stay the default; the app is only offered in Open With, as a
-  // viewer, since it never writes to the file.
   it("opens profiles as an alternative to installing them", () => {
     expect(config.bundle.fileAssociations).toEqual([
       {
@@ -194,8 +193,6 @@ describe("the app's commands", () => {
     expect([...declared].sort()).toEqual([...registered].sort());
   });
 
-  // Besides events, only what the title bar's drag region uses: dragging, and
-  // zooming on a double click.
   it("are each granted to the page, with nothing else but events and the title bar", () => {
     expect([...capability.permissions].sort()).toEqual(
       [
@@ -205,6 +202,20 @@ describe("the app's commands", () => {
         ...declared.map((name) => `allow-${name?.replaceAll("_", "-")}`),
       ].sort(),
     );
+  });
+
+  it("grant Settings only showing itself, the appearance and its title bar", () => {
+    const settings = JSON.parse(read("capabilities/settings.json")) as {
+      readonly windows: readonly string[];
+      readonly permissions: readonly string[];
+    };
+    expect(settings.windows).toEqual(["settings"]);
+    expect([...settings.permissions].sort()).toEqual([
+      "allow-page-ready",
+      "allow-set-appearance",
+      "core:window:allow-internal-toggle-maximize",
+      "core:window:allow-start-dragging",
+    ]);
   });
 });
 

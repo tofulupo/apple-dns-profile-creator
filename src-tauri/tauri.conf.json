@@ -25,6 +25,25 @@
         "trafficLightPosition": { "x": 20, "y": 28 },
         "acceptFirstMouse": true,
         "allowLinkPreview": false
+      },
+      {
+        "label": "settings",
+        "create": false,
+        "url": "settings.html",
+        "title": "Settings",
+        "width": 520,
+        "height": 440,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "center": true,
+        "visible": false,
+        "dragDropEnabled": false,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "trafficLightPosition": { "x": 20, "y": 28 },
+        "acceptFirstMouse": true,
+        "allowLinkPreview": false
       }
     ],
     "security": {

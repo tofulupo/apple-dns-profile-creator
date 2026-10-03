@@ -20,6 +20,7 @@ import { canShareProfile, downloadProfile, shareProfile } from "./download.ts";
 import { showProfileCount } from "./profile_count.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { enableSaveMenu, type UpdateSaveMenu } from "./save_menu.ts";
+import { enableSettings } from "./settings.ts";
 import { enableSigning, type Signing } from "./signing.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
@@ -528,6 +529,7 @@ function bindDeclarationFormat(): void {
 }
 
 function init(): void {
+  enableSettings();
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
   watchKeyboard();
   enablePixelMode();

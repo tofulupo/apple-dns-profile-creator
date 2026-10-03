@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Settings</title>
+    <link rel="stylesheet" href="{{ stylesheet }}">
+    {{ fontPreloads }}
+    {{ prepaint }}
+  </head>
+
+  <body class="settings-window">
+    <div class="titlebar" data-tauri-drag-region aria-hidden="true"></div>
+    <main>
+      <section class="settings-section" aria-labelledby="appearanceTitle">
+        <h2 class="settings-section__title" id="appearanceTitle">Appearance</h2>
+        <div class="settings-group">
+          <div class="settings-row settings-row--stacked" role="radiogroup"
+            aria-labelledby="themeLabel">
+            <span class="settings-row__title" id="themeLabel">Theme</span>
+            <div class="theme-cards">
+              <label class="theme-card">
+                <input type="radio" name="theme" value="system"
+                  class="visually-hidden">
+                <span class="theme-card__picture theme-card__picture--system"
+                  aria-hidden="true">
+                  <span class="theme-picture theme-picture--light">
+                    <span class="theme-picture__lights"></span>
+                    <span class="theme-picture__tabs"></span>
+                    <span class="theme-picture__bar"></span>
+                    <span class="theme-picture__name"></span>
+                    <span class="theme-picture__protocols"></span>
+                    <span class="theme-picture__zone"></span>
+                    <span class="theme-picture__panel"></span>
+                  </span>
+                  <span class="theme-picture theme-picture--dark">
+                    <span class="theme-picture__lights"></span>
+                    <span class="theme-picture__tabs"></span>
+                    <span class="theme-picture__bar"></span>
+                    <span class="theme-picture__name"></span>
+                    <span class="theme-picture__protocols"></span>
+                    <span class="theme-picture__zone"></span>
+                    <span class="theme-picture__panel"></span>
+                  </span>
+                </span>
+                <span class="theme-card__name">System</span>
+              </label>
+              <label class="theme-card">
+                <input type="radio" name="theme" value="light"
+                  class="visually-hidden">
+                <span class="theme-card__picture" aria-hidden="true">
+                  <span class="theme-picture theme-picture--light">
+                    <span class="theme-picture__lights"></span>
+                    <span class="theme-picture__tabs"></span>
+                    <span class="theme-picture__bar"></span>
+                    <span class="theme-picture__name"></span>
+                    <span class="theme-picture__protocols"></span>
+                    <span class="theme-picture__zone"></span>
+                    <span class="theme-picture__panel"></span>
+                  </span>
+                </span>
+                <span class="theme-card__name">Light</span>
+              </label>
+              <label class="theme-card">
+                <input type="radio" name="theme" value="dark"
+                  class="visually-hidden">
+                <span class="theme-card__picture" aria-hidden="true">
+                  <span class="theme-picture theme-picture--dark">
+                    <span class="theme-picture__lights"></span>
+                    <span class="theme-picture__tabs"></span>
+                    <span class="theme-picture__bar"></span>
+                    <span class="theme-picture__name"></span>
+                    <span class="theme-picture__protocols"></span>
+                    <span class="theme-picture__zone"></span>
+                    <span class="theme-picture__panel"></span>
+                  </span>
+                </span>
+                <span class="theme-card__name">Dark</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="settings-row">
+            <span class="settings-row__text">
+              <span class="settings-row__title" id="motionLabel">Motion</span>
+              <span class="settings-row__hint" id="motionHint">System follows
+                Reduce motion in the Accessibility settings of macOS.</span>
+            </span>
+            <span class="segmented" role="radiogroup"
+              aria-labelledby="motionLabel" aria-describedby="motionHint">
+              <label class="segmented__option"><input type="radio"
+                  name="motion" value="system"
+                  class="visually-hidden">System</label>
+              <label class="segmented__option"><input type="radio"
+                  name="motion" value="reduce"
+                  class="visually-hidden">Reduced</label>
+              <label class="segmented__option"><input type="radio"
+                  name="motion" value="full" class="visually-hidden">Full</label>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <footer class="settings-footer">
+        <span class="settings-footer__name">DNS Profile Creator</span>
+        <a class="version"
+          href="https://github.com/tofulupo/apple-dns-profile-creator"
+          target="_blank" rel="noopener"
+          aria-label="v{{ version }}, source code on GitHub, opens in a new tab"><span
+            class="icon icon--source" aria-hidden="true"></span>v{{ version }}</a>
+      </footer>
+    </main>
+    {{ script }}
+  </body>
+</html>

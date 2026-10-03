@@ -1,7 +1,3 @@
-/**
- * Entry point for the tool page (`index.html`).
- */
-
 import { appConfig, type DnsPreset } from "../config.ts";
 import {
   orderServerAddresses,
@@ -45,6 +41,7 @@ import { signalPageReady } from "./page_ready.ts";
 import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
 import { showProfileCount } from "./profile_count.ts";
 import { enableSaveMenu, type UpdateSaveMenu } from "./save_menu.ts";
+import { enableSettings } from "./settings.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
 import { watchKeyboard } from "./dock.ts";
@@ -92,11 +89,9 @@ const interfaceChecks = [
   input("useEthernet"),
 ];
 const addressNotice = element<HTMLUListElement>("addressNotice");
-/** The resolver address fields, in the order their addresses are stored. */
 const ipv4Fields = [input("ipv4a"), input("ipv4b")];
 const ipv6Fields = [input("ipv6a"), input("ipv6b")];
 const addressFields = [...ipv4Fields, ...ipv6Fields];
-/** Each family's fields with the group around them and its swap button. */
 const addressPairs = [
   {
     fields: ipv4Fields,
@@ -111,7 +106,6 @@ const addressPairs = [
 ];
 const submitLabel = submit.textContent ?? "";
 
-/** A field with a button inside it that opens a menu below it. */
 interface Picker {
   field: HTMLElement;
   toggle: HTMLButtonElement;
@@ -132,7 +126,6 @@ const pickers = [presetPicker, protocolPicker];
 
 let protocol: DnsProtocol = "HTTPS";
 
-/** File > Save (⌘S) in the desktop app, named after the submit button. */
 let updateSaveMenu: UpdateSaveMenu = () => {};
 
 function setSubmitLabel(label: string): void {
@@ -140,12 +133,7 @@ function setSubmitLabel(label: string): void {
   updateSaveMenu(label, true);
 }
 
-/** The stored configuration the form is editing, if any. */
 let editing: DnsConfig | undefined;
-/**
- * Whether `editing` came from a loaded file rather than from "Fix" on the
- * profile page. Only then does a preset start a new configuration.
- */
 let editingLoaded = false;
 
 function readForm(): DnsConfig {
@@ -170,8 +158,6 @@ function writeForm(config: DnsConfig): void {
   input("provName").value = config.name;
   protocol = config.protocol;
   input("serverUrl").value = config.serverUrl;
-  // Imports are already cut down to what the fields hold; what is left to
-  // drop here comes from entries stored before that.
   showAddressNotice(writeAddresses(config.serverAddresses));
   textarea("exclWifi").value = config.excludedWifi.join("\n");
   input("exclDomains").value = config.excludedDomains.join(", ");
@@ -182,8 +168,6 @@ function writeForm(config: DnsConfig): void {
   input("useEthernet").checked = config.useEthernet;
   input("allowFailover").checked = config.allowFailover === true;
   input("lockProfile").checked = config.prohibitDisablement;
-  // Like the addresses: settings that differ from a new configuration's are
-  // shown rather than left in the closed section.
   if (updateRules() > 0) rulesDisclosure.open = true;
   applyProtocol();
 }
@@ -192,11 +176,6 @@ function countLabel(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-/**
- * Brings the summaries of Behavior & rules up to date, and warns when no
- * interface is left on, which would keep encrypted DNS off everywhere.
- * Returns how many of its rows differ from a new configuration's.
- */
 function updateRules(): number {
   const networks = parseLines(textarea("exclWifi").value).length;
   wifiSummary.textContent = networks === 0
@@ -224,7 +203,6 @@ function updateRules(): number {
     input("allowFailover").checked,
     input("lockProfile").checked,
   ].filter((differs) => differs).length;
-  // The warning also shows on the closed section, where the row cannot.
   rulesSummary.classList.toggle("panel-disclosure__meta--warning", noInterface);
   rulesSummary.textContent = noInterface
     ? "No interface on"
@@ -285,18 +263,10 @@ function onServerInput(event?: Event): void {
   syncPresets();
 }
 
-/**
- * The quick inserts only make sense for a DoH URL; a DoT server is a bare
- * host name, and gets the note on how easily DoT is blocked in their place.
- * Each insert is disabled while it would change nothing: its part is already
- * there, or, for the path, there is no host yet to follow.
- */
 function updateQuickInsert(): void {
   const doh = selectedProtocol() === "HTTPS";
   quickInsert.hidden = !doh;
   protocolNote.hidden = doh;
-  // A description is read even while hidden, so the note is only linked
-  // while it shows.
   input("serverUrl").setAttribute(
     "aria-describedby",
     doh ? "serverCheckText" : "serverCheckText protocolNote",
@@ -306,7 +276,6 @@ function updateQuickInsert(): void {
   insertPath.disabled = withDnsQueryPath(server) === server;
 }
 
-/** A quick insert, as an edit ⌘Z can undo. */
 function editServer(edit: (server: string) => string): void {
   const server = input("serverUrl");
   server.focus();
@@ -316,14 +285,12 @@ function editServer(edit: (server: string) => string): void {
 
 function bindQuickInsert(): void {
   for (const button of [insertScheme, insertPath]) {
-    // Keeps the focus, and with it the phone keyboard, in the URL field.
     button.addEventListener("pointerdown", (event) => event.preventDefault());
   }
   insertScheme.addEventListener("click", () => editServer(withHttpsScheme));
   insertPath.addEventListener("click", () => editServer(withDnsQueryPath));
 }
 
-/** The addresses in the fields, IPv4 first, blanks left out. */
 function formAddresses(): string[] {
   return addressFields
     .map((field) => field.value.trim())
@@ -336,10 +303,6 @@ function addressFieldOf(field: HTMLInputElement): HTMLElement {
   return wrapper;
 }
 
-/**
- * Fills the address fields from `addresses`, replacing what they held.
- * Returns what did not fit, for `showAddressNotice`.
- */
 function writeAddresses(addresses: readonly string[]): string[] {
   const { ipv4, ipv6, dropped } = splitServerAddresses(addresses);
   ipv4Fields.forEach((field, i) => field.value = ipv4[i] ?? "");
@@ -347,7 +310,6 @@ function writeAddresses(addresses: readonly string[]): string[] {
   for (const field of addressFields) {
     setFieldError(addressFieldOf(field), null);
   }
-  // Reveal filled-in addresses rather than hiding them in the closed section.
   if (ipv4.length + ipv6.length > 0) addressDisclosure.open = true;
   updateAddresses();
   return dropped;
@@ -384,12 +346,6 @@ function removeButtonOf(field: HTMLInputElement): HTMLButtonElement {
   return button;
 }
 
-/**
- * Brings the section's summary and buttons up to date with the fields: a
- * remove button on each filled field, a green number on each holding an
- * address of its family, and a swap button where both of a family's fields
- * are filled.
- */
 function updateAddresses(): void {
   const count = formAddresses().length;
   addressCount.textContent = count === 0
@@ -415,11 +371,6 @@ function updateAddresses(): void {
   }
 }
 
-/**
- * Rearranges a family's fields: field `i` takes what field `from[i]` held,
- * or is emptied for null. A mistake shown on a field moves with its value.
- * Sets `value` directly, so ⌘Z cannot undo it yet.
- */
 function rearrangeAddresses(
   fields: readonly HTMLInputElement[],
   from: readonly (number | null)[],
@@ -440,7 +391,6 @@ function rearrangeAddresses(
   syncPresets();
 }
 
-/** Moves the filled fields of a family up over the empty ones. */
 function closeAddressGaps(fields: readonly HTMLInputElement[]): void {
   const filled = fields.flatMap((field, i) =>
     field.value.trim() === "" ? [] : [i]
@@ -452,7 +402,6 @@ function closeAddressGaps(fields: readonly HTMLInputElement[]): void {
   );
 }
 
-/** Why the value of an address field does not belong there, or null. */
 function addressError(field: HTMLInputElement): string | null {
   const address = field.value.trim();
   if (address === "") return null;
@@ -468,10 +417,6 @@ function addressError(field: HTMLInputElement): string | null {
     : "Not an IPv6 address, such as 2001:db8::1.";
 }
 
-/**
- * A pasted list (“9.9.9.9, 149.112.112.112”, or one per line) is spread over
- * the fields of its families instead of landing in one field.
- */
 function pasteAddresses(event: ClipboardEvent): void {
   const text = event.clipboardData?.getData("text") ?? "";
   const entries = parseList(text.replace(/\s+/g, ","));
@@ -499,9 +444,6 @@ function pasteAddresses(event: ClipboardEvent): void {
 function bindAddressFields(): void {
   for (const field of addressFields) {
     field.addEventListener("paste", pasteAddresses);
-    // The iOS number pad has a comma rather than a dot in many regions,
-    // and a comma never belongs in an IPv4 address. Typed, it becomes a dot
-    // before it lands, so ⌘Z undoes the dot in one step.
     field.addEventListener("beforeinput", (event) => {
       const typed = event.inputType === "insertText" ? event.data : null;
       if (!ipv4Fields.includes(field) || !typed?.includes(",")) return;
@@ -509,7 +451,6 @@ function bindAddressFields(): void {
       insertText(field, typed.replaceAll(",", "."));
     });
     field.addEventListener("input", (event) => {
-      // Commas that came some other way, such as dropped text.
       if (
         ipv4Fields.includes(field) && field.value.includes(",") &&
         !isUndoOrRedo(event)
@@ -517,8 +458,6 @@ function bindAddressFields(): void {
         const caret = field.selectionStart ?? field.value.length;
         replaceText(field, field.value.replaceAll(",", "."), caret);
       }
-      // Mistakes are reported on submit, and cleared as soon as they are
-      // fixed.
       if (addressError(field) === null) {
         setFieldError(addressFieldOf(field), null);
       }
@@ -534,19 +473,13 @@ function bindAddressFields(): void {
         const index = fields.indexOf(field);
         const rest = fields.flatMap((_, i) => i === index ? [] : [i]);
         rearrangeAddresses(fields, fields.map((_, i) => rest[i] ?? null));
-        // From the keyboard, the button may just have hidden itself; the
-        // field is where the user was working.
         if (document.activeElement === remove) field.focus();
       });
     }
     swap.addEventListener("click", () => rearrangeAddresses(fields, [1, 0]));
     for (const button of [swap, ...fields.map(removeButtonOf)]) {
-      // Keeps the focus where it was: in a field, with the phone keyboard
-      // open, or nowhere, without opening it.
       button.addEventListener("pointerdown", (event) => event.preventDefault());
     }
-    // A field emptied by hand is left alone while the user is still in the
-    // pair, so nothing jumps while they type, and closed up after.
     group.addEventListener("focusout", (event) => {
       const next = event.relatedTarget;
       if (next instanceof Node && group.contains(next)) return;
@@ -555,11 +488,6 @@ function bindAddressFields(): void {
   }
 }
 
-/**
- * Marks the server field valid, a green check and protocol on its protocol
- * button, once the value is usable. Only ever reassures: a mistake is
- * reported on submit, and cleared here as soon as it is fixed.
- */
 function updateServerCheck(): void {
   const protocol = selectedProtocol();
   const valid = serverError(protocol, input("serverUrl").value.trim()) ===
@@ -571,11 +499,6 @@ function updateServerCheck(): void {
   if (valid) setFieldError(serverField, null);
 }
 
-/**
- * Whether the form holds `preset`'s server and addresses: once the user edits
- * any of them, it is their configuration rather than the preset. The name is
- * left out, since renaming a preset is expected.
- */
 function matchesPreset(preset: DnsPreset): boolean {
   const addresses = formAddresses();
   const expected = orderServerAddresses(preset.serverAddresses ?? []);
@@ -594,17 +517,13 @@ function syncPresets(): void {
   });
 }
 
-/** Fills in `preset`. False when the user chose to keep what they had. */
 async function applyPreset(preset: DnsPreset): Promise<boolean> {
   const name = input("provName");
   const typedName = name.value.trim();
-  // A name the user typed stays; one a preset filled in is replaced.
   const keepName = typedName !== "" &&
     !appConfig.presets.some((other) => other.name === typedName);
   const hasAddresses = formAddresses().length > 0;
   const blank = input("serverUrl").value.trim() === "" && !hasAddresses;
-  // Switching from one untouched preset to another loses nothing, so only
-  // ask when the fields hold something the user entered.
   const untouched = blank || appConfig.presets.some(matchesPreset);
   if (
     !untouched &&
@@ -621,12 +540,8 @@ async function applyPreset(preset: DnsPreset): Promise<boolean> {
   if (!keepName) name.value = preset.name;
   protocol = preset.protocol;
   input("serverUrl").value = preset.serverUrl;
-  // Always replaced, never kept: addresses from another provider would point
-  // the profile at the wrong resolver.
   showAddressNotice(writeAddresses(preset.serverAddresses ?? []));
   setFieldError(nameField, null);
-  // A preset means a new configuration, so it is added next to the loaded
-  // file, which stays in the profile as it was, instead of replacing it.
   if (editingLoaded) {
     editing = undefined;
     editingLoaded = false;
@@ -636,11 +551,6 @@ async function applyPreset(preset: DnsPreset): Promise<boolean> {
   return true;
 }
 
-/**
- * Switching protocol away from a loaded preset clears its server, since a
- * preset's server only speaks the preset's protocol (all DoH at the moment),
- * and leaving the URL in place would just fail the DoT check.
- */
 function changeProtocol(next: DnsProtocol): void {
   if (next === protocol) return;
   protocol = next;
@@ -653,7 +563,6 @@ function changeProtocol(next: DnsProtocol): void {
   applyProtocol();
 }
 
-/** Opens or closes `picker`'s menu. Only one is open at a time. */
 function setMenuOpen(picker: Picker, open: boolean): void {
   if (open) {
     for (const other of pickers) {
@@ -667,8 +576,6 @@ function setMenuOpen(picker: Picker, open: boolean): void {
 function closeMenu(picker: Picker): void {
   const hadFocus = picker.menu.contains(document.activeElement);
   setMenuOpen(picker, false);
-  // The focused entry just disappeared; the button that opened it is where
-  // the user was.
   if (hadFocus) picker.toggle.focus();
 }
 
@@ -684,11 +591,6 @@ function bindPicker(picker: Picker): void {
   });
 }
 
-/**
- * Menus close on a click or tap anywhere outside their field. Not on focus
- * loss: Safari does not focus buttons it taps, so that would close the menu
- * mid-tap.
- */
 function bindPickers(): void {
   for (const picker of pickers) bindPicker(picker);
   document.addEventListener("pointerdown", (event) => {
@@ -704,9 +606,8 @@ function bindPickers(): void {
 }
 
 /**
- * The menu entries themselves are rendered by the build (`presetOptions` in
- * `scripts/build.ts`), one per preset in the same order, so they are in
- * place at first paint.
+ * The buttons come from `presetOptions` in `scripts/build.ts`, one per
+ * preset in the same order.
  */
 function bindPresets(): void {
   appConfig.presets.forEach((preset, index) => {
@@ -726,16 +627,10 @@ function bindProtocols(): void {
   }
 }
 
-/**
- * Validates at the input, where a mistake can actually be reported. The rules
- * themselves live in `configProblems`, shared with the profile page.
- */
 function validate(config: DnsConfig): boolean {
   const problems = configProblems(config);
   setFieldError(nameField, problems.name ?? null);
   setFieldError(element("field-serverUrl"), problems.serverUrl ?? null);
-  // Stricter than `problems.serverAddresses`, which only knows the list: each
-  // field also has to hold its own family.
   let addressesValid = true;
   for (const field of addressFields) {
     const message = addressError(field);
@@ -746,13 +641,8 @@ function validate(config: DnsConfig): boolean {
   return !hasProblems(problems) && addressesValid;
 }
 
-/** What happened to a loaded file's configuration. */
 type LoadOutcome = "added" | "duplicate" | "unsaved";
 
-/**
- * Confirms which file filled the form, or restores the hint when `name` is
- * null. `#uploadStatus` is a live region, so the change is also announced.
- */
 function showLoaded(name: null): void;
 function showLoaded(name: string, outcome: LoadOutcome): void;
 function showLoaded(name: string | null, outcome?: LoadOutcome): void {
@@ -764,9 +654,6 @@ function showLoaded(name: string | null, outcome?: LoadOutcome): void {
   const file = document.createElement("strong");
   file.textContent = name;
   file.title = name;
-  // The status row is a flex line spaced by `gap`, which collapses these
-  // spaces visually; they are kept so assistive tech does not run words
-  // together.
   switch (outcome) {
     case "added":
       uploadStatus.replaceChildren("Added ", file, " to profile");
@@ -784,10 +671,6 @@ function updateProfileCount(): void {
   showProfileCount(store.list().length);
 }
 
-/**
- * Loads a chosen, dropped or opened profile. Resolves with false when it
- * leaves for the profile page, which happens for several configurations.
- */
 async function handleUpload(file: File): Promise<boolean> {
   const uploadField = element("field-fileupload");
   let configs: DnsConfig[];
@@ -805,9 +688,6 @@ async function handleUpload(file: File): Promise<boolean> {
 
   const [only] = configs;
   if (configs.length === 1 && only !== undefined) {
-    // Saved at once, so switching to the profile page does not lose it, and
-    // then edited like an entry opened from there: changes update it. The
-    // profile page flags it if it needs fixing, and holds back the download.
     const duplicate = store.has(only);
     const saved = duplicate || persist(() => store.add(only));
     editing = saved ? only : undefined;
@@ -820,17 +700,12 @@ async function handleUpload(file: File): Promise<boolean> {
       duplicate ? "duplicate" : saved ? "added" : "unsaved",
     );
     showNotices(uploadNotice, warnings);
-    // Point at anything the profile got wrong now, not on the first submit.
     validate(readForm());
     return true;
   }
 
-  // Several at once go straight to the list, where the profile page marks
-  // any that need fixing and holds back the download until they are.
-
   const saved = persist(() => {
     store.add(...configs);
-    // Shown by the profile page, since this one is about to be left.
     store.setImportWarnings(warnings);
   });
   if (!saved) return true;
@@ -839,12 +714,11 @@ async function handleUpload(file: File): Promise<boolean> {
 }
 
 function init(): void {
+  enableSettings();
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
   watchKeyboard();
   enablePixelMode();
   enableMascot();
-  // Only in the app, where fields should behave like native ones; a browser
-  // page is expected to leave Escape alone.
   if (desktopBindings() !== undefined) enableEscapeRevert();
   updateSaveMenu = enableSaveMenu(() => form.requestSubmit(submitButton));
   bindPickers();
@@ -859,7 +733,6 @@ function init(): void {
   const fileInput = input("fileupload");
   fileInput.addEventListener("change", () => {
     const file = fileInput.files?.[0];
-    // Cleared so that choosing the same file again still fires `change`.
     fileInput.value = "";
     if (file !== undefined) void handleUpload(file);
   });
@@ -872,8 +745,6 @@ function init(): void {
     if (!validate(config)) return;
 
     const original = editing;
-    // Editing changes the settings, not the format they came in: the card
-    // stays marked until a profile is downloaded in the declaration format.
     const next = original?.fromDeprecatedPayload === true
       ? { ...config, fromDeprecatedPayload: true }
       : config;
@@ -893,7 +764,6 @@ function init(): void {
   if (editing !== undefined) {
     writeForm(editing);
     setSubmitLabel("Save changes");
-    // Usually reached through "Fix" on a flagged card, so show why at once.
     validate(readForm());
   }
 

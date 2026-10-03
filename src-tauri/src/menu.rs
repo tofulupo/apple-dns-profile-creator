@@ -1,4 +1,5 @@
-//! The menu bar: the standard macOS menus, plus File > Open Profile… and Save,
+//! The menu bar: the standard macOS menus, plus Settings… (⌘,), File > Open
+//! Profile… and Save,
 //! View > Tool (⌘1), Profile (⌘2) and Appearance, a link to the source code in
 //! Help, and the context menu of the profile page's cards.
 //!
@@ -31,6 +32,7 @@ pub const APPEARANCE_EVENT: &str = "appearance-chosen";
 /// both.
 pub const CARD_MENU_EVENT: &str = "card-menu-chosen";
 
+const SETTINGS: &str = "settings";
 const OPEN_PROFILE: &str = "open-profile";
 const SAVE: &str = "save";
 
@@ -145,8 +147,13 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         ..Default::default()
     };
 
+    let settings = MenuItemBuilder::with_id(SETTINGS, "Settings…")
+        .accelerator("CmdOrCtrl+,")
+        .build(app)?;
     let app_menu = SubmenuBuilder::new(app, &info.name)
         .about(Some(about))
+        .separator()
+        .item(&settings)
         .separator()
         .services()
         .separator()
@@ -241,6 +248,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
 
 pub fn handle(app: &AppHandle, event: &MenuEvent) {
     match event.id().as_ref() {
+        SETTINGS => crate::open_settings(app),
         OPEN_PROFILE => choose_profiles(app),
         SAVE => emit(app, SAVE_EVENT, ()),
 

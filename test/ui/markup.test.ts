@@ -1,7 +1,3 @@
-/**
- * The UI layer looks elements up by id and throws at runtime if one is missing.
- * Nothing else in the suite loads the pages, so match the two up statically.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { dirname, join, resolve } from "@std/path";
@@ -15,9 +11,11 @@ import {
   presetFeatures,
   presetHost,
   renderPage,
+  renderSettings,
 } from "../../scripts/build.ts";
 import { THEME_KEY } from "../../src/ui/theme.ts";
 import { PIXEL_KEY } from "../../src/ui/pixel.ts";
+import { SETTINGS_KEY } from "../../src/ui/settings.ts";
 import { appConfig } from "../../src/config.ts";
 
 const here = import.meta.dirname;
@@ -26,10 +24,6 @@ if (here === undefined) {
 }
 const ROOT = resolve(here, "..", "..");
 
-/**
- * Ids the entry module looks up, including in the sibling UI modules it
- * imports directly, such as `signing.ts` on the profile page.
- */
 function referencedIds(module: string): string[] {
   const entry = Deno.readTextFileSync(join(ROOT, module));
   const siblings = [...entry.matchAll(/from "\.\/(\w+\.ts)"/g)]
@@ -133,7 +127,6 @@ describe("fontPreloads", () => {
     expect(html).not.toContain("Berkeley_Mono");
   });
 
-  // Local builds lack the website's licensed fonts.
   it("preloads only fonts the build ships", () => {
     expect(fontPreloads(false, ["Lilex-Latin.woff2"])).toBe("");
     expect(fontPreloads(false, ["Soehne-Buch.woff2"])).toBe(
@@ -166,6 +159,48 @@ describe("the mascot", () => {
   });
 });
 
+const settingsHtml = await renderSettings({
+  stylesheet: "app.css",
+  script: "/* settings script */",
+  version: "0.0.0-test",
+});
+
+describe("the Settings window", () => {
+  const html = settingsHtml;
+  const values = (name: string) =>
+    [...html.matchAll(new RegExp(`name="${name}" value="(\\w+)"`, "g"))]
+      .map((match) => match[1]);
+
+  it("fills every placeholder", () => {
+    expect(html).not.toMatch(/\{\{/);
+  });
+
+  it("applies the theme and reduced motion before first paint", () => {
+    expect(html).toContain(
+      `localStorage.getItem(${JSON.stringify(THEME_KEY)})`,
+    );
+    expect(html).toContain(
+      `localStorage.getItem(${JSON.stringify(SETTINGS_KEY)})`,
+    );
+  });
+
+  it("offers each theme and motion, as the modules name them", () => {
+    expect(values("theme")).toEqual(["system", "light", "dark"]);
+    expect(values("motion")).toEqual(["system", "reduce", "full"]);
+  });
+
+  it("has the version, which opens the source in a new tab", () => {
+    expect(html).toMatch(
+      /<a class="version"[^>]*target="_blank"[^>]*aria-label="v0\.0\.0-test, source code on GitHub, opens in a new tab">/,
+    );
+  });
+
+  it("preloads the app's fonts, not the website's", () => {
+    expect(html).toContain(fontPreloads(true));
+    expect(html).not.toContain("Berkeley_Mono");
+  });
+});
+
 describe("page titles", () => {
   it("differ between pages", () => {
     const titles = PAGES.map((page) => page.title);
@@ -195,8 +230,6 @@ for (const { page, html } of rendered) {
       expect(html).toContain(">v0.0.0-test</a>");
     });
 
-    // A module script runs after parsing, and browsers may paint before
-    // that, so whatever it builds from stored data appeared a frame late.
     it("runs its page script inline, after all of the page", () => {
       expect(html).not.toMatch(/<script[^>]*\b(src|type="module")/);
       expect(html).toMatch(
@@ -206,7 +239,6 @@ for (const { page, html } of rendered) {
       );
     });
 
-    // The desktop app's fonts (css/app.css) apply through data-app.
     it("marks the desktop app before first paint", () => {
       expect(html).toContain(
         'if ("__TAURI__" in window) document.documentElement.dataset.app = "desktop";',
@@ -229,15 +261,18 @@ for (const { page, html } of rendered) {
       );
     });
 
+    it("applies reduced motion before first paint with the module's key", () => {
+      expect(html).toContain(
+        `localStorage.getItem(${JSON.stringify(SETTINGS_KEY)})`,
+      );
+    });
+
     it("keeps the app's pixel font from page to page with the module's key", () => {
       expect(html).toContain(
         `sessionStorage.getItem(${JSON.stringify(PIXEL_KEY)}) === "on"`,
       );
     });
 
-    // Which of these shows depends on the stored list, which only the page
-    // script reads. Shown by default, one would flash on every load, such as
-    // "No config yet" while there are configurations.
     if (page.file === "finalize.html") {
       it("starts with everything that depends on the list hidden", () => {
         for (const id of ["emptyState", "configList", "downloadPanel"]) {
@@ -261,7 +296,6 @@ for (const { page, html } of rendered) {
     });
 
     if (page.file === "index.html") {
-      // Derived from the presets, so editing them does not break the test.
       it("shows each preset's features, protocol and host", () => {
         for (const preset of appConfig.presets) {
           const features = presetFeatures(preset)
@@ -338,9 +372,7 @@ for (const { page, html } of rendered) {
       expect(current).toEqual([pageHref(page)]);
     });
 
-    // On phones and tablets the dock is the floating bottom bar
-    // (css/app.css): the tabs first, then the theme switch and version, which
-    // stay outside the navigation landmark.
+    // The tabs' <nav> first, then the theme switch and version outside it.
     it("groups the tabs, theme switch and version in the dock", () => {
       const dock = html.match(
         /<div class="dock">\s*<nav class="tabs" aria-label="Pages">([\s\S]*?)<\/nav>\s*<div class="site-header__actions">([\s\S]*?)<\/div>\s*<\/div>/,
@@ -352,8 +384,6 @@ for (const { page, html } of rendered) {
       expect(extras).toContain(">v0.0.0-test</a>");
     });
 
-    // Hidden visually on phones, where the bar shows only the icons; the
-    // label stays the tab's accessible name.
     it("wraps each tab's label, which the bar can hide", () => {
       for (const page of PAGES) {
         expect(html).toContain(`<span class="tab__label">${page.nav}</span>`);
@@ -374,8 +404,7 @@ for (const { page, html } of rendered) {
       expect(header?.[1]).not.toContain("themeSwitch");
     });
 
-    // The bar keeps clear of the home indicator with env(safe-area-inset-*),
-    // which is zero without it.
+    // css/app.css pads the bar with env(safe-area-inset-*), zero without it.
     it("lets the page run to the screen's edges", () => {
       expect(html).toMatch(
         /<meta name="viewport"\s+content="[^"]*viewport-fit=cover[^"]*">/,
