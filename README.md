@@ -329,10 +329,14 @@ removed.
 - [Reicon](https://reicon.dev) for the server, shield, receipt, sun, moon,
   monitor, download, info and card-remove icons in `public/icons/` (MIT, see
   `public/icons/LICENSE-reicon.txt`)
+- zest for the [git-repository icon][zest-icon] from Zest Interface Icons,
+  redrawn as the source code icon on the version badge, in
+  `public/icons/source-code.svg` (MIT, see `public/icons/LICENSE-zest.txt`)
 - [flag-icons](https://github.com/lipis/flag-icons) for the country flags in the
   presets menu, in `flags/` (MIT, see `flags/LICENSE-flag-icons.txt`)
 
 [upstream]: https://code.diluvian.cc/fyr77/dns-mobileconfig
+[zest-icon]: https://www.svgrepo.com/svg/509965/git-repository
 
 ## Disclaimer
 

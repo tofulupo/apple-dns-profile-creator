@@ -46,6 +46,7 @@ import { showProfileCount } from "./profile_count.ts";
 import { enableSaveMenu, type UpdateSaveMenu } from "./save_menu.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
+import { watchKeyboard } from "./dock.ts";
 
 const store = createConfigStore(browserStorage());
 
@@ -838,6 +839,7 @@ async function handleUpload(file: File): Promise<boolean> {
 
 function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
+  watchKeyboard();
   enablePixelMode();
   // Only in the app, where fields should behave like native ones; a browser
   // page is expected to leave Escape alone.

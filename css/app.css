@@ -178,20 +178,18 @@
   box-sizing: border-box;
 }
 
+/* The inline padding grows past a landscape iPhone's notch, which the page
+   runs under with viewport-fit=cover (pages/_layout.html). */
 body {
   margin: 0;
-  padding: 0 1.25rem 4rem;
+  padding: 0 max(1.25rem, env(safe-area-inset-right)) 4rem
+    max(1.25rem, env(safe-area-inset-left));
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
   font-size: 1rem;
   line-height: 1.55;
   -webkit-text-size-adjust: 100%;
-}
-
-.page {
-  max-width: 54rem;
-  margin-inline: auto;
 }
 
 h1,
@@ -201,11 +199,49 @@ h3 {
   margin: 0;
 }
 
-.site-header__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
+/* The lockup, with the theme switch and version beside it and the tabs under
+   both (on the Tool page, under the upload zone, below). The dock (pages/_layout.html) groups the tabs with the switch and
+   version for the floating bar on phones and tablets; here it steps aside,
+   and its children take their places in the grid. */
+.page {
+  --header-padding-top: 2rem;
+  --header-padding-bottom: 1.25rem;
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 0.75rem;
+  max-width: 54rem;
+  margin-inline: auto;
+}
+
+.site-header {
+  grid-area: 1 / 1;
+}
+
+.dock {
+  display: contents;
+}
+
+.tabs,
+main {
+  grid-column: 1 / -1;
+}
+
+/* The Tool page has the tabs between the upload zone and the form: <main>
+   spans three rows as a subgrid, the zone in the first and the form in the
+   last, and leaves the middle one to the tabs (after .tabs further down),
+   which are raised above <main> so it does not take their clicks. In the
+   floating bar the tabs leave the grid and the row stays empty; :where()
+   keeps these rules from outweighing the bar's. */
+:where(.page:has(> main > #mainForm)) main {
+  display: grid;
+  grid-row: 2 / span 3;
+  grid-template-rows: subgrid;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+:where(.page:has(> main > #mainForm)) #mainForm {
+  grid-row: 3;
 }
 
 /* The tool's name as a lockup: a solid bar in the accent down the name and
@@ -259,16 +295,22 @@ h3 {
   white-space: nowrap;
 }
 
-/* Phones (360px): beside the badge and switch the name takes two lines, and
-   the bar runs down both and the footnote. */
+/* Narrow app windows (360px): beside the badge and switch the name takes two
+   lines, and the bar runs down both and the footnote. On the website the
+   floating bar takes them away first (.dock). */
 @media (max-width: 30rem) {
   .brand {
     --name: 1.55rem;
   }
 }
 
+/* A link to the source on GitHub, which the code icon in front tells, so it
+   is no surprise when it opens. */
 .version {
-  padding: 0.15rem 0.6rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.6rem 0.15rem 0.45rem;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -285,20 +327,31 @@ h3 {
   color: var(--text);
 }
 
-/* The theme switch and version badge in one row, centred on the lockup. */
-.site-header__actions {
-  display: flex;
-  align-self: center;
-  align-items: center;
-  gap: 0.4rem;
-  flex-shrink: 0;
-  margin-left: auto;
+.version .icon {
+  width: 0.9rem;
+  height: 0.9rem;
 }
 
-/* Phones (360px): narrower gaps leave the footnote its one line. */
+.icon--source {
+  --icon: url("icons/source-code.svg");
+}
+
+/* The theme switch and version badge in one row, centred on the lockup: the
+   same padding as the header's, so the centre is the lockup's, not the
+   header's. */
+.site-header__actions {
+  grid-area: 1 / 2;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding-block: var(--header-padding-top) var(--header-padding-bottom);
+}
+
+/* Narrow app windows (360px): narrower gaps leave the footnote its one
+   line. */
 @media (max-width: 30rem) {
-  .site-header__top {
-    gap: 0.5rem;
+  .page {
+    column-gap: 0.5rem;
   }
 
   .site-header__actions {
@@ -434,7 +487,7 @@ code {
 }
 
 .site-header {
-  padding: 2rem 0 1.25rem;
+  padding: var(--header-padding-top) 0 var(--header-padding-bottom);
 }
 
 /* The app's unified title bar. The page runs under the window buttons
@@ -497,7 +550,9 @@ code {
   align-items: center;
   gap: 0.15rem;
   height: var(--titlebar);
-  padding-top: 0;
+  /* Both: the header row pads them top and bottom to centre them on the
+     lockup, which on the title bar would push them off its middle. */
+  padding-block: 0;
 }
 
 /* Flat on the bar, without fill or border, so its edge stays clean; a fill
@@ -586,6 +641,14 @@ code {
   box-shadow: var(--shadow);
 }
 
+/* The Tool page's tabs (see main above), as far from the form as the zone is
+   from them. After .tabs, which would otherwise win the margin. */
+:where(.page:has(> main > #mainForm)) .tabs {
+  z-index: 1;
+  grid-row: 3;
+  margin-bottom: 1.1rem;
+}
+
 .tab {
   display: flex;
   flex: 1;
@@ -606,9 +669,18 @@ code {
 }
 
 /* The configuration count on the Profile tab: "(3)", "(9+)". Tabular figures
-   keep the label from shifting as the number changes. */
+   keep the label from shifting as the number changes. The brackets are the
+   header's; the floating bar shows the count in a badge. */
 .tab__count {
   font-variant-numeric: tabular-nums;
+}
+
+.tab__count::before {
+  content: "(";
+}
+
+.tab__count::after {
+  content: ")";
 }
 
 /* The selected tab: a solid accent pill. Declared after the hover rules,
@@ -617,6 +689,256 @@ code {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-contrast);
+}
+
+/* Phones and tablets, up to 912px: the tabs, theme switch and version leave
+   the header for one bar floating at the bottom, in reach of a thumb, and the
+   header keeps only the lockup. The tabs sit in the middle, the switch and
+   version flat on either side, as on the desktop app's title bar. The bar has
+   the profile cards' head colour, a little translucent over a blur, so the
+   page shows through as it scrolls under. Not in the desktop app, which keeps
+   the header at any width. */
+@media (width <= 57rem) {
+  :root:not([data-app="desktop"]) {
+    --dock-item: 2.75rem;
+    --dock-padding: 0.25rem;
+    /* Clear of the home indicator, where there is one. */
+    --dock-offset: max(1rem, env(safe-area-inset-bottom));
+    /* How far up from the bottom edge the bar reaches. */
+    --dock-reach: calc(
+      var(--dock-offset) + var(--dock-item) + 2 * var(--dock-padding) + 2px
+    );
+
+    /* Focus and in-page jumps stop clear of the bar. */
+    scroll-padding-bottom: calc(var(--dock-reach) + 1rem);
+  }
+
+  :root:not([data-app="desktop"]) body {
+    padding-bottom: calc(var(--dock-reach) + 2rem);
+  }
+
+  /* The lockup larger, with nothing beside it: on one line from 360px. */
+  :root:not([data-app="desktop"]) .brand {
+    --name: clamp(1.55rem, 8vw, 2.1rem);
+  }
+
+  /* With the tabs gone from under it, the header leaves more room below. */
+  :root:not([data-app="desktop"]) .page {
+    --header-padding-bottom: 1.75rem;
+
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Centred by the auto margins between the zero insets, as wide as its
+     items. The two 1fr columns either side of the tabs come out as wide as
+     the wider of switch and version, which keeps the tabs in the middle. */
+  :root:not([data-app="desktop"]) .dock {
+    position: fixed;
+    inset-inline: 0;
+    bottom: var(--dock-offset);
+    z-index: 10;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    column-gap: 0.125rem;
+    width: fit-content;
+    max-width: calc(100% - 1rem);
+    margin-inline: auto;
+    padding: var(--dock-padding);
+    background: color-mix(in srgb, var(--surface-sunken) 85%, transparent);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    box-shadow:
+      0 8px 24px -6px light-dark(rgb(16 24 40 / 18%), rgb(0 0 0 / 60%)),
+      var(--shadow);
+    transition:
+      translate 0.2s ease,
+      opacity 0.2s ease,
+      visibility 0.2s;
+  }
+
+  :root:not([data-app="desktop"]) .tabs {
+    grid-area: 1 / 2;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0;
+    margin: 0;
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  /* Hairlines either side of the tabs: between the switch and Tool, and
+     between Profile and the version. */
+  :root:not([data-app="desktop"]) .tabs::before,
+  :root:not([data-app="desktop"]) .tabs::after {
+    content: "";
+    flex: none;
+    width: 1px;
+    height: 1.5rem;
+    margin-inline: 0.3rem;
+    background: var(--border-strong);
+  }
+
+  :root:not([data-app="desktop"]) .tab {
+    --tab-padding: 0.85rem;
+
+    position: relative;
+    flex: none;
+    gap: 0.35rem;
+    height: var(--dock-item);
+    padding: 0 var(--tab-padding);
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  /* The count as a pill after the label, without the header's brackets. */
+  :root:not([data-app="desktop"]) .tab__count {
+    display: grid;
+    place-items: center;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 0.3rem;
+    background: var(--accent);
+    border-radius: 999px;
+    color: var(--accent-contrast);
+    font-size: 0.7rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  :root:not([data-app="desktop"]) .tab[aria-current="page"] .tab__count {
+    background: var(--accent-contrast);
+    color: var(--accent);
+  }
+
+  :root:not([data-app="desktop"]) .tab__count::before,
+  :root:not([data-app="desktop"]) .tab__count::after {
+    content: none;
+  }
+
+  /* Out of the way, so the switch and version take the outer columns. */
+  :root:not([data-app="desktop"]) .site-header__actions {
+    display: contents;
+  }
+
+  /* Flat on the bar, without fill or border; a fill only shows under the
+     pointer or a finger. */
+  :root:not([data-app="desktop"]) .theme-switch,
+  :root:not([data-app="desktop"]) .version {
+    height: var(--dock-item);
+    background: transparent;
+    border-color: transparent;
+  }
+
+  /* The switch names the current choice beside its icon, set like the
+     version opposite, so the two sides match in weight as well as in
+     width. The name follows data-theme like the icon, so it is right from
+     the first paint; the button's aria-label (src/ui/theme.ts) carries
+     the same word. */
+  :root:not([data-app="desktop"]) .theme-switch {
+    grid-area: 1 / 1;
+    justify-self: center;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    width: auto;
+    padding: 0 0.75rem 0 0.6rem;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  :root:not([data-app="desktop"]) .theme-switch::after {
+    content: "System";
+  }
+
+  :root[data-theme="light"]:not([data-app="desktop"]) .theme-switch::after {
+    content: "Light";
+  }
+
+  :root[data-theme="dark"]:not([data-app="desktop"]) .theme-switch::after {
+    content: "Dark";
+  }
+
+  :root:not([data-app="desktop"]) .version {
+    grid-area: 1 / 3;
+    justify-self: center;
+    padding: 0 0.75rem 0 0.6rem;
+  }
+
+  :root:not([data-app="desktop"]) .theme-switch .icon,
+  :root:not([data-app="desktop"]) .version .icon {
+    width: 0.95rem;
+    height: 0.95rem;
+  }
+
+  :root:not([data-app="desktop"]) .tab:not([aria-current="page"]):active,
+  :root:not([data-app="desktop"]) .theme-switch:active,
+  :root:not([data-app="desktop"]) .version:active {
+    background: var(--surface);
+  }
+
+  /* Phones, up to 480px: labels beside the icons, and the version's width on
+     both sides of them, need about 440px with the count at "9+", so the tabs
+     keep their icons, round like the switch, and the labels only for
+     assistive tech. Tablets get the labels. */
+  @media (width <= 30rem) {
+    :root:not([data-app="desktop"]) .tab {
+      --tab-padding: calc((var(--dock-item) - 1.25rem) / 2);
+    }
+
+    /* The count as a badge on the icon's corner instead, ringed in the
+       colour under it so it stands clear of the icon. */
+    :root:not([data-app="desktop"]) .tab__count {
+      position: absolute;
+      top: 0.3rem;
+      left: calc(var(--tab-padding) + 0.75rem);
+      min-width: 1.05rem;
+      height: 1.05rem;
+      padding: 0 0.25rem;
+      box-shadow: 0 0 0 2px var(--surface-sunken);
+      font-size: 0.65rem;
+    }
+
+    :root:not([data-app="desktop"]) .tab[aria-current="page"] .tab__count {
+      box-shadow: 0 0 0 2px var(--accent);
+    }
+
+    :root:not([data-app="desktop"]) .tab__label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+
+  /* While an on-screen keyboard is open (data-keyboard, src/ui/dock.ts). */
+  :root[data-keyboard]:not([data-app="desktop"]) .dock {
+    visibility: hidden;
+    opacity: 0;
+    translate: 0 calc(100% + var(--dock-offset));
+  }
+}
+
+@media (width <= 57rem) and (hover: hover) {
+  :root:not([data-app="desktop"]) .tab:not([aria-current="page"]):hover,
+  :root:not([data-app="desktop"]) .theme-switch:hover,
+  :root:not([data-app="desktop"]) .version:hover {
+    background: var(--surface);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-app="desktop"]) .dock {
+    transition: none;
+  }
 }
 
 .panel {
@@ -1656,8 +1978,9 @@ summary.rule__head::-webkit-details-marker {
   }
 }
 
-/* On a phone the form is the main job, so the zone collapses to one row. */
-@media (max-width: 40rem) {
+/* Below 768px (phones, small tablets, narrow desktop windows) the form is the
+   main job, so the zone collapses to one row. */
+@media (width < 48rem) {
   .zone {
     --zone-title: 0.95rem;
     --zone-status: 0.8rem;

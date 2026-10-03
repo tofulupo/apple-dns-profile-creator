@@ -22,6 +22,7 @@ import { enableSaveMenu, type UpdateSaveMenu } from "./save_menu.ts";
 import { enableSigning, type Signing } from "./signing.ts";
 import { browserStorage, createConfigStore, persist } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
+import { watchKeyboard } from "./dock.ts";
 
 const store = createConfigStore(browserStorage());
 
@@ -527,6 +528,7 @@ function bindDeclarationFormat(): void {
 
 function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
+  watchKeyboard();
   enablePixelMode();
   updateSaveMenu = enableSaveMenu(() => void download());
   desktopBindings()?.onCardMenuChosen?.((action) => {

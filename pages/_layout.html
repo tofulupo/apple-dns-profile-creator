@@ -2,7 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- viewport-fit=cover hands the screen's edges to the page, which keeps
+      the floating bar clear of the home indicator with env(safe-area-inset-*)
+      (css/app.css). -->
+    <meta name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>{{ title }}</title>
     <meta name="description" content="{{ description }}">
     <link rel="canonical" href="{{ canonical }}">
@@ -62,28 +66,31 @@
     <div class="titlebar" data-tauri-drag-region aria-hidden="true"></div>
     <div class="page">
       <header class="site-header">
-        <div class="site-header__top">
-          <div class="brand">
-            <h1 class="brand__name">DNS Profile Creator</h1>
-            <p class="brand__protocols">Encrypted DNS (DoH/DoT)</p>
-          </div>
-          <div class="site-header__actions">
-            <button type="button" class="theme-switch" id="themeSwitch"
-              aria-label="Theme">
-              <span class="icon icon--theme" aria-hidden="true"></span>
-            </button>
-            <a class="version"
-              href="https://github.com/tofulupo/apple-dns-profile-creator"
-              target="_blank" rel="noopener"
-              aria-label="v{{ version }}, source code on GitHub">v{{ version }}</a>
-          </div>
+        <div class="brand">
+          <h1 class="brand__name">DNS Profile Creator</h1>
+          <p class="brand__protocols">Encrypted DNS (DoH/DoT)</p>
         </div>
-
       </header>
 
-      <nav class="tabs">
-        {{ nav }}
-      </nav>
+      <!-- On wide screens the tabs run under the header, and the theme switch
+        and version sit beside the name. On phones and tablets they are one
+        floating bar at the bottom (css/app.css). -->
+      <div class="dock">
+        <nav class="tabs" aria-label="Pages">
+          {{ nav }}
+        </nav>
+        <div class="site-header__actions">
+          <button type="button" class="theme-switch" id="themeSwitch"
+            aria-label="Theme">
+            <span class="icon icon--theme" aria-hidden="true"></span>
+          </button>
+          <a class="version"
+            href="https://github.com/tofulupo/apple-dns-profile-creator"
+            target="_blank" rel="noopener"
+            aria-label="v{{ version }}, source code on GitHub, opens in a new tab"><span
+              class="icon icon--source" aria-hidden="true"></span>v{{ version }}</a>
+        </div>
+      </div>
 
       <main>
         {{ content }}

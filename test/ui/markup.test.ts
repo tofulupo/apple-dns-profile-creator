@@ -255,6 +255,14 @@ for (const { page, html } of rendered) {
         );
       });
 
+      // css/app.css puts the tabs between these two on wide screens, through
+      // `.page:has(> main > #mainForm)` and a three-row subgrid in <main>.
+      it("has the upload zone and the form as <main>'s only children", () => {
+        expect(html).toMatch(
+          /<main>\s*<div class="field" id="field-fileupload">[\s\S]*<\/div>\s*<form id="mainForm"[\s\S]*<\/form>\s*<\/main>/,
+        );
+      });
+
       it("starts with the preset menu closed", () => {
         expect(html).toMatch(
           /<ul class="preset-menu" id="presetMenu"[^>]*hidden>/,
@@ -292,6 +300,50 @@ for (const { page, html } of rendered) {
         ...html.matchAll(/<a href="([^"]+)"[^>]*aria-current="page"/g),
       ].map((match) => match[1]);
       expect(current).toEqual([pageHref(page)]);
+    });
+
+    // On phones and tablets the dock is the floating bottom bar
+    // (css/app.css): the tabs first, then the theme switch and version, which
+    // stay outside the navigation landmark.
+    it("groups the tabs, theme switch and version in the dock", () => {
+      const dock = html.match(
+        /<div class="dock">\s*<nav class="tabs" aria-label="Pages">([\s\S]*?)<\/nav>\s*<div class="site-header__actions">([\s\S]*?)<\/div>\s*<\/div>/,
+      );
+      expect(dock).not.toBeNull();
+      const [, tabs = "", extras = ""] = dock ?? [];
+      expect([...tabs.matchAll(/class="tab"/g)].length).toBe(PAGES.length);
+      expect(extras).toContain('id="themeSwitch"');
+      expect(extras).toContain(">v0.0.0-test</a>");
+    });
+
+    // Hidden visually on phones, where the bar shows only the icons; the
+    // label stays the tab's accessible name.
+    it("wraps each tab's label, which the bar can hide", () => {
+      for (const page of PAGES) {
+        expect(html).toContain(`<span class="tab__label">${page.nav}</span>`);
+      }
+    });
+
+    it("tells that the version opens the source in a new tab", () => {
+      expect(html).toMatch(
+        /<a class="version"[^>]*target="_blank"[^>]*aria-label="v0\.0\.0-test, source code on GitHub, opens in a new tab"><span\s+class="icon icon--source" aria-hidden="true"><\/span>v0\.0\.0-test<\/a>/,
+      );
+    });
+
+    it("keeps the header to the lockup", () => {
+      const header = html.match(
+        /<header class="site-header">([\s\S]*?)<\/header>/,
+      );
+      expect(header?.[1]).toContain('class="brand"');
+      expect(header?.[1]).not.toContain("themeSwitch");
+    });
+
+    // The bar keeps clear of the home indicator with env(safe-area-inset-*),
+    // which is zero without it.
+    it("lets the page run to the screen's edges", () => {
+      expect(html).toMatch(
+        /<meta name="viewport"\s+content="[^"]*viewport-fit=cover[^"]*">/,
+      );
     });
 
     it("links the start page by its canonical address, not index.html", () => {
