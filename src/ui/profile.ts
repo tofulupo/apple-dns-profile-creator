@@ -11,6 +11,7 @@ import { element, input, setFieldError, showNotices } from "./dom.ts";
 
 import { ask, tell } from "./dialogs.ts";
 import { desktopBindings } from "./desktop.ts";
+import { enableMascot } from "./mascot.ts";
 import { receiveOpenedProfiles } from "./opened.ts";
 import { holdStillWhenFitting } from "./overscroll.ts";
 import { enablePixelMode } from "./pixel.ts";
@@ -530,6 +531,7 @@ function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
   watchKeyboard();
   enablePixelMode();
+  enableMascot();
   updateSaveMenu = enableSaveMenu(() => void download());
   desktopBindings()?.onCardMenuChosen?.((action) => {
     const config = cardMenuFor;

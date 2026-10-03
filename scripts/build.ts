@@ -21,6 +21,8 @@ const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const DIST = join(ROOT, "dist");
 const PAGES_DIR = join(ROOT, "pages");
 const LAYOUT = "pages/_layout.html";
+/** The desktop app's mascot, in front of the name; the website has none. */
+const MASCOT = "pages/_mascot.html";
 /** Rendered with the site's address into dist/llms.txt. */
 const LLMS = "pages/llms.txt";
 const STYLESHEET = "css/app.css";
@@ -47,7 +49,7 @@ export interface PageAssets {
   readonly version: string;
   /**
    * Built for the desktop app, whose monospace is Lilex rather than the
-   * website's Berkeley Mono.
+   * website's Berkeley Mono, and whose name has the mascot in front of it.
    */
   readonly desktop?: boolean;
   /** The font files the build ships, for the preloads. All when undefined. */
@@ -449,9 +451,12 @@ export async function renderPage(
   page: Page,
   assets: PageAssets,
 ): Promise<string> {
-  const [layout, content] = await Promise.all([
+  const [layout, content, mascot] = await Promise.all([
     Deno.readTextFile(join(ROOT, LAYOUT)),
     Deno.readTextFile(join(PAGES_DIR, page.file)),
+    assets.desktop
+      ? Deno.readTextFile(join(ROOT, MASCOT))
+      : Promise.resolve(""),
   ]);
   // The whole element is generated, since deno fmt parses the body of a JSON
   // script and fails on a placeholder there. `<` is escaped so no value can
@@ -469,6 +474,7 @@ export async function renderPage(
     script: inlineScript(assets.script),
     version: escape(assets.version),
     nav: navigation(page),
+    mascot: mascot.trim(),
     content: fill(content.trim(), { presets: presetOptions() }, page.file),
   }, LAYOUT);
 }

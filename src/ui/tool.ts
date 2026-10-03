@@ -37,6 +37,7 @@ import {
   isUndoOrRedo,
   replaceText,
 } from "./editing.ts";
+import { enableMascot } from "./mascot.ts";
 import { receiveOpenedProfiles } from "./opened.ts";
 import { holdStillWhenFitting } from "./overscroll.ts";
 import { enablePixelMode } from "./pixel.ts";
@@ -841,6 +842,7 @@ function init(): void {
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
   watchKeyboard();
   enablePixelMode();
+  enableMascot();
   // Only in the app, where fields should behave like native ones; a browser
   // page is expected to leave Escape alone.
   if (desktopBindings() !== undefined) enableEscapeRevert();

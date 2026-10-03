@@ -143,6 +143,29 @@ describe("fontPreloads", () => {
   });
 });
 
+describe("the mascot", () => {
+  it("stands in front of the name in the desktop app", async () => {
+    for (const page of PAGES) {
+      const html = await renderPage(page, {
+        stylesheet: "app.css",
+        script: "",
+        version: "0.0.0-test",
+        desktop: true,
+      });
+      const brand = html.match(/<div class="brand">([\s\S]*?)<h1/)?.[1];
+      expect(brand).toContain(
+        '<span class="brand__mascot" aria-hidden="true">',
+      );
+    }
+  });
+
+  it("is left out of the website", () => {
+    for (const { html } of rendered) {
+      expect(html).not.toContain("brand__mascot");
+    }
+  });
+});
+
 describe("page titles", () => {
   it("differ between pages", () => {
     const titles = PAGES.map((page) => page.title);

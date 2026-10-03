@@ -634,6 +634,132 @@ code {
   line-height: 1;
 }
 
+/* The app's mascot (pages/_mascot.html), in front of the bar: its foot level
+   with the bar's, its ears above the name. The first row is flexible, and a
+   flexible row only gets what the items spanning it leave over: exactly the
+   height the mascot needs beyond the name and protocols. The name moves down
+   by that, so the ears keep the header's space under the title bar. */
+.brand:has(> .brand__mascot) {
+  grid-template-columns: auto calc(var(--name) * 0.32) minmax(0, 1fr);
+  grid-template-rows: 1fr auto auto;
+}
+
+.brand:has(> .brand__mascot)::before {
+  grid-column: 2;
+  grid-row: 2 / span 2;
+}
+
+.brand:has(> .brand__mascot) .brand__name {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.brand:has(> .brand__mascot) .brand__protocols {
+  grid-column: 3;
+  grid-row: 3;
+}
+
+.brand__mascot {
+  /* The fills that differ between public/icons/mascot-light.svg and
+     mascot-dark.svg. */
+  --mascot-ear: light-dark(#1a73b8, #59c2ff);
+  --mascot-ear-inner: light-dark(#0f4a78, #1b4b69);
+  --mascot-bezel: light-dark(#94a3b8, #3b414b);
+  --mascot-bezel-inner: light-dark(#e2e8f0, #22262d);
+  /* How far apart the drawing's layers stand, which shows as it turns. */
+  --mascot-depth: calc(var(--name) * 0.12);
+
+  position: relative;
+  grid-column: 1;
+  grid-row: 1 / -1;
+  align-self: end;
+  width: calc(var(--name) * 2.29);
+  aspect-ratio: 64 / 65;
+  /* The bar runs past the protocols' line by as much. */
+  margin-bottom: calc(var(--name) * -0.1);
+}
+
+.mascot__float,
+.mascot__body,
+.mascot__layer {
+  position: absolute;
+  inset: 0;
+}
+
+/* Leaning toward the name and looking down at the page, from its foot; its
+   own perspective, so the pose is the same on every page. src/ui/mascot.ts
+   turns it further toward the focused field (--mascot-turn-*). */
+.mascot__body {
+  transform-origin: 50% 100%;
+  transform-style: preserve-3d;
+  transform: perspective(2000px)
+    rotateX(calc(-11deg + var(--mascot-turn-x, 0deg)))
+    rotateY(calc(14deg + var(--mascot-turn-y, 0deg)));
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mascot__layer {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: translateZ(calc(var(--mascot-z, 0) * var(--mascot-depth)));
+}
+
+.mascot__layer--ears {
+  --mascot-z: -2;
+}
+
+.mascot__layer--bezel-inner {
+  --mascot-z: 1;
+}
+
+.mascot__layer--screen {
+  --mascot-z: 2;
+}
+
+.mascot__layer--face {
+  --mascot-z: 4;
+}
+
+.mascot__layer--glare {
+  --mascot-z: 5;
+}
+
+.mascot__ear {
+  fill: var(--mascot-ear);
+}
+
+.mascot__ear-inner {
+  fill: var(--mascot-ear-inner);
+}
+
+.mascot__bezel {
+  fill: var(--mascot-bezel);
+}
+
+.mascot__bezel-inner {
+  fill: var(--mascot-bezel-inner);
+}
+
+/* It floats, unless motion is reduced. */
+@media (prefers-reduced-motion: no-preference) {
+  .mascot__float {
+    animation: mascot-float 3.8s ease-in-out infinite;
+  }
+}
+
+@keyframes mascot-float {
+  50% {
+    translate: 0 calc(var(--name) * -0.09);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot__body {
+    transition: none;
+  }
+}
+
 .tabs {
   display: flex;
   gap: 0.25rem;
