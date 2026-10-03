@@ -501,19 +501,28 @@ code {
   color: var(--text);
 }
 
-/* The configuration count on the Profile tab: "(3)", "(9+)". Tabular figures
-   keep the label from shifting as the number changes. The brackets are the
-   header's; the floating bar shows the count in a badge. */
+/* The configuration count on the Profile tab, "3" or "9+", as a filled
+   accent pill after the label, the same in the header and the floating bar.
+   Tabular figures keep it from changing width as the number changes. */
 .tab__count {
+  display: grid;
+  place-items: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  background: var(--accent);
+  border-radius: 999px;
+  color: var(--accent-contrast);
+  font-size: 0.7rem;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 
-.tab__count::before {
-  content: "(";
-}
-
-.tab__count::after {
-  content: ")";
+/* On the selected tab's accent pill, the colours swap. */
+.tab[aria-current="page"] .tab__count {
+  background: var(--accent-contrast);
+  color: var(--accent);
 }
 
 /* The selected tab: a solid accent pill. Declared after the hover rules,
@@ -626,31 +635,6 @@ code {
     padding: 0 var(--tab-padding);
     border-radius: 999px;
     white-space: nowrap;
-  }
-
-  /* The count as a pill after the label, without the header's brackets. */
-  :root:not([data-app="desktop"]) .tab__count {
-    display: grid;
-    place-items: center;
-    min-width: 1.15rem;
-    height: 1.15rem;
-    padding: 0 0.3rem;
-    background: var(--accent);
-    border-radius: 999px;
-    color: var(--accent-contrast);
-    font-size: 0.7rem;
-    font-weight: 600;
-    line-height: 1;
-  }
-
-  :root:not([data-app="desktop"]) .tab[aria-current="page"] .tab__count {
-    background: var(--accent-contrast);
-    color: var(--accent);
-  }
-
-  :root:not([data-app="desktop"]) .tab__count::before,
-  :root:not([data-app="desktop"]) .tab__count::after {
-    content: none;
   }
 
   /* Out of the way, so the switch and version take the outer columns. */

@@ -8,8 +8,8 @@ import { element } from "./dom.ts";
 const MAX_SHOWN = 9;
 
 /**
- * The count as the tab shows it: "1" to "9", then "9+"; none at 0. The header's
- * tab puts it in brackets, the floating bar's in a badge (css/app.css).
+ * The count as the tab shows it: "1" to "9", then "9+"; none at 0. The tab
+ * shows it in a badge, in the header and the floating bar (css/app.css).
  */
 export function countLabel(count: number): string {
   if (count <= 0) return "";
