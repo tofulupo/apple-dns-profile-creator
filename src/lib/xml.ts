@@ -1,7 +1,3 @@
-/**
- * A minimal XML reader for the property-list subset.
- */
-
 export class XmlParseError extends Error {
   constructor(message: string) {
     super(message);
@@ -27,7 +23,7 @@ const NAMED_ENTITIES: Readonly<Record<string, string>> = {
   apos: "'",
 };
 
-/** A code point XML 1.0 allows in a document (the `Char` production). */
+/** XML 1.0's `Char` production. */
 function isXmlChar(code: number): boolean {
   return code === 0x9 || code === 0xa || code === 0xd ||
     (code >= 0x20 && code <= 0xd7ff) ||
@@ -42,8 +38,7 @@ function decodeEntities(
   if (!text.includes("&")) {
     return text;
   }
-  // `#[^;]*` is deliberately loose, so that `&#12ab;` is reported below
-  // instead of being skipped by the pattern and kept as literal text.
+  // Matches `&name;` and any `&#...;`, loose so `&#12ab;` is reported below.
   return text.replace(/&(#[^;&<]*|[A-Za-z]+);/g, (match, body: string) => {
     if (!body.startsWith("#")) {
       return NAMED_ENTITIES[body] ?? match;

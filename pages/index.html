@@ -23,13 +23,13 @@
 
 <form id="mainForm" novalidate>
   <section class="panel">
-    <h3 class="panel__title">
+    <h2 class="panel__title">
       <span class="panel__icon" aria-hidden="true"><span
           class="icon icon--server"></span></span>
       DNS configuration
-    </h3>
+    </h2>
 
-    <div class="field" id="field-provName">
+    <div class="field name-field" id="field-provName">
       <label for="provName">Choose a Name</label>
       <div class="name-picker">
         <input type="text" id="provName" autocomplete="off"
@@ -94,40 +94,66 @@
       <div class="panel-disclosure__body">
         <fieldset class="field">
           <legend>IPv4</legend>
-          <div class="address-grid">
+          <div class="address-grid" id="addressesIpv4">
             <div class="field" id="field-ipv4a">
-              <input type="text" id="ipv4a" class="mono" inputmode="decimal"
-                autocapitalize="off" autocorrect="off" spellcheck="false"
-                writingsuggestions="false" autocomplete="off"
-                aria-label="First IPv4 address" placeholder="192.0.2.1">
+              <div class="address-input">
+                <span class="address-input__index" aria-hidden="true">1</span>
+                <input type="text" id="ipv4a" class="mono" inputmode="decimal"
+                  autocapitalize="off" autocorrect="off" spellcheck="false"
+                  writingsuggestions="false" autocomplete="off"
+                  aria-label="First IPv4 address" placeholder="192.0.2.1">
+                <button type="button" class="address-input__remove" hidden><span
+                    class="icon icon--close" aria-hidden="true"></span></button>
+              </div>
               <p class="field__error" hidden></p>
             </div>
+            <button type="button" class="address-swap" id="swapIpv4"
+              aria-label="Swap the IPv4 addresses" title="Swap order"><span
+                class="icon icon--swap" aria-hidden="true"></span></button>
             <div class="field" id="field-ipv4b">
-              <input type="text" id="ipv4b" class="mono" inputmode="decimal"
-                autocapitalize="off" autocorrect="off" spellcheck="false"
-                writingsuggestions="false" autocomplete="off"
-                aria-label="Second IPv4 address" placeholder="192.0.2.2">
+              <div class="address-input">
+                <span class="address-input__index" aria-hidden="true">2</span>
+                <input type="text" id="ipv4b" class="mono" inputmode="decimal"
+                  autocapitalize="off" autocorrect="off" spellcheck="false"
+                  writingsuggestions="false" autocomplete="off"
+                  aria-label="Second IPv4 address" placeholder="192.0.2.2">
+                <button type="button" class="address-input__remove" hidden><span
+                    class="icon icon--close" aria-hidden="true"></span></button>
+              </div>
               <p class="field__error" hidden></p>
             </div>
           </div>
         </fieldset>
         <fieldset class="field">
           <legend>IPv6</legend>
-          <div class="address-grid">
+          <div class="address-grid" id="addressesIpv6">
             <div class="field" id="field-ipv6a">
-              <input type="text" id="ipv6a" class="mono"
-                autocapitalize="off" autocorrect="off" spellcheck="false"
-                writingsuggestions="false"
-                autocomplete="off" aria-label="First IPv6 address"
-                placeholder="2001:db8::1">
+              <div class="address-input">
+                <span class="address-input__index" aria-hidden="true">1</span>
+                <input type="text" id="ipv6a" class="mono"
+                  autocapitalize="off" autocorrect="off" spellcheck="false"
+                  writingsuggestions="false"
+                  autocomplete="off" aria-label="First IPv6 address"
+                  placeholder="2001:db8::1">
+                <button type="button" class="address-input__remove" hidden><span
+                    class="icon icon--close" aria-hidden="true"></span></button>
+              </div>
               <p class="field__error" hidden></p>
             </div>
+            <button type="button" class="address-swap" id="swapIpv6"
+              aria-label="Swap the IPv6 addresses" title="Swap order"><span
+                class="icon icon--swap" aria-hidden="true"></span></button>
             <div class="field" id="field-ipv6b">
-              <input type="text" id="ipv6b" class="mono"
-                autocapitalize="off" autocorrect="off" spellcheck="false"
-                writingsuggestions="false"
-                autocomplete="off" aria-label="Second IPv6 address"
-                placeholder="2001:db8::2">
+              <div class="address-input">
+                <span class="address-input__index" aria-hidden="true">2</span>
+                <input type="text" id="ipv6b" class="mono"
+                  autocapitalize="off" autocorrect="off" spellcheck="false"
+                  writingsuggestions="false"
+                  autocomplete="off" aria-label="Second IPv6 address"
+                  placeholder="2001:db8::2">
+                <button type="button" class="address-input__remove" hidden><span
+                    class="icon icon--close" aria-hidden="true"></span></button>
+              </div>
               <p class="field__error" hidden></p>
             </div>
           </div>
@@ -136,7 +162,7 @@
           <ul class="notices" id="addressNotice"
             aria-label="Addresses that were left out" hidden></ul>
         </div>
-        <span class="hint">Optional. Tried in order, IPv4 first.</span>
+        <span class="hint">Tried in order, IPv4 first.</span>
       </div>
     </details>
 

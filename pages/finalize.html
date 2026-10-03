@@ -14,8 +14,9 @@
     aria-label="Parts of the profile that were not imported" hidden></ul>
 </div>
 
-<section class="config-list" id="configList" aria-label="Configurations"
+<section class="config-list" id="configList" aria-labelledby="configListTitle"
   hidden>
+  <h2 class="visually-hidden" id="configListTitle">Configurations</h2>
   <div id="dynamicList"></div>
   <footer class="list-footer">
     <p class="list-footer__count" id="configCount" role="status"></p>
@@ -27,11 +28,11 @@
 </section>
 
 <section class="panel" id="downloadPanel" hidden>
-  <h3 class="panel__title">
+  <h2 class="panel__title">
     <span class="panel__icon" aria-hidden="true"><span
         class="icon icon--download"></span></span>
     Download
-  </h3>
+  </h2>
 
   <div class="field">
     <div class="switch-list">

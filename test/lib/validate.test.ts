@@ -1,6 +1,3 @@
-/**
- * Tests for address validation and list parsing.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
@@ -53,7 +50,6 @@ describe("quick inserts", () => {
     expect(withDnsQueryPath("dns.quad9.net")).toBe("dns.quad9.net/dns-query");
   });
 
-  // The reported bug: https:// then /dns-query made "https:/dns-query".
   it("leave a value without a host alone", () => {
     for (const value of ["", "https://", "https:/", "https:"]) {
       expect(withDnsQueryPath(value)).toBe(value);
@@ -167,7 +163,6 @@ describe("isIPv4", () => {
       "not-an-address",
       "1.1.1.1 ",
       "2001:db8::1",
-      // Leading zeros: octal to some parsers, decimal to others.
       "01.1.1.1",
       "010.0.0.1",
       "1.1.1.00",
@@ -201,7 +196,6 @@ describe("isIPv6", () => {
       "2001:db8:::1",
       "gggg::1",
       "nonsense",
-      // A zone index names an interface on one machine only.
       "fe80::1%eth0",
     ]
   ) {
@@ -222,7 +216,6 @@ describe("serverError", () => {
       "https://dns.example.com/dns-query/abc123",
       "https://[2606:4700::1111]/dns-query",
       "https://1.1.1.1/dns-query",
-      // RFC 8484 URI templates, which Apple's ServerURL also takes.
       "https://dns.example.com/dns-query{?dns}",
       "https://dns.example.com/q?key=1{&dns}",
     ]
@@ -238,14 +231,12 @@ describe("serverError", () => {
       "https://",
       "https:// dns.example.com",
       "https://dns.example.com/dns query",
-      // The URL parser repairs these into valid URLs; the profile would not.
       "https:/dns-query",
       "https:/dns.example.com/dns-query",
       "https:///dns-query",
       "https:\\\\dns.example.com\\dns-query",
       "https://dns.example.com\\dns-query",
       " https://dns.example.com/dns-query",
-      // Refused by isDohUrl.
       "https://user:secret@dns.example.com/dns-query",
       "https://dns.example.com/dns-query#part",
       "https://dns.example.com/dns-query?dns=AAAB",
@@ -261,7 +252,6 @@ describe("serverError", () => {
       ));
   }
 
-  // RFC 3986: path-abempty is *( "/" segment ), and a segment may be empty.
   it("accepts empty path segments, which RFC 3986 allows", () => {
     expect(
       serverError("HTTPS", "https://hhh.01.com////////////////dns-query"),
@@ -322,8 +312,6 @@ describe("parseList", () => {
   });
 
   it("drops blank entries instead of emitting them", () => {
-    // The original kept them, so a trailing comma produced an empty SSID in the
-    // generated profile.
     expect(parseList("a,,b,")).toEqual(["a", "b"]);
     expect(parseList(",")).toEqual([]);
   });

@@ -1,33 +1,20 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run
-// Subsets the licensed Söhne webfonts in fonts/source/ to Latin, into
-// fonts/subset/, under the names the stylesheet uses. Both folders are kept
-// out of git (.git/info/exclude): the licence does not allow publishing the
-// files, only shipping them. Run after adding or replacing a font there.
-//
-// Uses fontTools through uvx, so nothing is installed into the project; the
-// first run downloads it.
+// Söhne's licence allows shipping the files, not publishing them, so
+// fonts/source/ and fonts/subset/ stay out of git.
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 export const FONT_SOURCE = join(ROOT, "fonts", "source");
 export const FONT_SUBSET = join(ROOT, "fonts", "subset");
 
-/**
- * The Söhne weights the stylesheet uses, by the weight class each font file
- * declares, and the ASCII names they are served under. Files of any other
- * weight in fonts/source/ are skipped.
- */
+/** File names must match the stylesheet's @font-face urls. */
 export const SOEHNE_FACES: Readonly<Record<number, string>> = {
   400: "Soehne-Buch.woff2",
   500: "Soehne-Kraeftig.woff2",
   600: "Soehne-Halbfett.woff2",
 };
 
-/**
- * Google Fonts' "latin" range plus Latin Extended-A, so names in profiles
- * (Łódź, Øresund) still render in Söhne. Anything else falls back to the
- * system font, per character.
- */
+/** Google Fonts' "latin" range plus Latin Extended-A. */
 export const LATIN_UNICODES = [
   "U+0000-017F",
   "U+0304",
@@ -48,15 +35,11 @@ export const LATIN_UNICODES = [
   "U+FFFD",
 ].join(",");
 
-/**
- * Kept on top of fontTools' defaults (kerning, ligatures, marks and so on):
- * tabular figures, which the stylesheet asks for in the counts.
- */
+/** Tabular figures, which the stylesheet asks for in the counts. */
 const EXTRA_FEATURES = ["tnum"];
 
-// Reads each font's own weight and style rather than trusting file names:
-// Klim's are lower case and drop the umlaut ("kraftig"). Name records are all
-// kept, so the copyright and licence notices stay in the subsets.
+// Name records are all kept, so the copyright and licence notices stay in the
+// subsets.
 const SUBSET_PY = `
 import json, os, sys
 from fontTools.ttLib import TTFont

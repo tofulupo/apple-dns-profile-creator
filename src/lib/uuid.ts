@@ -1,7 +1,3 @@
-/**
- * UUID generation that works over plain HTTP.
- */
-
 const UUID_BYTES = 16;
 
 export function uuidFromBytes(source: Uint8Array): string {

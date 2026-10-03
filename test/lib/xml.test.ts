@@ -1,6 +1,3 @@
-/**
- * Tests for the minimal XML reader.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 

@@ -1,6 +1,3 @@
-/**
- * Guards the deployment settings in `src/config.ts`.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
@@ -33,9 +30,6 @@ describe("presets", () => {
       expect(new Set(addresses).size).toBe(addresses.length);
     });
 
-    // The tool page has two fields per family and stores IPv4 first, so a
-    // preset listed any other way would lose addresses or never show as
-    // selected.
     it(`${preset.name} fits the address fields, IPv4 first`, () => {
       const addresses = preset.serverAddresses ?? [];
       expect(splitServerAddresses(addresses).dropped).toEqual([]);

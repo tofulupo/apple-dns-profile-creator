@@ -1,7 +1,3 @@
-/**
- * Public surface of the pure core.
- */
-
 export {
   type AddressSlots,
   collectServerAddresses,

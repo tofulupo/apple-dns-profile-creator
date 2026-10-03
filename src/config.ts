@@ -1,64 +1,34 @@
-/**
- * Deployment settings.
- */
-
 import type { DnsProtocol } from "./lib/types.ts";
 
-/** What a preset's resolver offers, listed under its name in the menu. */
 export type PresetFeature = "no-logs" | "ads" | "dnssec" | "blocking";
 
-/** How each feature reads in the preset menu, in the order shown there. */
 export const PRESET_FEATURE_LABELS: Readonly<Record<PresetFeature, string>> = {
-  blocking: "Malware blocking",
-  ads: "Ad blocking",
-  dnssec: "DNSSEC",
   "no-logs": "No logs",
+  dnssec: "DNSSEC",
+  ads: "Ad blocking",
+  blocking: "Malware blocking",
 };
 
-/** A provider the tool page offers as a one-click starting point. */
 export interface DnsPreset {
   readonly name: string;
   readonly protocol: DnsProtocol;
   readonly serverUrl: string;
-  /**
-   * The provider's resolver IPs from its own documentation: at most two IPv4
-   * then at most two IPv6, the order the form keeps them in. Optional:
-   * without them the address fields are left empty.
-   */
+  /** At most two IPv4 then at most two IPv6, as the form keeps them. */
   readonly serverAddresses?: readonly string[];
-  /**
-   * ISO 3166-1 alpha-2 code of the country the resolver runs in, such as
-   * "SE". Omitted for providers that answer from everywhere (anycast).
-   */
+  /** ISO 3166-1 alpha-2. Omitted for anycast providers. */
   readonly country?: string;
   readonly features?: readonly PresetFeature[];
 }
 
 export interface AppConfig {
-  /**
-   * Reverse-DNS namespace for the generated profile's `PayloadIdentifier`.
-   */
   readonly identifierPrefix: string;
-
-  /** File name offered when the profile is downloaded. */
   readonly profileFilename: string;
-
-  /** File name for a profile signed in the desktop app. */
   readonly signedProfileFilename: string;
 
-  /**
-   * Whether "Use system scope" starts ticked.
-   *
-   * Required on macOS 26 and later, so it defaults to on.
-   */
+  /** System scope is required on macOS 26 and later. */
   readonly systemScopeByDefault: boolean;
 
-  /**
-   * The presets menu beside the provider name, in this order. Each fills in
-   * the protocol, server and resolver addresses, and the name unless the
-   * user typed their own. `test/config.test.ts` checks every server and
-   * address against the form's own rules.
-   */
+  /** `test/config.test.ts` checks every server and address. */
   readonly presets: readonly DnsPreset[];
 }
 

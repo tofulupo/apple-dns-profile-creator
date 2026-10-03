@@ -6,7 +6,7 @@ import { appConfig } from "../config.ts";
 import { buildProfileXml } from "../lib/profile.ts";
 import type { DnsConfig } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
-import { configProblems } from "../lib/validate.ts";
+import { configProblems, isIPv4, isIPv6 } from "../lib/validate.ts";
 import { element, input, setFieldError, showNotices } from "./dom.ts";
 
 import { ask, tell } from "./dialogs.ts";
@@ -71,6 +71,46 @@ function row(label: string, value: string, mono = false): DocumentFragment {
   const definition = document.createElement("dd");
   definition.textContent = value;
   if (mono) definition.className = "mono";
+  fragment.append(term, definition);
+  return fragment;
+}
+
+/**
+ * The resolver addresses in the order the profile lists them, each tagged
+ * with its family and its place within it, as the tool page's fields number
+ * them ("IPv4 1"). An entry that is neither, which only a configuration
+ * stored before the form checked addresses can hold, is tagged "?": the
+ * card's problems name it, and the profile leaves it out.
+ */
+function resolverRow(addresses: readonly string[]): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+  const term = document.createElement("dt");
+  term.textContent = "Resolvers";
+  const definition = document.createElement("dd");
+  const list = document.createElement("ul");
+  list.className = "resolver-list";
+  // Safari drops a list's role once its bullets are styled away.
+  list.setAttribute("role", "list");
+  const counts = { IPv4: 0, IPv6: 0 };
+  for (const address of addresses) {
+    const family = isIPv4(address)
+      ? "IPv4"
+      : isIPv6(address)
+      ? "IPv6"
+      : undefined;
+    const tag = document.createElement("span");
+    tag.className = "resolver-list__tag";
+    tag.textContent = family === undefined
+      ? "?"
+      : `${family} ${++counts[family]}`;
+    const value = document.createElement("span");
+    value.className = "resolver-list__address";
+    value.textContent = address;
+    const item = document.createElement("li");
+    item.append(tag, value);
+    list.append(item);
+  }
+  definition.append(list);
   fragment.append(term, definition);
   return fragment;
 }
@@ -170,7 +210,7 @@ function card(config: DnsConfig): HTMLElement {
   header.className = "profile-card__head";
 
   // Cards sit under the list's own heading.
-  const title = document.createElement("h4");
+  const title = document.createElement("h3");
   title.className = "profile-card__title";
   title.textContent = label;
 
@@ -221,23 +261,26 @@ function card(config: DnsConfig): HTMLElement {
     row("Server", config.serverUrl, true),
   );
   if (config.serverAddresses.length > 0) {
-    body.append(row("Resolvers", config.serverAddresses.join(", "), true));
+    body.append(resolverRow(config.serverAddresses));
   }
   if (config.excludedWifi.length > 0) {
     // Quoted, since a network name can contain the comma between them.
     body.append(
       row(
-        "Skip on Wi-Fi",
+        "Skip for SSiD",
         config.excludedWifi.map((ssid) => `“${ssid}”`).join(", "),
+        true,
       ),
     );
   }
   if (config.excludedDomains.length > 0) {
-    body.append(row("Skip for domains", config.excludedDomains.join(", ")));
+    body.append(
+      row("Skip for domains", config.excludedDomains.join(", "), true),
+    );
   }
   const matchDomains = config.supplementalMatchDomains ?? [];
   if (matchDomains.length > 0) {
-    body.append(row("Only for domains", matchDomains.join(", ")));
+    body.append(row("Only for domains", matchDomains.join(", "), true));
   }
 
   const flags = document.createElement("p");

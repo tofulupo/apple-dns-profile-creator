@@ -1,5 +1,4 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run --allow-net --allow-env
-// Serves dist/ on the LAN. Pass --watch to rebuild on source changes.
 import { serveDir } from "@std/http/file-server";
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
 import { build } from "./build.ts";

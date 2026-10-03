@@ -1,16 +1,8 @@
-/**
- * The `OnDemandRules` array.
- *
- * Shared verbatim by the `com.apple.dnsSettings.managed` payload and by the
- * `com.apple.configuration.network.dns-settings` declaration.
- */
-
 import type { PlistDict } from "./plist.ts";
 import type { DnsConfig } from "./types.ts";
 
 export function buildOnDemandRules(config: DnsConfig): PlistDict[] {
-  // Rule order is load-bearing: Apple evaluates on-demand rules top to bottom
-  // and stops at the first match, so the catch-all Disconnect must stay last.
+  // Apple stops at the first matching rule, so the catch-all must stay last.
   const rules: PlistDict[] = [];
 
   if (config.excludedWifi.length > 0) {

@@ -129,6 +129,8 @@ scripts/       build, dev server, app icon and fonts
   build.ts       render pages into the layout, deno bundle -> dist/,
                  sitemap.xml, robots.txt and llms.txt from SITE_URL
   serve.ts       static file server, --watch rebuilds
+  server.ts      the website on Deno Deploy: dist/ with caching,
+                 compression and security headers (CSP by script hash)
   app_icon.ts    AppIcon.png and src-tauri/icons/ from desktop/AppIcon.icon
   fonts.ts       fonts/source/ -> Latin-only fonts/subset/
 

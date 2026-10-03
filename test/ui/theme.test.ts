@@ -1,6 +1,3 @@
-/**
- * Tests for the theme choice: what is read back, and the switch's order.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 

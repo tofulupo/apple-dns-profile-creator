@@ -1,7 +1,3 @@
-/**
- * These tests assert that the fixture corpus loads and has the shape the
- * specification tests rely on.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 

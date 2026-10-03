@@ -14,16 +14,10 @@ const BASE: DnsConfig = {
   prohibitDisablement: false,
 };
 
-/** A valid configuration, with any field overridden. */
 export function config(overrides: Partial<DnsConfig> = {}): DnsConfig {
   return { ...BASE, ...overrides };
 }
 
-/**
- * Every feature the builder can emit, in one profile. The upstream fixture
- * corpus reaches none of the on-demand or post-14.0 keys, so the golden test
- * would otherwise lock only the narrow subset those profiles happen to use.
- */
 export function fullSurfaceConfigs(): DnsConfig[] {
   return [
     {

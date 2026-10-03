@@ -1,5 +1,5 @@
 {
-  "version": "3.7.7",
+  "version": "3.7.9",
   "license": "BSD-3-Clause",
   "tasks": {
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
@@ -39,9 +39,8 @@
   "deploy": {
     "build": "deno task build",
     "runtime": {
-      "type": "static",
-      "cwd": "dist",
-      "spa": false
+      "type": "dynamic",
+      "entrypoint": "scripts/server.ts"
     }
   },
 

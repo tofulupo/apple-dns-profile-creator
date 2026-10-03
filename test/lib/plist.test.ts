@@ -1,7 +1,3 @@
-/**
- * Validates the replacement plist implementation - infrastructure, not
- * application behaviour.
- */
 import { afterAll, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join } from "@std/path";
@@ -34,7 +30,6 @@ function plutilAvailable(): boolean {
   }
 }
 
-/** Runs Apple's property list linter over a string. */
 function plutilLint(xml: string, name: string): void {
   const path = join(scratch, `${name}.plist`);
   Deno.writeTextFileSync(path, xml);
@@ -208,8 +203,6 @@ if (plutilAvailable()) {
       plutilLint(xml, "generated-control-characters");
     });
 
-    // Every upstream fixture carries a single payload, so this is the only
-    // place Apple's parser sees a profile with several.
     it("a profile with several DNS payloads passes plutil -lint", () => {
       const profile = buildProfile(
         fullSurfaceConfigs(),

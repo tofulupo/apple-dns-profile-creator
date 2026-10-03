@@ -1,20 +1,14 @@
-/**
- * Tests for handing profiles opened with the desktop app to the page's
- * import, with the app's queue replaced by a fake.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
 import type { OpenedProfile } from "../../src/desktop/bindings.ts";
 import { receiveOpenedProfiles } from "../../src/ui/opened.ts";
 
-/** The app's queue and event, as the page sees them. */
 function fakeApp(...queued: OpenedProfile[]) {
   const queue = [...queued];
   let notify: (() => void) | undefined;
   return {
     queue,
-    /** Opens more profiles while the page is open, as the app would. */
     open(...profiles: OpenedProfile[]) {
       queue.push(...profiles);
       notify?.();
@@ -34,7 +28,6 @@ const profile = (name: string): OpenedProfile => ({
   text: `<plist>${name}</plist>`,
 });
 
-/** Lets pending imports and takes run. */
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("receiveOpenedProfiles", () => {
@@ -69,7 +62,6 @@ describe("receiveOpenedProfiles", () => {
     const imported: string[] = [];
     await receiveOpenedProfiles(async (file) => {
       imported.push(file.name);
-      // More arrive while this one is still being imported.
       if (file.name === "a.mobileconfig") app.open(profile("c.mobileconfig"));
       await settle();
     }, app.bindings);

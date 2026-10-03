@@ -11,7 +11,8 @@ import {
   inlineScript,
   pageHref,
   pageUrl,
-  presetDetails,
+  presetFeatures,
+  presetHost,
   renderPage,
   textFontPreload,
 } from "../../scripts/build.ts";
@@ -79,29 +80,40 @@ describe("inlineScript", () => {
   });
 });
 
-describe("presetDetails", () => {
-  it("lists host, country, then features in menu order", () => {
-    expect(presetDetails({
+describe("presetHost", () => {
+  it("shows a DoH server's host name", () => {
+    expect(presetHost({
       name: "Example",
       protocol: "HTTPS",
       serverUrl: "https://doh.example.net/dns-query",
-      country: "SE",
-      features: ["no-logs", "dnssec", "blocking"],
-    })).toEqual([
-      "doh.example.net",
-      "Sweden",
-      "Malware blocking",
-      "DNSSEC",
-      "No logs",
-    ]);
+    })).toBe("doh.example.net");
   });
 
   it("shows a DoT server's host name as it is", () => {
-    expect(presetDetails({
+    expect(presetHost({
       name: "Example",
       protocol: "TLS",
       serverUrl: "dot.example.net",
-    })).toEqual(["dot.example.net"]);
+    })).toBe("dot.example.net");
+  });
+});
+
+describe("presetFeatures", () => {
+  it("lists features in menu order, whatever order the preset gives", () => {
+    expect(presetFeatures({
+      name: "Example",
+      protocol: "HTTPS",
+      serverUrl: "https://doh.example.net/dns-query",
+      features: ["blocking", "ads", "dnssec", "no-logs"],
+    })).toEqual(["No logs", "DNSSEC", "Ad blocking", "Malware blocking"]);
+  });
+
+  it("is empty without features", () => {
+    expect(presetFeatures({
+      name: "Example",
+      protocol: "TLS",
+      serverUrl: "dot.example.net",
+    })).toEqual([]);
   });
 });
 
@@ -203,7 +215,7 @@ for (const { page, html } of rendered) {
     it("renders one preset menu entry per preset, in order", () => {
       const entries = [
         ...html.matchAll(
-          /<button type="button" class="preset"[^>]*>(?:<img [^>]*>|<span class="icon[^"]*"[^>]*><\/span>)<span class="preset__name">([^<]*)</g,
+          /<button type="button" class="preset"[^>]*>(?:<img [^>]*>|<span class="icon[^"]*"[^>]*><\/span>)<span class="preset__head"><span class="preset__name">([^<]*)</g,
         ),
       ].map((match) => match[1]);
       const expected = page.file === "index.html"
@@ -214,23 +226,32 @@ for (const { page, html } of rendered) {
 
     if (page.file === "index.html") {
       // Derived from the presets, so editing them does not break the test.
-      it("shows each preset's details, one unit per detail", () => {
+      it("shows each preset's features, protocol and host", () => {
         for (const preset of appConfig.presets) {
-          const details = presetDetails(preset)
-            .map((detail) => `<span>${detail}</span>`)
-            .join(" · ");
+          const features = presetFeatures(preset)
+            .map((feature) => `<span class="preset__feature">${feature}</span>`)
+            .join("");
+          const protocol = preset.protocol === "HTTPS" ? "DoH" : "DoT";
           expect(html).toContain(
-            `<span class="preset__name">${preset.name}</span><span class="preset__details">${details}</span>`,
+            `<span class="preset__features">${features}</span></span><span class="preset__server"><span class="preset__protocol">${protocol}</span><span class="preset__host">${
+              presetHost(preset)
+            }</span></span>`,
           );
         }
       });
 
+      it("names a preset's country to assistive tech, not on screen", () => {
+        expect(html).toContain(
+          '<span class="preset__name">njal.la<span class="visually-hidden">, Sweden</span></span>',
+        );
+      });
+
       it("marks presets with their country's flag, or a globe", () => {
         expect(html).toMatch(
-          /<img class="preset__mark preset__flag" src="data:image\/svg\+xml,[^"]+" alt=""[^>]*><span class="preset__name">njal\.la</,
+          /<img class="preset__mark preset__flag" src="data:image\/svg\+xml,[^"]+" alt="" title="Sweden"[^>]*><span class="preset__head"><span class="preset__name">njal\.la</,
         );
         expect(html).toContain(
-          '<span class="icon icon--globe preset__mark" aria-hidden="true"></span><span class="preset__name">Quad9<',
+          '<span class="icon icon--globe preset__mark" aria-hidden="true"></span><span class="preset__head"><span class="preset__name">Quad9<',
         );
       });
 

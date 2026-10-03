@@ -1,7 +1,4 @@
 #!/usr/bin/env -S deno run --allow-net --allow-read --allow-write --allow-run
-/**
- * Usage: deno task fixtures:fetch
- */
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");

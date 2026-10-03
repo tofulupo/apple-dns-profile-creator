@@ -1,23 +1,6 @@
 #!/usr/bin/env -S deno run --env-file=.env --allow-env=INDEXNOW_KEY --allow-net=apple.mobileconfig.deno.net,api.indexnow.org
-/**
- * Tells IndexNow search engines (Bing, Yandex, Seznam, Naver...) that the
- * site's pages changed, so they re-crawl them soon.
- *
- *   deno task indexnow            submit every page
- *   deno task indexnow --dry-run  show what would be sent
- *
- * For the public instance only, not something self-hosters need.
- *
- * Setup: on Deno Deploy, set INDEXNOW_KEY for the Build context; the build
- * then publishes `<key>.txt` on the site (builds without it skip the file).
- * Locally, put the same key in the shell or a gitignored .env. The key is
- * public by design, since search engines read it from the site, but it stays
- * out of the repository.
- *
- * Run it after a deployment that changed what the pages say, not after every
- * push. If SITE_URL moves to another host, update this task's --allow-net
- * hosts in deno.json too.
- */
+// If SITE_URL moves to another host, update this task's --allow-net hosts in
+// deno.json too.
 import { PAGES, SITE_URL } from "../pages/pages.ts";
 import { indexNowKeyFile, pageUrl } from "./build.ts";
 
@@ -40,7 +23,7 @@ export function submission(key: string): IndexNowSubmission {
   };
 }
 
-/** What each IndexNow status means, from https://www.indexnow.org/documentation. */
+/** From https://www.indexnow.org/documentation. */
 function explain(status: number): string {
   switch (status) {
     case 200:
@@ -73,8 +56,6 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Search engines check the key file right away, so a submission before the
-  // deployment that publishes it would only be rejected.
   const published = await fetch(body.keyLocation);
   const text = (await published.text()).trim();
   if (!published.ok || text !== body.key) {

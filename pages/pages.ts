@@ -1,34 +1,15 @@
-/**
- * The site's pages, in navigation order.
- *
- * Each page's content lives in `pages/<file>` and is rendered into
- * `pages/_layout.html` by `scripts/build.ts`, which also derives the tab bar
- * and `sitemap.xml` from this table.
- */
-
 export interface Page {
-  /** Content fragment in `pages/`, and the file name it is published under. */
   readonly file: string;
-  /** Label of the page's tab. */
   readonly nav: string;
-  /** `<title>` text, also used for `og:title`. */
   readonly title: string;
-  /** Tab icon: the `icon--<name>` class in `css/app.css`. */
+  /** The `icon--<name>` class in `css/app.css`. */
   readonly icon: string;
-  /** Id of an empty element after the tab label, where the pages show a count. */
   readonly countId?: string;
-  /** `<meta name="description">` text. */
   readonly description: string;
-  /** Entry module, relative to the project root. */
   readonly script: string;
-  /** Sitemap priority, 0.0 to 1.0. */
   readonly priority: number;
 }
 
-/**
- * Public URL of the deployed site, on Deno Deploy. The build derives
- * sitemap.xml, robots.txt and llms.txt from it. Ends with a slash.
- */
 export const SITE_URL = "https://apple.mobileconfig.deno.net/";
 
 export const PAGES: readonly Page[] = [

@@ -1,7 +1,3 @@
-/**
- * IndexNow: the key file the build publishes, the submission the task sends,
- * and that no key ever ends up in the repository.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join, resolve } from "@std/path";
@@ -15,7 +11,6 @@ const here = import.meta.dirname;
 if (here === undefined) throw new Error("Must be loaded from a file URL");
 const ROOT = resolve(here, "..");
 
-// Made up for these tests; the real key lives only on Deno Deploy.
 const KEY = "0123456789abcdef-test";
 
 describe("indexNowKeyFile", () => {
@@ -45,8 +40,6 @@ describe("submission", () => {
 });
 
 describe("the repository", () => {
-  // A committed key file would publish the key through Git as well as the
-  // site; it belongs in the Deno Deploy environment only.
   it("contains no IndexNow key file", () => {
     const found: string[] = [];
     for (const dir of ["public", "pages", "src"]) {

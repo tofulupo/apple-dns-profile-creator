@@ -1,7 +1,3 @@
-/**
- * The deployed site's address: one source (`SITE_URL`), and the files the
- * build derives from it for crawlers and LLMs.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join, resolve } from "@std/path";
@@ -39,8 +35,6 @@ describe("robots.txt", () => {
   it("names each crawler once, by name rather than full user-agent string", () => {
     const lower = NAMED_CRAWLERS.map((agent) => agent.toLowerCase());
     expect(new Set(lower).size).toBe(lower.length);
-    // A version or URL means a whole user-agent string was pasted, which
-    // crawlers do not match against.
     expect(NAMED_CRAWLERS.filter((agent) => /[/()+:;]/.test(agent)))
       .toEqual([]);
   });
@@ -56,8 +50,6 @@ describe("llms.txt", () => {
     );
   });
 
-  // The llms.txt format: every list entry is a Markdown link, and sections
-  // are H2 headings. Lighthouse found no links in `- [Name]: url` entries.
   it("writes every list entry as a Markdown link under an H2 section", async () => {
     const llms = await renderLlms();
     const entries = llms.split("\n").filter((line) => line.startsWith("- "));
@@ -68,8 +60,6 @@ describe("llms.txt", () => {
   });
 });
 
-// The site moved from GitHub Pages to Deno Deploy. Anything the build turns
-// into the website must use SITE_URL, not a hard-coded old address.
 describe("the retired GitHub Pages address", () => {
   it("appears nowhere the website is built from", () => {
     const offenders: string[] = [];

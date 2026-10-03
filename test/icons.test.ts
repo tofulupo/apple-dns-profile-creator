@@ -1,7 +1,3 @@
-/**
- * Tests for inlining the stylesheet's icons, which keeps them from
- * flickering on every page change.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join, resolve } from "@std/path";

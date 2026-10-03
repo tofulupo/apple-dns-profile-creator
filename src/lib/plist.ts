@@ -1,7 +1,3 @@
-/**
- * Apple XML property list serialisation and parsing.
- */
-
 import { parseXml, type XmlElement, XmlParseError } from "./xml.ts";
 
 export type PlistValue =
@@ -25,19 +21,13 @@ const PROLOG = '<?xml version="1.0" encoding="UTF-8"?>\n' +
 const EPILOG = "</plist>\n";
 
 /**
- * Characters XML 1.0 cannot carry at all, not even as a reference: C0 controls
- * other than tab, LF and CR, U+FFFE and U+FFFF, and (under the `u` flag, which
- * matches a surrogate only when unpaired) lone surrogates.
+ * Characters XML 1.0 cannot carry: C0 controls other than tab, LF and CR,
+ * U+FFFE, U+FFFF and (under the `u` flag) lone surrogates.
  */
 const NON_XML_CHARS =
   // deno-lint-ignore no-control-regex
   /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF\uD800-\uDFFF]/gu;
 
-/**
- * Escapes text for use in element content. Characters XML cannot represent are
- * dropped, since a document containing them is rejected outright by plutil
- * and by the device.
- */
 function escapeText(value: string): string {
   return value
     .replace(NON_XML_CHARS, "")
@@ -63,7 +53,7 @@ function fromBase64(value: string): Uint8Array {
   return bytes;
 }
 
-/** ISO 8601 with second precision, which is the form Apple emits. */
+/** Apple writes plist dates in ISO 8601 with whole seconds. */
 function toPlistDate(date: Date): string {
   return `${date.toISOString().slice(0, 19)}Z`;
 }
@@ -185,7 +175,6 @@ function parseElement(element: XmlElement): PlistValue {
   }
 }
 
-/** Parses an Apple XML property list. Needs no DOM. */
 export function parsePlist(xml: string): PlistValue {
   let root: XmlElement;
   try {
@@ -210,8 +199,6 @@ export function parsePlist(xml: string): PlistValue {
 
   return parseElement(first);
 }
-
-/* -------------------------------------------------------------- narrowing --- */
 
 export function isPlistDict(value: PlistValue | undefined): value is PlistDict {
   return (

@@ -1,20 +1,12 @@
-/**
- * Server and resolver address validation.
- */
-
 import type { DnsConfig, DnsProtocol } from "./types.ts";
 
-/**
- * Dotted-quad IPv4. Leading zeros are refused: `010.0.0.1` is 8.0.0.1 to
- * parsers that read them as octal and 10.0.0.1 to the rest.
- */
+/** Dotted-quad IPv4, without leading zeros (`010` reads as octal to some). */
 export const IPV4_PATTERN =
   /^(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(?:\.(?!$)|$)){4}$/;
 
 /**
- * IPv6 in any of its textual forms, including `::` compression and
- * IPv4-mapped addresses. Zone indices (`fe80::1%en0`) are refused: they name
- * an interface of one machine, which means nothing inside a profile.
+ * IPv6 in any textual form, including `::` compression and IPv4-mapped
+ * addresses. Zone indices (`fe80::1%en0`) are refused.
  */
 export const IPV6_PATTERN =
   /^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))$/;
@@ -32,18 +24,14 @@ const HOST_NAME_PATTERN = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+\.?$/i;
 
 declare const brand: unique symbol;
 
-/** A string `isDohUrl` has accepted. */
 export type DohUrl = string & { readonly [brand]: "DohUrl" };
 
 /** RFC 8484's URI template ending: `{?dns}`, or `{&dns}` after a query. */
 const TEMPLATE_RE = /\{([?&])([^}]*)\}$/;
 
 /**
- * Whether `input` is a DoH server URL as RFC 8484 defines it: https, a host,
- * no credentials or fragment, optionally ending in the `{?dns}` template
- * (`{&dns}` when it already has a query), and never a `dns` parameter of its
- * own. Judges the URL as parsed; `serverError` adds the checks on how it is
- * written.
+ * RFC 8484: https, a host, no credentials or fragment, optionally ending in
+ * `{?dns}` (`{&dns}` after a query), and never a `dns` parameter of its own.
  */
 export function isDohUrl(input: string): input is DohUrl {
   const match = TEMPLATE_RE.exec(input);
@@ -69,10 +57,6 @@ export function isDohUrl(input: string): input is DohUrl {
   );
 }
 
-/**
- * Why `server` cannot be used with `protocol`, or null when it can. The
- * form reports the message on submit, and shows a check mark while it is null.
- */
 export function serverError(
   protocol: DnsProtocol,
   server: string,
@@ -80,10 +64,8 @@ export function serverError(
   if (server === "") return "A server address is required.";
 
   if (protocol === "HTTPS") {
-    // Checked as written as well as parsed. The URL parser (WHATWG) repairs
-    // `https:/host`, `https:///host`, backslashes and spaces into a valid
-    // URL, which `isDohUrl` then accepts; RFC 3986 allows none of them in an
-    // https URI, and the profile carries the text exactly as typed.
+    // Refuses `https:/host`, `https:///host`, backslashes and spaces, which
+    // the URL parser repairs but RFC 3986 does not allow.
     if (
       !/^https:\/\/[^/\\]/i.test(server) || /[\s\\]/.test(server) ||
       !isDohUrl(server)
@@ -103,11 +85,8 @@ export function serverError(
 }
 
 /**
- * `server` without a `tls://`, `https://` or `http://` in front, for the DoT
- * field: provider docs often write DoT servers as `tls://dns.example.com`,
- * while a profile takes the bare host name. Drops what follows the host too,
- * and the default DoT port 853, which would only fail the check. Anything
- * without such a scheme comes back as it was.
+ * Captures the host after a `tls://`, `https://` or `http://` prefix. 853 is
+ * the default DoT port.
  */
 export function stripDotScheme(server: string): string {
   const match = /^\s*(?:tls|https?):\/\/([^/?#]*)/i.exec(server);
@@ -115,26 +94,16 @@ export function stripDotScheme(server: string): string {
   return (match[1] ?? "").replace(/:853$/, "");
 }
 
-/**
- * A scheme at the start of a typed or pasted server, even one missing a
- * slash (`https:/`), so the quick inserts can replace it rather than stack
- * a second one in front.
- */
+/** A scheme at the start, even one missing a slash (`https:/`). */
 const TYPED_SCHEME = /^(?:https?|tls):\/*/i;
 
-/** `server` with `https://` in front, replacing any scheme it had. */
 export function withHttpsScheme(server: string): string {
   return "https://" + server.trim().replace(TYPED_SCHEME, "");
 }
 
-/**
- * `server` ending in `/dns-query`, the path most DoH servers use. Unchanged
- * when it already does, or when there is no host yet to put the path after:
- * appending to a bare `https://` would only make `https:///dns-query`.
- */
 export function withDnsQueryPath(server: string): string {
   const trimmed = server.trim();
-  // A template such as `{?dns}` has to stay last, so the path cannot follow.
+  // RFC 8484's `{?dns}` template has to stay last.
   if (/\/dns-query$/i.test(trimmed) || TEMPLATE_RE.test(trimmed)) {
     return server;
   }
@@ -150,11 +119,6 @@ export function parseList(value: string): string[] {
     .filter((entry) => entry !== "");
 }
 
-/**
- * One entry per line, kept exactly as typed. For Wi-Fi network names, which
- * may contain commas and begin or end with spaces, so neither `parseList`'s
- * comma split nor its trimming is safe. Blank lines are dropped.
- */
 export function parseLines(value: string): string[] {
   return value
     .split(/\r?\n/)
@@ -166,7 +130,6 @@ export const MAX_SSID_BYTES = 32;
 
 const utf8 = new TextEncoder();
 
-/** The fields `configProblems` can object to. */
 export type CheckedField =
   | "name"
   | "serverUrl"
@@ -179,11 +142,6 @@ function quoteList(values: readonly string[]): string {
   return values.map((value) => `“${value}”`).join(", ");
 }
 
-/**
- * Why `config` would produce a broken or misleading profile, per field; empty
- * when it is fine. The single source of these rules: the form reports them on
- * its fields, the profile page on imported and stored entries.
- */
 export function configProblems(config: DnsConfig): ConfigProblems {
   const problems: Partial<Record<CheckedField, string>> = {};
 

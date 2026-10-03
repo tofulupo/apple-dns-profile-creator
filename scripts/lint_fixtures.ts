@@ -1,7 +1,4 @@
 #!/usr/bin/env -S deno run --allow-read --allow-run
-/**
- * Validates every plain-XML fixture with Apple's own property list parser.
- */
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");

@@ -1,11 +1,6 @@
 /**
- * The desktop app's pixel font: ⌘G six times in a row sets everything in
- * Geist Pixel, for an 80s terminal look, and six more switch it back. The app
- * has no Find, so ⌘G (Find Next) is free.
- *
- * It lasts until the app quits: `sessionStorage` carries it from Tool to
- * Profile, and the inline script in pages/_layout.html applies it before
- * first paint. css/app.css does the rest, through `data-pixel`.
+ * The inline script in pages/_layout.html applies it before first paint.
+ * css/app.css does the rest, through `data-pixel`.
  */
 
 import { PIXEL_KEY } from "./storage.ts";
@@ -16,11 +11,6 @@ const PRESSES = 6;
 /** The longest pause between two presses that still counts as in a row. */
 const MAX_GAP_MS = 1000;
 
-/**
- * Counts presses by their time in milliseconds. True on the one that
- * completes `presses` in a row, each within `maxGap` of the one before;
- * counting then starts over.
- */
 export function pressCounter(
   presses = PRESSES,
   maxGap = MAX_GAP_MS,
@@ -45,12 +35,9 @@ export function enablePixelMode(): void {
   const root = document.documentElement;
   if (root.dataset["app"] !== "desktop") return;
   const pressed = pressCounter();
-  // Captured, so a focused field or the page's own handlers cannot keep it.
   addEventListener("keydown", (event) => {
     if (!isCommandG(event)) return;
-    // No menu item takes ⌘G, and unhandled macOS would beep.
     event.preventDefault();
-    // Holding the keys down is not pressing them six times.
     if (event.repeat || !pressed(event.timeStamp)) return;
     const on = root.toggleAttribute("data-pixel");
     try {

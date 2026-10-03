@@ -1,12 +1,8 @@
-/**
- * Tests for the desktop app's pixel font: ⌘G six times in a row.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
 import { pressCounter } from "../../src/ui/pixel.ts";
 
-/** Which of the presses, at these times, complete a run. */
 function completing(times: number[]): number[] {
   const pressed = pressCounter(6, 1000);
   return times.flatMap((time, index) => pressed(time) ? [index] : []);

@@ -78,6 +78,19 @@ const addressNotice = element<HTMLUListElement>("addressNotice");
 const ipv4Fields = [input("ipv4a"), input("ipv4b")];
 const ipv6Fields = [input("ipv6a"), input("ipv6b")];
 const addressFields = [...ipv4Fields, ...ipv6Fields];
+/** Each family's fields with the group around them and its swap button. */
+const addressPairs = [
+  {
+    fields: ipv4Fields,
+    group: element("addressesIpv4"),
+    swap: element<HTMLButtonElement>("swapIpv4"),
+  },
+  {
+    fields: ipv6Fields,
+    group: element("addressesIpv6"),
+    swap: element<HTMLButtonElement>("swapIpv6"),
+  },
+];
 const submitLabel = submit.value;
 
 /** File > Save (⌘S) in the desktop app, named after the submit button. */
@@ -281,7 +294,7 @@ function writeAddresses(addresses: readonly string[]): string[] {
   }
   // Reveal filled-in addresses rather than hiding them in the closed section.
   if (ipv4.length + ipv6.length > 0) addressDisclosure.open = true;
-  updateAddressCount();
+  updateAddresses();
   return dropped;
 }
 
@@ -308,13 +321,75 @@ function showAddressNotice(dropped: readonly string[]): void {
   if (messages.length > 0) addressDisclosure.open = true;
 }
 
-function updateAddressCount(): void {
+function removeButtonOf(field: HTMLInputElement): HTMLButtonElement {
+  const button = addressFieldOf(field).querySelector<HTMLButtonElement>(
+    ".address-input__remove",
+  );
+  if (button === null) throw new Error(`#${field.id} has no remove button`);
+  return button;
+}
+
+/**
+ * Brings the section's summary and buttons up to date with the fields: a
+ * remove button on each filled field, and a swap button where both of a
+ * family's fields are filled.
+ */
+function updateAddresses(): void {
   const count = formAddresses().length;
   addressCount.textContent = count === 0
     ? "None"
     : count === 1
     ? "1 address"
     : `${count} addresses`;
+  for (const field of addressFields) {
+    const address = field.value.trim();
+    const remove = removeButtonOf(field);
+    remove.hidden = address === "";
+    remove.setAttribute("aria-label", `Remove ${address}`);
+  }
+  for (const { fields, swap } of addressPairs) {
+    swap.classList.toggle(
+      "address-swap--idle",
+      fields.some((field) => field.value.trim() === ""),
+    );
+  }
+}
+
+/**
+ * Rearranges a family's fields: field `i` takes what field `from[i]` held,
+ * or is emptied for null. A mistake shown on a field moves with its value.
+ * Sets `value` directly, so ⌘Z cannot undo it yet.
+ */
+function rearrangeAddresses(
+  fields: readonly HTMLInputElement[],
+  from: readonly (number | null)[],
+): void {
+  const values = fields.map((field) => field.value);
+  const invalid = fields.map((field) =>
+    addressFieldOf(field).classList.contains("field--invalid")
+  );
+  fields.forEach((field, i) => {
+    const source = from[i] ?? null;
+    field.value = source === null ? "" : values[source] ?? "";
+    setFieldError(
+      addressFieldOf(field),
+      source !== null && invalid[source] ? addressError(field) : null,
+    );
+  });
+  updateAddresses();
+  syncPresets();
+}
+
+/** Moves the filled fields of a family up over the empty ones. */
+function closeAddressGaps(fields: readonly HTMLInputElement[]): void {
+  const filled = fields.flatMap((field, i) =>
+    field.value.trim() === "" ? [] : [i]
+  );
+  if (filled.every((source, i) => source === i)) return;
+  rearrangeAddresses(
+    fields,
+    fields.map((_, i) => filled[i] ?? null),
+  );
 }
 
 /** Why the value of an address field does not belong there, or null. */
@@ -357,7 +432,7 @@ function pasteAddresses(event: ClipboardEvent): void {
     }
   }
   showAddressNotice(dropped);
-  updateAddressCount();
+  updateAddresses();
   syncPresets();
 }
 
@@ -387,8 +462,35 @@ function bindAddressFields(): void {
       if (addressError(field) === null) {
         setFieldError(addressFieldOf(field), null);
       }
-      updateAddressCount();
+      updateAddresses();
       syncPresets();
+    });
+  }
+
+  for (const { fields, group, swap } of addressPairs) {
+    for (const field of fields) {
+      const remove = removeButtonOf(field);
+      remove.addEventListener("click", () => {
+        const index = fields.indexOf(field);
+        const rest = fields.flatMap((_, i) => i === index ? [] : [i]);
+        rearrangeAddresses(fields, fields.map((_, i) => rest[i] ?? null));
+        // From the keyboard, the button may just have hidden itself; the
+        // field is where the user was working.
+        if (document.activeElement === remove) field.focus();
+      });
+    }
+    swap.addEventListener("click", () => rearrangeAddresses(fields, [1, 0]));
+    for (const button of [swap, ...fields.map(removeButtonOf)]) {
+      // Keeps the focus where it was: in a field, with the phone keyboard
+      // open, or nowhere, without opening it.
+      button.addEventListener("pointerdown", (event) => event.preventDefault());
+    }
+    // A field emptied by hand is left alone while the user is still in the
+    // pair, so nothing jumps while they type, and closed up after.
+    group.addEventListener("focusout", (event) => {
+      const next = event.relatedTarget;
+      if (next instanceof Node && group.contains(next)) return;
+      closeAddressGaps(fields);
     });
   }
 }
@@ -688,7 +790,7 @@ function init(): void {
   });
 
   updateProfileCount();
-  updateAddressCount();
+  updateAddresses();
   updateRules();
   store.subscribe(updateProfileCount);
 

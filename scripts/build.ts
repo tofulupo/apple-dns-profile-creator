@@ -293,21 +293,25 @@ export function countryName(code: string): string | undefined {
   return name === undefined || name === code ? undefined : name;
 }
 
-/**
- * The muted line under a preset's name: its host, the country it runs in if
- * it is not global, and what it offers.
- */
-export function presetDetails(preset: DnsPreset): string[] {
-  const host = preset.protocol === "HTTPS"
+/** The host a preset's server runs on, as the menu shows it after DoH/DoT. */
+export function presetHost(preset: DnsPreset): string {
+  return preset.protocol === "HTTPS"
     ? new URL(preset.serverUrl).hostname
     : preset.serverUrl;
-  const country = preset.country === undefined
-    ? []
-    : [countryName(preset.country) ?? preset.country];
-  const features = (Object.keys(PRESET_FEATURE_LABELS) as PresetFeature[])
+}
+
+/** What a preset offers, as the pills beside its name, in menu order. */
+export function presetFeatures(preset: DnsPreset): string[] {
+  return (Object.keys(PRESET_FEATURE_LABELS) as PresetFeature[])
     .filter((feature) => preset.features?.includes(feature))
     .map((feature) => PRESET_FEATURE_LABELS[feature]);
-  return [host, ...country, ...features];
+}
+
+/** The country a preset runs in, spelled out, or undefined when global. */
+function presetCountry(preset: DnsPreset): string | undefined {
+  return preset.country === undefined
+    ? undefined
+    : countryName(preset.country) ?? preset.country;
 }
 
 /** The flag file for the country `code`, such as `flags/se.svg`. */
@@ -318,7 +322,9 @@ export function flagFile(code: string): string {
 /**
  * What stands in front of a preset's name: the flag of its country, embedded
  * so it is there at first paint, or a globe for a global resolver. Both are
- * decorative; the line under the name spells out the country.
+ * hidden from assistive tech, which gets the country as text beside the name
+ * instead; the flag's title names it for a pointer, since some look alike
+ * (Iceland and Norway).
  */
 function presetMark(preset: DnsPreset): string {
   if (preset.country === undefined) {
@@ -335,7 +341,9 @@ function presetMark(preset: DnsPreset): string {
   }
   return `<img class="preset__mark preset__flag" src="${
     escape(svgDataUrl(svg))
-  }" alt="" width="20" height="15">`;
+  }" alt="" title="${
+    escape(presetCountry(preset) ?? preset.country)
+  }" width="20" height="15">`;
 }
 
 /**
@@ -344,17 +352,33 @@ function presetMark(preset: DnsPreset): string {
  * `tool.ts` attaches the handlers by position.
  */
 export function presetOptions(): string {
-  return appConfig.presets.map((preset) =>
-    `<li><button type="button" class="preset" aria-pressed="false">` +
-    presetMark(preset) +
-    `<span class="preset__name">${escape(preset.name)}</span>` +
-    `<span class="preset__details">${
-      presetDetails(preset).map((detail) => `<span>${escape(detail)}</span>`)
-        .join(" · ")
-    }</span>` +
-    `<span class="icon icon--check preset__check" aria-hidden="true"></span>` +
-    `</button></li>`
-  ).join("\n");
+  return appConfig.presets.map((preset) => {
+    const country = presetCountry(preset);
+    const features = presetFeatures(preset);
+    return `<li><button type="button" class="preset" aria-pressed="false">` +
+      presetMark(preset) +
+      `<span class="preset__head">` +
+      `<span class="preset__name">${escape(preset.name)}${
+        country === undefined
+          ? ""
+          : `<span class="visually-hidden">, ${escape(country)}</span>`
+      }</span>` +
+      (features.length === 0
+        ? ""
+        : `<span class="preset__features">${
+          features.map((feature) =>
+            `<span class="preset__feature">${escape(feature)}</span>`
+          ).join("")
+        }</span>`) +
+      `</span>` +
+      `<span class="preset__server"><span class="preset__protocol">${
+        preset.protocol === "HTTPS" ? "DoH" : "DoT"
+      }</span><span class="preset__host">${
+        escape(presetHost(preset))
+      }</span></span>` +
+      `<span class="icon icon--check preset__check" aria-hidden="true"></span>` +
+      `</button></li>`;
+  }).join("\n");
 }
 
 /**

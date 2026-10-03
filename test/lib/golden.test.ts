@@ -1,12 +1,3 @@
-/**
- * Byte-for-byte output lock. Any diff here is a change to what users install,
- * and has to be deliberate.
- *
- * The fixture-derived goldens were produced before `DNSSettings` and
- * `OnDemandRules` were split out of `profile.ts`, so they lock the refactor
- * against the original output. `full-surface` covers the keys no upstream
- * profile uses, and locks forward from the commit that added it.
- */
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join } from "@std/path";
