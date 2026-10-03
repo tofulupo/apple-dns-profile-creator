@@ -38,6 +38,11 @@ const FONTS = join(ROOT, "fonts");
 export const FLAGS = join(ROOT, "flags");
 const REPOSITORY_URL = "https://github.com/tofulupo/apple-dns-profile-creator";
 
+/** Help > Release Notes in src-tauri/src/menu.rs opens the same address. */
+export function releaseNotesUrl(version: string): string {
+  return `${REPOSITORY_URL}/blob/v${version}/CHANGELOG.md`;
+}
+
 export interface PageAssets {
   readonly stylesheet: string;
   readonly script: string;
@@ -403,6 +408,7 @@ export async function renderSettings(
     prepaint: prepaint.trim(),
     script: inlineScript(assets.script),
     version: escape(assets.version),
+    releaseNotes: escape(releaseNotesUrl(assets.version)),
   }, SETTINGS);
 }
 

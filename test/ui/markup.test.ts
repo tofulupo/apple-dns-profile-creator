@@ -189,9 +189,9 @@ describe("the Settings window", () => {
     expect(values("motion")).toEqual(["system", "reduce", "full"]);
   });
 
-  it("has the version, which opens the source in a new tab", () => {
+  it("has the version, which opens its release notes in a new tab", () => {
     expect(html).toMatch(
-      /<a class="version"[^>]*target="_blank"[^>]*aria-label="v0\.0\.0-test, source code on GitHub, opens in a new tab">/,
+      /<a class="version"\s+href="https:\/\/github\.com\/tofulupo\/apple-dns-profile-creator\/blob\/v0\.0\.0-test\/CHANGELOG\.md"[^>]*target="_blank"[^>]*aria-label="v0\.0\.0-test, release notes on GitHub, opens in a new tab"><span\s+class="icon icon--source" aria-hidden="true"><\/span>/,
     );
   });
 

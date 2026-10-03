@@ -27,6 +27,7 @@ const OPEN_PROFILE: &str = "open-profile";
 const SAVE: &str = "save";
 const SHARE: &str = "share";
 
+const RELEASE_NOTES: &str = "release-notes";
 const SOURCE_CODE: &str = "source-code";
 const CARD_EDIT: &str = "card-edit";
 const CARD_DELETE: &str = "card-delete";
@@ -55,6 +56,11 @@ const PAGES: [Page; 2] = [
         href: "finalize.html",
     },
 ];
+
+/// The same as `releaseNotesUrl` in scripts/build.ts.
+fn release_notes_url(version: &str) -> String {
+    format!("{REPOSITORY_URL}/blob/v{version}/CHANGELOG.md")
+}
 
 fn page_by_menu_id(id: &str) -> Option<usize> {
     PAGES.iter().position(|page| page.menu_id == id)
@@ -217,6 +223,7 @@ pub fn build(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         .bring_all_to_front()
         .build()?;
     let help = SubmenuBuilder::with_id(app, HELP_SUBMENU_ID, "Help")
+        .text(RELEASE_NOTES, "Release Notes")
         .text(SOURCE_CODE, format!("{} on GitHub", info.name))
         .build()?;
 
@@ -238,6 +245,10 @@ pub fn handle(app: &AppHandle, event: &MenuEvent) {
         SAVE => emit(app, SAVE_EVENT, ()),
         SHARE => emit(app, SHARE_EVENT, ()),
 
+        RELEASE_NOTES => open_url(
+            app,
+            &release_notes_url(&app.package_info().version.to_string()),
+        ),
         SOURCE_CODE => open_url(app, REPOSITORY_URL),
         CARD_EDIT => emit(app, CARD_MENU_EVENT, "edit"),
         CARD_DELETE => emit(app, CARD_MENU_EVENT, "delete"),
@@ -441,6 +452,14 @@ mod tests {
         }
         assert_eq!(page_by_menu_id(SAVE), None);
         assert_eq!(page_by_menu_id("appearance-dark"), None);
+    }
+
+    #[test]
+    fn opens_the_changelog_at_the_versions_tag() {
+        assert_eq!(
+            release_notes_url("4.0.0-rc.1"),
+            "https://github.com/tofulupo/apple-dns-profile-creator/blob/v4.0.0-rc.1/CHANGELOG.md"
+        );
     }
 
     #[test]
