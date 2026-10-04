@@ -6,7 +6,7 @@ uploaded anywhere, and the tool works fully offline, which makes it suitable for
 hosting on a home network.
 
 **[Try it out](https://apple.mobileconfig.deno.net)** - no install, no sign-up,
-nothing leaves your device.
+nothing leaves your device ([privacy](#privacy)).
 
 Apple has supported DNS over HTTPS and DNS over TLS since iOS 14 and macOS 11,
 but exposes no way to use them without an app or a configuration profile. This
@@ -189,6 +189,19 @@ resolver, which is usually what you want.
 Under the hood they are different mechanisms: exclusions become `OnDemandRules`
 that switch the resolver off, while the limit becomes `SupplementalMatchDomains`
 inside `DNSSettings`. Setting both is legal but rarely useful.
+
+### Privacy
+
+The website at apple.mobileconfig.deno.net is a showcase. It builds the profile
+in your browser and sends nothing back: no cookies, no analytics, no requests to
+other sites. Your configurations stay in the browser's local storage. The server
+only hands out the site's files and keeps nothing.
+
+It runs on Deno Deploy, which records each request (path, status and time) for
+its own operations and, like any host, sees your IP address. If that matters to
+you, run the tool yourself on your own machine or home network (see
+[Running on a LAN](#running-on-a-lan)), or use the [desktop app](#desktop-app),
+which needs no network to build, sign or save a profile.
 
 ### Running on a LAN
 
