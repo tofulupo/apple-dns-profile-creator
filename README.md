@@ -168,9 +168,9 @@ public/        copied verbatim into the build, names unchanged
 | `finalize.html` | Profile view: review the collected configurations and download  |
 
 Each page is only its `<main>` content in `pages/`. The build renders it into
-`pages/_layout.html`, filling in the description, the tab bar and the version
-from `deno.json`. To add a page, add a fragment to `pages/` and an entry to
-`PAGES` in `pages/pages.ts`. The tabs and `sitemap.xml` follow automatically.
+`pages/_layout.html`, filling in the description, the tab bar and the version.
+To add a page, add a fragment to `pages/` and an entry to `PAGES` in
+`pages/pages.ts`. The tabs and `sitemap.xml` follow automatically.
 
 ### Skip encrypted DNS for vs. use encrypted DNS only for
 
@@ -319,8 +319,9 @@ DNS_TOOL_TLS_CERT=/path/cert.pem DNS_TOOL_TLS_KEY=/path/key.pem deno task dev
 ### Configuration
 
 Application settings live in [`src/config.ts`](src/config.ts) as typed
-constants. The version shown in the header is `version` in
-[`deno.json`](deno.json), injected at build time.
+constants. The version shown in the header is `SITE_VERSION` in
+[`pages/pages.ts`](pages/pages.ts) on the website, and `version` in
+[`deno.json`](deno.json) in the desktop app, both injected at build time.
 
 The **Quick presets** on the tool page are `presets` in the same file: up to six
 providers, each a name, protocol and server, plus optional `serverAddresses`
