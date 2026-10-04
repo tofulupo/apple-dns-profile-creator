@@ -21,6 +21,10 @@ identically; iOS and macOS merely label them "Not Signed" during
 installation. The macOS desktop app can optionally sign them with a
 certificate from the user's Keychain.
 
+The website is a showcase hosted on Deno Deploy. It sets no cookies and has no
+analytics, but the host records request metadata such as path, status and time.
+For more privacy, self-host the static build or use the macOS desktop app.
+
 ## Tool
 
 - [The Tool]({{ site }}): Create or import encrypted-DNS configuration
