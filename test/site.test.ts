@@ -2,8 +2,9 @@ import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join, resolve } from "@std/path";
 import { walkSync } from "@std/fs/walk";
+import { parse } from "@std/semver";
 
-import { SITE_URL } from "../pages/pages.ts";
+import { SITE_URL, SITE_VERSION } from "../pages/pages.ts";
 import { NAMED_CRAWLERS, renderLlms, renderRobots } from "../scripts/build.ts";
 
 const here = import.meta.dirname;
@@ -15,6 +16,13 @@ describe("SITE_URL", () => {
     const url = new URL(SITE_URL);
     expect(url.protocol).toBe("https:");
     expect(SITE_URL.endsWith("/")).toBe(true);
+  });
+});
+
+// Odd minor numbers are the website's, even ones the desktop app's.
+describe("SITE_VERSION", () => {
+  it("is a version with an odd minor number", () => {
+    expect(parse(SITE_VERSION).minor % 2).toBe(1);
   });
 });
 

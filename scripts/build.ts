@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write --allow-run
 import { copy } from "@std/fs/copy";
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
-import { type Page, PAGES, SITE_URL } from "../pages/pages.ts";
+import { type Page, PAGES, SITE_URL, SITE_VERSION } from "../pages/pages.ts";
 import {
   appConfig,
   type DnsPreset,
@@ -249,6 +249,7 @@ function navigation(current: Page): string {
   }).join("\n");
 }
 
+/** The desktop app's version, which tauri.conf.json reads from deno.json too. */
 export async function readVersion(): Promise<string> {
   const manifest = JSON.parse(
     await Deno.readTextFile(join(ROOT, "deno.json")),
@@ -591,7 +592,7 @@ export async function build(): Promise<void> {
   )}.css`;
   await Deno.writeTextFile(join(DIST, stylesheet), css);
 
-  const version = await readVersion();
+  const version = desktop ? await readVersion() : SITE_VERSION;
   for (const page of PAGES) {
     await Deno.writeTextFile(
       join(DIST, page.file),
