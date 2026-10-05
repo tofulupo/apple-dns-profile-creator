@@ -715,7 +715,7 @@ async function handleUpload(file: File): Promise<boolean> {
       file.name,
       duplicate ? "duplicate" : saved ? "added" : "unsaved",
     );
-    showNotices(uploadNotice, warnings);
+    showNotices(uploadNotice, duplicate ? [] : warnings);
     validate(readForm());
     return true;
   }
