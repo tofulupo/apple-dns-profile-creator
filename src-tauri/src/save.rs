@@ -33,7 +33,7 @@ pub fn numbered_filename(filename: &str, n: u32) -> String {
         return filename.to_owned();
     }
     let stem = filename.strip_suffix(EXTENSION).unwrap_or(filename);
-    format!("{stem} {n}{EXTENSION}")
+    format!("{stem}-{n}{EXTENSION}")
 }
 
 pub fn save_without_overwrite(
@@ -122,11 +122,15 @@ mod tests {
     }
 
     #[test]
-    fn numbers_copies_the_way_finder_does() {
+    fn numbers_copies_with_a_hyphen_so_the_name_has_no_space() {
         let name = "encrypted-dns.mobileconfig";
         assert_eq!(numbered_filename(name, 1), name);
-        assert_eq!(numbered_filename(name, 2), "encrypted-dns 2.mobileconfig");
-        assert_eq!(numbered_filename(name, 10), "encrypted-dns 10.mobileconfig");
+        assert_eq!(numbered_filename(name, 2), "encrypted-dns-2.mobileconfig");
+        assert_eq!(numbered_filename(name, 10), "encrypted-dns-10.mobileconfig");
+        assert_eq!(
+            numbered_filename("encrypted-dns-signed.mobileconfig", 2),
+            "encrypted-dns-signed-2.mobileconfig"
+        );
     }
 
     #[test]
@@ -145,8 +149,8 @@ mod tests {
         let second = save_without_overwrite(folder.path(), "a.mobileconfig", b"2").unwrap();
         let third = save_without_overwrite(folder.path(), "a.mobileconfig", b"3").unwrap();
 
-        assert_eq!(second, folder.path().join("a 2.mobileconfig"));
-        assert_eq!(third, folder.path().join("a 3.mobileconfig"));
+        assert_eq!(second, folder.path().join("a-2.mobileconfig"));
+        assert_eq!(third, folder.path().join("a-3.mobileconfig"));
         assert_eq!(fs::read_to_string(original).unwrap(), "original");
         assert_eq!(fs::read_to_string(third).unwrap(), "3");
     }

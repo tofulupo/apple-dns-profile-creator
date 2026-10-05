@@ -255,7 +255,7 @@ Packages `dist/` into a macOS application,
 pages load from inside the app; nothing listens on the network.
 
 **Download profile** saves straight to `~/Downloads`, never over an existing
-file (`encrypted-dns 2.mobileconfig` and so on), then offers to open it, which
+file (`encrypted-dns-2.mobileconfig` and so on), then offers to open it, which
 hands it to System Settings for installation. The window remembers its size,
 stored in `~/Library/Application Support/local.encrypted-dns.tool/`. The icon
 follows light and dark mode on macOS 26 and later.
