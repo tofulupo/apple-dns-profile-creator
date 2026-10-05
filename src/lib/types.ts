@@ -18,6 +18,16 @@ export interface DnsConfig {
   readonly supplementalMatchDomains?: readonly string[];
 
   readonly paradigm?: ProfileFormat;
+
+  readonly source?: ConfigSource;
+}
+
+export interface ConfigSource {
+  readonly file: string;
+  readonly profileId?: string;
+  readonly sha256?: string;
+  readonly systemScope?: boolean;
+  readonly edited?: boolean;
 }
 
 /**

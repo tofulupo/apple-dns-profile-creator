@@ -98,11 +98,16 @@ describe("profile envelope", () => {
     expect(new Set(identifiers).size).toBe(6);
   });
 
-  it("writes the same settings once, whatever their paradigm", () => {
+  it("writes the same settings once, whatever file they came from", () => {
+    const settings = config({ name: "Quad9" });
     const profile = build([
-      config({ name: "Quad9", paradigm: "payload" }),
+      { ...settings, paradigm: "payload", source: { file: "a.mobileconfig" } },
       config({ name: "Other" }),
-      config({ name: "Quad9", paradigm: "declarations" }),
+      {
+        ...settings,
+        paradigm: "declarations",
+        source: { file: "a 2.mobileconfig" },
+      },
     ]);
     expect(payloadsOf(profile).map((p) => p["PayloadDisplayName"])).toEqual([
       "Quad9",

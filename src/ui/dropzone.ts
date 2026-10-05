@@ -1,16 +1,44 @@
 import { importProfileXml, type ProfileImport } from "../lib/import.ts";
+import type { ConfigSource } from "../lib/types.ts";
 
 export const DEPRECATED_FORMAT_NOTE =
   "Legacy DNS payload, deprecated by Apple but still working on iOS/macOS 27 and later. Use the Declaration format instead.";
 
+async function sha256(text: string): Promise<string | undefined> {
+  const subtle = globalThis.crypto?.subtle as SubtleCrypto | undefined;
+  if (subtle === undefined) return undefined;
+  const digest = await subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(text),
+  );
+  return Array.from(
+    new Uint8Array(digest),
+    (byte) => byte.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
 export async function readProfileFile(file: File): Promise<ProfileImport> {
-  const result = importProfileXml(await file.text());
+  const text = await file.text();
+  const result = importProfileXml(text);
   if (result.configs.length === 0) {
     throw new Error("That profile contains no DNS settings.");
   }
-  return result.usesDeprecatedPayload
-    ? { ...result, warnings: [DEPRECATED_FORMAT_NOTE, ...result.warnings] }
-    : result;
+  const hash = await sha256(text);
+  const source: ConfigSource = {
+    file: file.name,
+    ...(result.profileId === undefined ? {} : { profileId: result.profileId }),
+    ...(hash === undefined ? {} : { sha256: hash }),
+    ...(result.systemScope === undefined
+      ? {}
+      : { systemScope: result.systemScope }),
+  };
+  return {
+    ...result,
+    configs: result.configs.map((config) => ({ ...config, source })),
+    warnings: result.usesDeprecatedPayload
+      ? [DEPRECATED_FORMAT_NOTE, ...result.warnings]
+      : result.warnings,
+  };
 }
 
 export function uploadError(error: unknown): string {

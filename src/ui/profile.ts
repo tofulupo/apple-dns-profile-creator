@@ -1,6 +1,6 @@
 import { appConfig, presetFeatures, presetOf } from "../config.ts";
 import { buildProfileXml } from "../lib/profile.ts";
-import type { DnsConfig, ProfileFormat } from "../lib/types.ts";
+import type { ConfigSource, DnsConfig, ProfileFormat } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
 import { configProblems, isIPv4, isIPv6 } from "../lib/validate.ts";
 import { element, input, setFieldError, showNotices } from "./dom.ts";
@@ -259,6 +259,33 @@ function enableCardMenu(
   });
 }
 
+function sourceFile(source: ConfigSource): HTMLElement {
+  const file = document.createElement("span");
+  file.className = "profile-card__file";
+  file.title = `Loaded from ${source.file}`;
+  const prefix = document.createElement("span");
+  prefix.className = "visually-hidden";
+  prefix.textContent = "Loaded from ";
+  const extension = source.file.lastIndexOf(".");
+  const cut = extension > 0
+    ? Math.max(0, extension - 4)
+    : Math.max(0, source.file.length - 8);
+  const start = document.createElement("span");
+  start.className = "profile-card__file-start";
+  start.textContent = source.file.slice(0, cut);
+  const end = document.createElement("span");
+  end.className = "profile-card__file-end";
+  end.textContent = source.file.slice(cut);
+  file.append(prefix, start, end);
+  if (source.edited === true) {
+    const edited = document.createElement("span");
+    edited.className = "profile-card__edited";
+    edited.textContent = "edited";
+    file.append(edited);
+  }
+  return file;
+}
+
 function card(config: DnsConfig): HTMLElement {
   const problems = problemsOf(config);
   const label = config.name.trim() === ""
@@ -295,7 +322,11 @@ function card(config: DnsConfig): HTMLElement {
   );
   enableCardMenu(article, config, problems.length > 0);
 
-  header.append(title, actions);
+  const name = document.createElement("div");
+  name.className = "profile-card__name";
+  name.append(title);
+  if (config.source !== undefined) name.append(sourceFile(config.source));
+  header.append(name, actions);
   article.append(header);
 
   if (problems.length > 0) {

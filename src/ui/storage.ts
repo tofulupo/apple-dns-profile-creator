@@ -1,4 +1,10 @@
-import type { DnsConfig, DnsProtocol, ProfileFormat } from "../lib/types.ts";
+import { settingsKey } from "../lib/settings.ts";
+import type {
+  ConfigSource,
+  DnsConfig,
+  DnsProtocol,
+  ProfileFormat,
+} from "../lib/types.ts";
 import { tell } from "./dialogs.ts";
 
 export const KEY_PREFIX = "dns-mobileconfig:";
@@ -86,6 +92,16 @@ function optional<T>(guard: Guard<T>): Guard<T | undefined> {
   return (value): value is T | undefined => value === undefined || guard(value);
 }
 
+function isSource(value: unknown): value is ConfigSource {
+  if (typeof value !== "object" || value === null) return false;
+  const source = value as Record<string, unknown>;
+  return isString(source["file"]) &&
+    optional(isString)(source["profileId"]) &&
+    optional(isString)(source["sha256"]) &&
+    optional(isBoolean)(source["systemScope"]) &&
+    optional(isBoolean)(source["edited"]);
+}
+
 const FIELD_GUARDS: {
   readonly [K in keyof DnsConfig]-?: Guard<DnsConfig[K]>;
 } = {
@@ -102,6 +118,7 @@ const FIELD_GUARDS: {
   allowFailover: optional(isBoolean),
   supplementalMatchDomains: optional(isStringArray),
   paradigm: optional(isParadigm),
+  source: optional(isSource),
 };
 
 function isDnsConfig(value: unknown): value is DnsConfig {
@@ -128,10 +145,12 @@ function upgradeDeprecatedMark(value: unknown): unknown {
     : config;
 }
 
+function sourceKey(config: DnsConfig): string {
+  return config.source?.sha256 ?? config.source?.file ?? "";
+}
+
 function sameConfig(a: DnsConfig, b: DnsConfig): boolean {
-  const canonical = ({ paradigm: _paradigm, ...config }: DnsConfig) =>
-    JSON.stringify(config, Object.keys(config).sort());
-  return canonical(a) === canonical(b);
+  return settingsKey(a) === settingsKey(b) && sourceKey(a) === sourceKey(b);
 }
 
 function decodeJson(raw: string | null): unknown {

@@ -39,6 +39,7 @@ export {
 export { distinctSettings, sameSettings, settingsKey } from "./settings.ts";
 export { randomUuid, uuidFromBytes } from "./uuid.ts";
 export type {
+  ConfigSource,
   DnsConfig,
   DnsProtocol,
   ProfileOptions,

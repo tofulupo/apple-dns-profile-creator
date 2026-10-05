@@ -413,6 +413,34 @@ describe("declaration profiles", () => {
   });
 });
 
+describe("the profile around the settings", () => {
+  it("reads its identifier and scope", () => {
+    const result = importProfile(
+      buildProfile(
+        [config()],
+        { systemScope: true, identifierPrefix: "com.example." },
+        stubUuid(),
+      ),
+    );
+    expect(result.profileId).toMatch(/^com\.example\./);
+    expect(result.systemScope).toBe(true);
+  });
+
+  it("reads a user scope, and leaves out what is missing", () => {
+    const profile = buildProfile(
+      [config()],
+      { systemScope: false },
+      stubUuid(),
+    );
+    expect(importProfile({ ...profile, PayloadScope: "User" }).systemScope)
+      .toBe(false);
+    const { PayloadIdentifier: _id, ...bare } = profile;
+    const result = importProfile(bare);
+    expect("profileId" in result).toBe(false);
+    expect("systemScope" in result).toBe(false);
+  });
+});
+
 describe("malformed input", () => {
   it("rejects an unrecognised DNSProtocol instead of assuming DoT", () => {
     const xml = parsePlist(`<?xml version="1.0" encoding="UTF-8"?>

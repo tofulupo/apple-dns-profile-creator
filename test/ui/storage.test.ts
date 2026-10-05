@@ -121,6 +121,50 @@ describe("configuration list", () => {
     expect(store.list().map((c) => c.name)).toEqual(["Updated"]);
   });
 
+  it("tells the same settings from another file apart by its hash", () => {
+    const quad9 = config({ name: "Quad9" });
+    store.add({
+      ...quad9,
+      source: { file: "encrypted-dns.mobileconfig", sha256: "aa" },
+    });
+    expect(store.has({
+      ...quad9,
+      source: { file: "renamed.mobileconfig", sha256: "aa" },
+    })).toBe(true);
+    expect(store.has({
+      ...quad9,
+      source: { file: "encrypted-dns.mobileconfig", sha256: "bb" },
+    })).toBe(false);
+    expect(store.has(quad9)).toBe(false);
+  });
+
+  it("goes by the file name when there is no hash", () => {
+    const quad9 = config({ name: "Quad9" });
+    store.add({ ...quad9, source: { file: "a.mobileconfig" } });
+    expect(store.has({ ...quad9, source: { file: "a.mobileconfig" } }))
+      .toBe(true);
+    expect(store.has({ ...quad9, source: { file: "a 2.mobileconfig" } }))
+      .toBe(false);
+  });
+
+  it("keeps where an entry came from, and drops a source it cannot read", () => {
+    const source = {
+      file: "a.mobileconfig",
+      profileId: "local.encrypted-dns.1",
+      sha256: "aa",
+      systemScope: true,
+      edited: true,
+    };
+    storage.raw(
+      CONFIGS_KEY,
+      JSON.stringify([
+        config({ name: "Kept", source }),
+        { ...config({ name: "Broken" }), source: { file: 1 } },
+      ]),
+    );
+    expect(store.list()).toEqual([config({ name: "Kept", source })]);
+  });
+
   it("sets one paradigm on every entry, duplicates included", () => {
     store.add(
       config({ name: "Twin" }),

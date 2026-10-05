@@ -2598,12 +2598,46 @@ summary.rule__head::-webkit-details-marker {
   border-bottom: 1px solid var(--border);
 }
 
-.profile-card__title {
+.profile-card__name {
+  display: flex;
   flex: 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.6rem;
+  min-width: 0;
+}
+
+.profile-card__title {
   min-width: 0;
   margin: 0;
   font-size: 1rem;
   overflow-wrap: anywhere;
+}
+
+.profile-card__file {
+  display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.profile-card__file-start {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-card__file-end {
+  flex: none;
+}
+
+.profile-card__edited {
+  flex: none;
+  margin-left: 0.4rem;
+  color: var(--text);
+  font-style: italic;
 }
 
 .profile-card--invalid {

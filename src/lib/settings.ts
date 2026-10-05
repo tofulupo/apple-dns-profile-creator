@@ -1,7 +1,7 @@
 import type { DnsConfig } from "./types.ts";
 
 export function settingsKey(config: DnsConfig): string {
-  const { paradigm: _paradigm, ...settings } = config;
+  const { paradigm: _paradigm, source: _source, ...settings } = config;
   return JSON.stringify(settings, Object.keys(settings).sort());
 }
 

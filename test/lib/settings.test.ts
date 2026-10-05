@@ -5,10 +5,10 @@ import { distinctSettings, sameSettings } from "../../src/lib/settings.ts";
 import { config } from "../helpers/configs.ts";
 
 describe("sameSettings", () => {
-  it("ignores the paradigm", () => {
+  it("ignores the paradigm and the file a configuration came from", () => {
     expect(sameSettings(
-      config({ paradigm: "payload" }),
-      config({ paradigm: "declarations" }),
+      config({ paradigm: "payload", source: { file: "a.mobileconfig" } }),
+      config({ paradigm: "declarations", source: { file: "b.mobileconfig" } }),
     )).toBe(true);
   });
 
@@ -24,9 +24,9 @@ describe("sameSettings", () => {
 
 describe("distinctSettings", () => {
   it("keeps the first of each, in order", () => {
-    const first = config({ paradigm: "payload" });
+    const first = config({ source: { file: "a.mobileconfig" } });
     const other = config({ name: "Other" });
-    const repeat = config({ paradigm: "declarations" });
+    const repeat = config({ source: { file: "a 2.mobileconfig" } });
     expect(distinctSettings([first, other, repeat])).toEqual([first, other]);
   });
 });

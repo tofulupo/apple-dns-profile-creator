@@ -76,6 +76,13 @@ export interface ProfileImport {
   readonly configs: DnsConfig[];
   readonly warnings: string[];
   readonly usesDeprecatedPayload: boolean;
+  readonly profileId?: string;
+  readonly systemScope?: boolean;
+}
+
+function readScope(root: PlistDict): boolean | undefined {
+  const scope = asString(root["PayloadScope"]);
+  return scope === "System" ? true : scope === "User" ? false : undefined;
 }
 
 type Warn = (message: string) => void;
@@ -342,7 +349,15 @@ export function importProfile(plist: PlistValue): ProfileImport {
     );
   }
 
-  return { configs, warnings, usesDeprecatedPayload };
+  const profileId = asString(root["PayloadIdentifier"]);
+  const systemScope = readScope(root);
+  return {
+    configs,
+    warnings,
+    usesDeprecatedPayload,
+    ...(profileId === undefined ? {} : { profileId }),
+    ...(systemScope === undefined ? {} : { systemScope }),
+  };
 }
 
 export function importProfileXml(fileText: string): ProfileImport {

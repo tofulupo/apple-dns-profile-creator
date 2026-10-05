@@ -15,6 +15,7 @@ import {
   withDnsQueryPath,
   withHttpsScheme,
 } from "../lib/validate.ts";
+import { sameSettings } from "../lib/settings.ts";
 import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
 import {
   element,
@@ -728,6 +729,19 @@ async function handleUpload(file: File): Promise<boolean> {
   return false;
 }
 
+function carryOver(original: DnsConfig, config: DnsConfig): DnsConfig {
+  const { paradigm, source } = original;
+  return {
+    ...config,
+    ...(paradigm === undefined ? {} : { paradigm }),
+    ...(source === undefined ? {} : {
+      source: sameSettings(original, config)
+        ? source
+        : { ...source, edited: true },
+    }),
+  };
+}
+
 function init(): void {
   enableSettings();
   enableThemeSwitch(element<HTMLButtonElement>("themeSwitch"));
@@ -760,9 +774,7 @@ function init(): void {
     if (!validate(config)) return;
 
     const original = editing;
-    const next = original?.paradigm === undefined
-      ? config
-      : { ...config, paradigm: original.paradigm };
+    const next = original === undefined ? config : carryOver(original, config);
     const saved = persist(() => {
       if (original === undefined) store.add(next);
       else store.update(original, next);
