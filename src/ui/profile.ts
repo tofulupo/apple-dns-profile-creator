@@ -47,6 +47,7 @@ const downloadBlocked = element("downloadBlocked");
 const downloadLabel = element("downloadLabel");
 const downloadIcon = element("downloadIcon");
 const shareButton = element<HTMLButtonElement>("shareBtn");
+const noteSeveral = element("noteSeveral");
 const canShare = canShareProfile(appConfig.profileFilename);
 const sharesInApp = canShare && desktopBindings() !== undefined;
 
@@ -401,6 +402,7 @@ function render(): void {
     count === 1 ? " configuration" : " configurations",
   );
   deleteAllButton.hidden = count < 2;
+  noteSeveral.hidden = count < 2;
   emptyState.hidden = count > 0;
   configList.hidden = count === 0;
   downloadPanel.hidden = count === 0;

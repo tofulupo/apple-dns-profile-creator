@@ -196,6 +196,27 @@ Under the hood they are different mechanisms: exclusions become `OnDemandRules`
 that switch the resolver off, while the limit becomes `SupplementalMatchDomains`
 inside `DNSSettings`. Setting both is legal but rarely useful.
 
+### Several configurations in one profile
+
+Each card on the profile page becomes its own DNS configuration in the
+downloaded profile, in the order of the cards. Cards with identical settings are
+written once.
+
+On an iPhone the configurations show up under **Settings › General › VPN &
+Device Management › DNS**, next to **Automatic**. iOS adds a number when two
+have the same name, like "DNS Bunker" and "DNS Bunker 1". The phone uses one
+configuration at a time: the one you pick, or Automatic. Tested on iOS 27.0.1
+with the declaration format.
+
+A picked configuration whose server doesn't answer stops every lookup, and the
+phone doesn't switch to another one. Whether Automatic skips such a server
+hasn't been tested yet, so don't count on it as a backup.
+
+The **Failover** switch is something else: when the encrypted server fails, it
+falls back to the network's own DNS, not to another configuration.
+
+We haven't checked the Mac yet.
+
 ### Privacy
 
 The website at apple.mobileconfig.deno.net is a showcase. It builds the profile
