@@ -303,7 +303,10 @@ export function importProfile(plist: PlistValue): ProfileImport {
         const body = asDict(declaration["Payload"]);
         if (type === DNS_DECLARATION_TYPE && body !== undefined) {
           const name = asString(body["VisibleName"]) ?? "";
-          configs.push(readConfig(name, body, warnFor(name)));
+          configs.push({
+            ...readConfig(name, body, warnFor(name)),
+            paradigm: "declarations",
+          });
         } else if (type !== ACTIVATION_DECLARATION_TYPE) {
           skippedDeclarationTypes.add(type);
         }
@@ -319,7 +322,7 @@ export function importProfile(plist: PlistValue): ProfileImport {
     const name = asString(payload["PayloadDisplayName"]) ?? "";
     configs.push({
       ...readConfig(name, payload, warnFor(name)),
-      fromDeprecatedPayload: true,
+      paradigm: "payload",
     });
     usesDeprecatedPayload = true;
   }

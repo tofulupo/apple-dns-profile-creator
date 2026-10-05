@@ -9,10 +9,8 @@ import type { DnsConfig } from "../../src/lib/types.ts";
 import { config, fullSurfaceConfigs } from "../helpers/configs.ts";
 import { stubUuid } from "../helpers/uuid.ts";
 
-function settingsOf(
-  { fromDeprecatedPayload, ...settings }: DnsConfig,
-): DnsConfig {
-  expect(fromDeprecatedPayload).toBe(true);
+function settingsOf({ paradigm, ...settings }: DnsConfig): DnsConfig {
+  expect(paradigm).toBe("payload");
   return settings;
 }
 

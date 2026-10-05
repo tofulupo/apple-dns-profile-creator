@@ -360,7 +360,9 @@ describe("declaration profiles", () => {
       ),
     );
     const result = importProfileXml(xml);
-    expect(result.configs).toEqual(configs);
+    expect(result.configs).toEqual(
+      configs.map((c) => ({ ...c, paradigm: "declarations" })),
+    );
     expect(result.warnings).toEqual([]);
     expect(result.usesDeprecatedPayload).toBe(false);
   });
@@ -396,7 +398,7 @@ describe("declaration profiles", () => {
     ]);
   });
 
-  it("mark the classic payload as deprecated, on each configuration", () => {
+  it("mark the classic payload as legacy, on each configuration", () => {
     const profile = buildProfile(
       [config(), config({ name: "Two" })],
       { systemScope: true },
@@ -404,9 +406,9 @@ describe("declaration profiles", () => {
     );
     const result = importProfile(profile);
     expect(result.usesDeprecatedPayload).toBe(true);
-    expect(result.configs.map((c) => c.fromDeprecatedPayload)).toEqual([
-      true,
-      true,
+    expect(result.configs.map((c) => c.paradigm)).toEqual([
+      "payload",
+      "payload",
     ]);
   });
 });

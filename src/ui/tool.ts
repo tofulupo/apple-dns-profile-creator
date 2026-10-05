@@ -760,9 +760,9 @@ function init(): void {
     if (!validate(config)) return;
 
     const original = editing;
-    const next = original?.fromDeprecatedPayload === true
-      ? { ...config, fromDeprecatedPayload: true }
-      : config;
+    const next = original?.paradigm === undefined
+      ? config
+      : { ...config, paradigm: original.paradigm };
     const saved = persist(() => {
       if (original === undefined) store.add(next);
       else store.update(original, next);

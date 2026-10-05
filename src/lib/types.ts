@@ -17,7 +17,7 @@ export interface DnsConfig {
 
   readonly supplementalMatchDomains?: readonly string[];
 
-  readonly fromDeprecatedPayload?: boolean;
+  readonly paradigm?: ProfileFormat;
 }
 
 /**

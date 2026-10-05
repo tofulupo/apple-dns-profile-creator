@@ -2026,6 +2026,18 @@ summary.rule__head::-webkit-details-marker {
   color: var(--accent-text);
 }
 
+.profile-card__pills .badge--legacy {
+  background: var(--surface-sunken);
+  border-color: var(--border-strong);
+  color: var(--muted);
+}
+
+.profile-card__pills .badge--declarative {
+  background: color-mix(in srgb, var(--success) 10%, var(--surface));
+  border-color: var(--success);
+  color: var(--success);
+}
+
 .zone {
   --zone-title: 1.05rem;
   --zone-status: 0.875rem;
@@ -2266,10 +2278,6 @@ summary.rule__head::-webkit-details-marker {
   font-size: 0.85rem;
   line-height: 1.45;
   text-wrap: pretty;
-}
-
-.switch-row__hint--warning {
-  color: var(--warning);
 }
 
 .switch {
@@ -2680,14 +2688,6 @@ summary.rule__head::-webkit-details-marker {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-}
-
-.profile-card__flags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin: 0;
-  padding: 0 var(--card-padding) var(--card-padding);
 }
 
 .badge {

@@ -1,7 +1,7 @@
 import { importProfileXml, type ProfileImport } from "../lib/import.ts";
 
 export const DEPRECATED_FORMAT_NOTE =
-  "Classic DNS payload, deprecated by Apple but still working on iOS/macOS 27 and later. Use the Declaration format instead.";
+  "Legacy DNS payload, deprecated by Apple but still working on iOS/macOS 27 and later. Use the Declaration format instead.";
 
 export async function readProfileFile(file: File): Promise<ProfileImport> {
   const result = importProfileXml(await file.text());

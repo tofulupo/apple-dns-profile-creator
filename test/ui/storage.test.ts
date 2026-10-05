@@ -114,11 +114,39 @@ describe("configuration list", () => {
     expect(store.has(config({ name: "Other" }))).toBe(false);
   });
 
-  it("ignores where an entry came from when comparing", () => {
-    store.add(config({ name: "Stored", fromDeprecatedPayload: true }));
+  it("ignores the paradigm when comparing", () => {
+    store.add(config({ name: "Stored", paradigm: "payload" }));
     expect(store.has(config({ name: "Stored" }))).toBe(true);
     store.update(config({ name: "Stored" }), config({ name: "Updated" }));
     expect(store.list().map((c) => c.name)).toEqual(["Updated"]);
+  });
+
+  it("sets one paradigm on every entry, duplicates included", () => {
+    store.add(
+      config({ name: "Twin" }),
+      config({ name: "Twin" }),
+      config({ name: "Imported", paradigm: "payload" }),
+    );
+    store.setParadigm("declarations");
+    expect(store.list().map((c) => c.paradigm)).toEqual([
+      "declarations",
+      "declarations",
+      "declarations",
+    ]);
+  });
+
+  it("reads the old deprecated mark as the legacy paradigm", () => {
+    storage.raw(
+      CONFIGS_KEY,
+      JSON.stringify([
+        { ...config({ name: "Old" }), fromDeprecatedPayload: true },
+        { ...config({ name: "Plain" }), fromDeprecatedPayload: false },
+      ]),
+    );
+    expect(store.list()).toEqual([
+      config({ name: "Old", paradigm: "payload" }),
+      config({ name: "Plain" }),
+    ]);
   });
 });
 

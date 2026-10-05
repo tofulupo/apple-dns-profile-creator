@@ -1,4 +1,4 @@
-import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
+import type { DnsConfig, DnsProtocol, ProfileFormat } from "../lib/types.ts";
 import { tell } from "./dialogs.ts";
 
 export const KEY_PREFIX = "dns-mobileconfig:";
@@ -50,6 +50,7 @@ export interface ConfigStore {
   has(config: DnsConfig): boolean;
   add(...configs: readonly DnsConfig[]): void;
   update(original: DnsConfig, next: DnsConfig): void;
+  setParadigm(paradigm: ProfileFormat): void;
   remove(config: DnsConfig): void;
   clear(): void;
   startEdit(config: DnsConfig): void;
@@ -77,6 +78,10 @@ function isProtocol(value: unknown): value is DnsProtocol {
   return value === "HTTPS" || value === "TLS";
 }
 
+function isParadigm(value: unknown): value is ProfileFormat {
+  return value === "payload" || value === "declarations";
+}
+
 function optional<T>(guard: Guard<T>): Guard<T | undefined> {
   return (value): value is T | undefined => value === undefined || guard(value);
 }
@@ -96,7 +101,7 @@ const FIELD_GUARDS: {
   prohibitDisablement: isBoolean,
   allowFailover: optional(isBoolean),
   supplementalMatchDomains: optional(isStringArray),
-  fromDeprecatedPayload: optional(isBoolean),
+  paradigm: optional(isParadigm),
 };
 
 function isDnsConfig(value: unknown): value is DnsConfig {
@@ -107,10 +112,25 @@ function isDnsConfig(value: unknown): value is DnsConfig {
   );
 }
 
+function upgradeDeprecatedMark(value: unknown): unknown {
+  if (
+    typeof value !== "object" || value === null ||
+    !("fromDeprecatedPayload" in value)
+  ) {
+    return value;
+  }
+  const { fromDeprecatedPayload, ...config } = value as Record<
+    string,
+    unknown
+  >;
+  return fromDeprecatedPayload === true && config["paradigm"] === undefined
+    ? { ...config, paradigm: "payload" }
+    : config;
+}
+
 function sameConfig(a: DnsConfig, b: DnsConfig): boolean {
-  const canonical = (
-    { fromDeprecatedPayload: _source, ...config }: DnsConfig,
-  ) => JSON.stringify(config, Object.keys(config).sort());
+  const canonical = ({ paradigm: _paradigm, ...config }: DnsConfig) =>
+    JSON.stringify(config, Object.keys(config).sort());
   return canonical(a) === canonical(b);
 }
 
@@ -160,7 +180,9 @@ export function createConfigStore(storage: StorageArea): ConfigStore {
 
   function read(): DnsConfig[] {
     const decoded = decodeJson(get(CONFIGS_KEY));
-    return Array.isArray(decoded) ? decoded.filter(isDnsConfig) : [];
+    return Array.isArray(decoded)
+      ? decoded.map(upgradeDeprecatedMark).filter(isDnsConfig)
+      : [];
   }
 
   function write(configs: readonly DnsConfig[]): void {
@@ -186,6 +208,10 @@ export function createConfigStore(storage: StorageArea): ConfigStore {
       write(configs);
     },
 
+    setParadigm(paradigm) {
+      write(read().map((config) => ({ ...config, paradigm })));
+    },
+
     remove(target) {
       const configs = read();
       const index = configs.findIndex((config) => sameConfig(config, target));
@@ -205,7 +231,7 @@ export function createConfigStore(storage: StorageArea): ConfigStore {
     },
 
     takeEditTarget() {
-      const decoded = take(EDIT_TARGET_KEY);
+      const decoded = upgradeDeprecatedMark(take(EDIT_TARGET_KEY));
       return isDnsConfig(decoded) ? decoded : undefined;
     },
 

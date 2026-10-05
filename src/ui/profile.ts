@@ -142,18 +142,42 @@ function pillRow(label: string, names: readonly string[]): DocumentFragment {
   return fragment;
 }
 
-const DEPRECATED_EXPLANATION =
-  "Loaded from the classic DNS payload, deprecated in iOS 27 and macOS 27";
+const PARADIGMS: Readonly<
+  Record<
+    ProfileFormat,
+    { label: string; modifier: string; explanation: string }
+  >
+> = {
+  payload: {
+    label: "Legacy",
+    modifier: "badge--legacy",
+    explanation:
+      "Uses the classic DNS payload, deprecated in iOS 27 and macOS 27",
+  },
+  declarations: {
+    label: "Declarative",
+    modifier: "badge--declarative",
+    explanation: "Uses DNS declarations, for iOS 27 and macOS 27 and later",
+  },
+};
 
-function deprecatedBadge(): HTMLSpanElement {
-  const span = badge("Deprecated");
-  span.classList.add("badge--warning");
-  span.title = DEPRECATED_EXPLANATION;
-  const explanation = document.createElement("span");
-  explanation.className = "visually-hidden";
-  explanation.textContent = `: ${DEPRECATED_EXPLANATION}`;
-  span.append(explanation);
-  return span;
+function paradigmRow(paradigm: ProfileFormat): DocumentFragment {
+  const { label, modifier, explanation } = PARADIGMS[paradigm];
+  const fragment = document.createDocumentFragment();
+  const term = document.createElement("dt");
+  term.textContent = "Profile paradigm";
+  const definition = document.createElement("dd");
+  definition.className = "profile-card__pills";
+  const pill = badge(label);
+  pill.classList.add(modifier);
+  pill.title = explanation;
+  const hidden = document.createElement("span");
+  hidden.className = "visually-hidden";
+  hidden.textContent = `: ${explanation}`;
+  pill.append(hidden);
+  definition.append(pill);
+  fragment.append(term, definition);
+  return fragment;
 }
 
 function lineRow(label: string, values: readonly string[]): DocumentFragment {
@@ -290,6 +314,7 @@ function card(config: DnsConfig): HTMLElement {
 
   const body = document.createElement("dl");
   body.className = "profile-card__body";
+  if (config.paradigm !== undefined) body.append(paradigmRow(config.paradigm));
   body.append(
     row(
       "Connection",
@@ -328,12 +353,6 @@ function card(config: DnsConfig): HTMLElement {
   if (features.length > 0) body.append(pillRow("Features", features));
 
   article.append(body);
-  if (config.fromDeprecatedPayload === true) {
-    const flags = document.createElement("p");
-    flags.className = "profile-card__flags";
-    flags.append(deprecatedBadge());
-    article.append(flags);
-  }
   return article;
 }
 
@@ -368,22 +387,6 @@ function render(): void {
       canShare ? "downloading or sharing" : "downloading"
     }.`;
   syncSaveMenu();
-  updateDeclarationsNote();
-}
-
-function updateDeclarationsNote(): void {
-  element("declarationsNote").hidden = input("declarationsChk").checked ||
-    !store.list().some((config) => config.fromDeprecatedPayload === true);
-}
-
-function clearDeprecatedMarks(): void {
-  persist(() => {
-    for (const config of store.list()) {
-      if (config.fromDeprecatedPayload !== true) continue;
-      const { fromDeprecatedPayload: _mark, ...settings } = config;
-      store.update(config, settings);
-    }
-  });
 }
 
 async function importFile(file: File): Promise<void> {
@@ -445,7 +448,7 @@ async function download(): Promise<void> {
       xml,
       signWith,
     );
-    if (format === "declarations") clearDeprecatedMarks();
+    persist(() => store.setParadigm(format));
   } catch (error) {
     await tell(
       `Could not save the profile: ${
@@ -481,7 +484,7 @@ async function share(): Promise<void> {
       );
     } else {
       const shared = await shareProfile(appConfig.profileFilename, xml);
-      if (shared && format === "declarations") clearDeprecatedMarks();
+      if (shared) persist(() => store.setParadigm(format));
     }
   } catch (error) {
     await tell(
@@ -507,7 +510,6 @@ function bindDeclarationFormat(): void {
       system.checked = chosenScope;
     }
     system.disabled = declarations.checked;
-    updateDeclarationsNote();
   });
 }
 
