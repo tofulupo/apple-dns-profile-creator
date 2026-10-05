@@ -11,6 +11,7 @@ export const KEY_PREFIX = "dns-mobileconfig:";
 const CONFIGS_KEY = `${KEY_PREFIX}configs:v1`;
 const EDIT_TARGET_KEY = `${KEY_PREFIX}edit-target`;
 const IMPORT_WARNINGS_KEY = `${KEY_PREFIX}import-warnings`;
+export const NEUTRAL_NAME_KEY = `${KEY_PREFIX}neutral-name`;
 /** Also hardcoded in the layout's inline script; the markup test checks both. */
 export const THEME_KEY = `${KEY_PREFIX}theme`;
 /** Also hardcoded in the layout's inline script; the markup test checks both. */

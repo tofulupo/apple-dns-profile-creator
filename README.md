@@ -217,6 +217,18 @@ falls back to the network's own DNS, not to another configuration.
 
 We haven't checked the Mac yet.
 
+### File names
+
+A profile with one configuration is named after it, in lowercase letters, digits
+and hyphens: "DNS Bunker" downloads as `dns-bunker.mobileconfig`, signed as
+`dns-bunker-signed.mobileconfig`. Accents are dropped and long names are cut at
+40 characters. A profile with several configurations, or a name with no letters
+or digits left, is `encrypted-dns.mobileconfig`.
+
+The file name shows up in share sheets and folder listings, so it tells anyone
+who sees the file which provider you use. **Neutral file name** in the Download
+panel keeps `encrypted-dns.mobileconfig` for every profile.
+
 ### Privacy
 
 The website at apple.mobileconfig.deno.net is a showcase. It builds the profile
@@ -271,10 +283,11 @@ devices.
 
 In the desktop app the Download panel offers **Signed with Keychain**: pick a
 certificate that has its private key in your Keychain, and the profile is saved
-as `encrypted-dns-signed.mobileconfig`. The app signs it with macOS's Security
-framework, and the key never leaves the Keychain. Expired and not yet valid
-certificates are not listed. Opening a signed profile checks its signature, and
-the app asks before loading one that was changed after signing.
+with `-signed` in its name, like `encrypted-dns-signed.mobileconfig` (see
+[File names](#file-names)). The app signs it with macOS's Security framework,
+and the key never leaves the Keychain. Expired and not yet valid certificates
+are not listed. Opening a signed profile checks its signature, and the app asks
+before loading one that was changed after signing.
 
 ![The Download panel in the desktop app, signing with a Keychain certificate](docs/screenshots/desktop_signed_profile.png)
 

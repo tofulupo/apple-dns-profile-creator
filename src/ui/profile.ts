@@ -1,4 +1,5 @@
 import { appConfig } from "../config.ts";
+import { profileFilename } from "../lib/filename.ts";
 import { buildProfileXml } from "../lib/profile.ts";
 import type { ConfigSource, DnsConfig, ProfileFormat } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
@@ -39,7 +40,12 @@ import {
 } from "./save_menu.ts";
 import { enableSettings } from "./settings.ts";
 import { enableSigning, type Signing } from "./signing.ts";
-import { browserStorage, createConfigStore, persist } from "./storage.ts";
+import {
+  browserStorage,
+  createConfigStore,
+  NEUTRAL_NAME_KEY,
+  persist,
+} from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
 import { watchKeyboard } from "./dock.ts";
 
@@ -468,6 +474,31 @@ function profileXml(format: ProfileFormat): string | undefined {
   );
 }
 
+function filenameFor(signed: boolean): string {
+  return profileFilename(store.list(), {
+    signed,
+    neutral: input("neutralNameChk").checked,
+  });
+}
+
+function bindNeutralName(): void {
+  const neutral = input("neutralNameChk");
+  try {
+    neutral.checked = browserStorage().getItem(NEUTRAL_NAME_KEY) === "true";
+  } catch {
+    neutral.checked = false;
+  }
+  neutral.addEventListener("change", () => {
+    try {
+      if (neutral.checked) {
+        browserStorage().setItem(NEUTRAL_NAME_KEY, "true");
+      } else browserStorage().removeItem(NEUTRAL_NAME_KEY);
+    } catch {
+      // Not remembering the choice is acceptable; it still applies now.
+    }
+  });
+}
+
 function selectedFormat(): ProfileFormat {
   return input("declarationsChk").checked ? "declarations" : "payload";
 }
@@ -485,9 +516,7 @@ async function download(): Promise<void> {
   try {
     const signWith = signing.selected();
     await downloadProfile(
-      signWith === undefined
-        ? appConfig.profileFilename
-        : appConfig.signedProfileFilename,
+      filenameFor(signWith !== undefined),
       xml,
       signWith,
     );
@@ -518,15 +547,13 @@ async function share(): Promise<void> {
     if (sharesInApp) {
       const signWith = signing.selected();
       await shareProfileInApp(
-        signWith === undefined
-          ? appConfig.profileFilename
-          : appConfig.signedProfileFilename,
+        filenameFor(signWith !== undefined),
         xml,
         signWith,
         shareButton.getBoundingClientRect(),
       );
     } else {
-      const shared = await shareProfile(appConfig.profileFilename, xml);
+      const shared = await shareProfile(filenameFor(false), xml);
       if (shared) persist(() => store.setParadigm(format));
     }
   } catch (error) {
@@ -573,6 +600,7 @@ function init(): void {
   }).catch((error) => console.error("Could not listen for card menus:", error));
   input("systemChk").checked = appConfig.systemScopeByDefault;
   bindDeclarationFormat();
+  bindNeutralName();
   signing = enableSigning(updateDownloadButton);
   downloadButton.addEventListener("click", () => void download());
   shareButton.hidden = !canShare;
