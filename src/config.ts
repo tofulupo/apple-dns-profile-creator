@@ -1,4 +1,4 @@
-import type { DnsProtocol } from "./lib/types.ts";
+import type { DnsConfig, DnsProtocol } from "./lib/types.ts";
 
 export type PresetFeature = "no-logs" | "ads" | "dnssec" | "blocking";
 
@@ -90,3 +90,18 @@ export const appConfig: AppConfig = {
     },
   ],
 };
+
+export function presetFeatures(preset: DnsPreset): string[] {
+  return (Object.keys(PRESET_FEATURE_LABELS) as PresetFeature[])
+    .filter((feature) => preset.features?.includes(feature))
+    .map((feature) => PRESET_FEATURE_LABELS[feature]);
+}
+
+export function presetOf(
+  config: Pick<DnsConfig, "protocol" | "serverUrl">,
+): DnsPreset | undefined {
+  const server = config.serverUrl.trim();
+  return appConfig.presets.find((preset) =>
+    preset.protocol === config.protocol && preset.serverUrl === server
+  );
+}

@@ -2016,7 +2016,7 @@ summary.rule__head::-webkit-details-marker {
   }
 }
 
-.profile-card__flags .badge {
+.profile-card__pills .badge {
   background: color-mix(in srgb, var(--accent) 12%, var(--surface-sunken));
   border-color: var(--accent);
   color: var(--accent-text);
@@ -2661,6 +2661,12 @@ summary.rule__head::-webkit-details-marker {
 .resolver-list__address {
   min-width: 0;
   font-size: 0.85rem;
+}
+
+.profile-card__body dd.profile-card__pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
 .profile-card__flags {

@@ -1,7 +1,12 @@
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { appConfig, PRESET_FEATURE_LABELS } from "../src/config.ts";
+import {
+  appConfig,
+  PRESET_FEATURE_LABELS,
+  presetFeatures,
+  presetOf,
+} from "../src/config.ts";
 import {
   orderServerAddresses,
   splitServerAddresses,
@@ -56,6 +61,47 @@ describe("presets", () => {
       expect(new Set(features).size).toBe(features.length);
     });
   }
+});
+
+describe("presetFeatures", () => {
+  it("lists features in menu order, whatever order the preset gives", () => {
+    expect(presetFeatures({
+      name: "Example",
+      protocol: "HTTPS",
+      serverUrl: "https://doh.example.net/dns-query",
+      features: ["blocking", "ads", "dnssec", "no-logs"],
+    })).toEqual(["No logs", "DNSSEC", "Ad blocking", "Malware blocking"]);
+  });
+
+  it("is empty without features", () => {
+    expect(presetFeatures({
+      name: "Example",
+      protocol: "TLS",
+      serverUrl: "dot.example.net",
+    })).toEqual([]);
+  });
+});
+
+describe("presetOf", () => {
+  const quad9 = appConfig.presets.find((preset) => preset.name === "Quad9");
+
+  it("finds the preset by protocol and server", () => {
+    expect(presetOf({
+      protocol: "HTTPS",
+      serverUrl: " https://dns.quad9.net/dns-query ",
+    })).toBe(quad9);
+  });
+
+  it("finds none for another protocol or an edited server", () => {
+    expect(presetOf({
+      protocol: "TLS",
+      serverUrl: "https://dns.quad9.net/dns-query",
+    })).toBeUndefined();
+    expect(presetOf({
+      protocol: "HTTPS",
+      serverUrl: "https://dns.quad9.net/dns-query/",
+    })).toBeUndefined();
+  });
 });
 
 describe("countryName", () => {

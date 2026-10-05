@@ -2,12 +2,7 @@
 import { copy } from "@std/fs/copy";
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
 import { type Page, PAGES, SITE_URL, SITE_VERSION } from "../pages/pages.ts";
-import {
-  appConfig,
-  type DnsPreset,
-  PRESET_FEATURE_LABELS,
-  type PresetFeature,
-} from "../src/config.ts";
+import { appConfig, type DnsPreset, presetFeatures } from "../src/config.ts";
 import { FONT_SUBSET } from "./fonts.ts";
 import {
   BERKELEY_MONO,
@@ -272,12 +267,6 @@ export function presetHost(preset: DnsPreset): string {
   return preset.protocol === "HTTPS"
     ? new URL(preset.serverUrl).hostname
     : preset.serverUrl;
-}
-
-export function presetFeatures(preset: DnsPreset): string[] {
-  return (Object.keys(PRESET_FEATURE_LABELS) as PresetFeature[])
-    .filter((feature) => preset.features?.includes(feature))
-    .map((feature) => PRESET_FEATURE_LABELS[feature]);
 }
 
 function presetCountry(preset: DnsPreset): string | undefined {

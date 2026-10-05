@@ -1,4 +1,4 @@
-import { appConfig } from "../config.ts";
+import { appConfig, presetFeatures, presetOf } from "../config.ts";
 import { buildProfileXml } from "../lib/profile.ts";
 import type { DnsConfig, ProfileFormat } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
@@ -129,6 +129,17 @@ function badge(label: string): HTMLSpanElement {
   span.className = "badge";
   span.textContent = label;
   return span;
+}
+
+function pillRow(label: string, names: readonly string[]): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+  const term = document.createElement("dt");
+  term.textContent = label;
+  const definition = document.createElement("dd");
+  definition.className = "profile-card__pills";
+  definition.append(...names.map(badge));
+  fragment.append(term, definition);
+  return fragment;
 }
 
 const DEPRECATED_EXPLANATION =
@@ -270,6 +281,15 @@ function card(config: DnsConfig): HTMLElement {
   if (config.serverAddresses.length > 0) {
     body.append(resolverRow(config.serverAddresses));
   }
+  const interfaces = [
+    ...(config.useWifi ? ["Wi-Fi"] : []),
+    ...(config.useCellular ? ["Cellular"] : []),
+    ...(config.useEthernet ? ["Ethernet"] : []),
+  ];
+  if (interfaces.length > 0) body.append(pillRow("Interfaces", interfaces));
+  const preset = presetOf(config);
+  const features = preset === undefined ? [] : presetFeatures(preset);
+  if (features.length > 0) body.append(pillRow("Features", features));
   if (config.excludedWifi.length > 0) {
     body.append(
       row(
@@ -289,17 +309,19 @@ function card(config: DnsConfig): HTMLElement {
     body.append(row("Only for domains", matchDomains.join(", "), true));
   }
 
-  const flags = document.createElement("p");
-  flags.className = "profile-card__flags";
-  if (config.fromDeprecatedPayload === true) flags.append(deprecatedBadge());
-  if (config.useWifi) flags.append(badge("Wi-Fi"));
-  if (config.useCellular) flags.append(badge("Cellular"));
-  if (config.useEthernet) flags.append(badge("Ethernet"));
-  if (config.allowFailover === true) flags.append(badge("Failover"));
-  if (config.prohibitDisablement) flags.append(badge("Lock profile"));
+  const rules = [
+    ...(config.allowFailover === true ? ["Failover"] : []),
+    ...(config.prohibitDisablement ? ["Lock profile"] : []),
+  ];
+  if (rules.length > 0) body.append(pillRow("Rules", rules));
 
   article.append(body);
-  if (flags.childElementCount > 0) article.append(flags);
+  if (config.fromDeprecatedPayload === true) {
+    const flags = document.createElement("p");
+    flags.className = "profile-card__flags";
+    flags.append(deprecatedBadge());
+    article.append(flags);
+  }
   return article;
 }
 

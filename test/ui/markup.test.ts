@@ -8,7 +8,6 @@ import {
   inlineScript,
   pageHref,
   pageUrl,
-  presetFeatures,
   presetHost,
   renderPage,
   renderSettings,
@@ -16,7 +15,7 @@ import {
 import { THEME_KEY } from "../../src/ui/theme.ts";
 import { PIXEL_KEY } from "../../src/ui/pixel.ts";
 import { SETTINGS_KEY } from "../../src/ui/settings.ts";
-import { appConfig } from "../../src/config.ts";
+import { appConfig, presetFeatures } from "../../src/config.ts";
 
 const here = import.meta.dirname;
 if (here === undefined) {
@@ -89,25 +88,6 @@ describe("presetHost", () => {
       protocol: "TLS",
       serverUrl: "dot.example.net",
     })).toBe("dot.example.net");
-  });
-});
-
-describe("presetFeatures", () => {
-  it("lists features in menu order, whatever order the preset gives", () => {
-    expect(presetFeatures({
-      name: "Example",
-      protocol: "HTTPS",
-      serverUrl: "https://doh.example.net/dns-query",
-      features: ["blocking", "ads", "dnssec", "no-logs"],
-    })).toEqual(["No logs", "DNSSEC", "Ad blocking", "Malware blocking"]);
-  });
-
-  it("is empty without features", () => {
-    expect(presetFeatures({
-      name: "Example",
-      protocol: "TLS",
-      serverUrl: "dot.example.net",
-    })).toEqual([]);
   });
 });
 
