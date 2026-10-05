@@ -281,15 +281,6 @@ function card(config: DnsConfig): HTMLElement {
   if (config.serverAddresses.length > 0) {
     body.append(resolverRow(config.serverAddresses));
   }
-  const interfaces = [
-    ...(config.useWifi ? ["Wi-Fi"] : []),
-    ...(config.useCellular ? ["Cellular"] : []),
-    ...(config.useEthernet ? ["Ethernet"] : []),
-  ];
-  if (interfaces.length > 0) body.append(pillRow("Interfaces", interfaces));
-  const preset = presetOf(config);
-  const features = preset === undefined ? [] : presetFeatures(preset);
-  if (features.length > 0) body.append(pillRow("Features", features));
   if (config.excludedWifi.length > 0) {
     body.append(
       row(
@@ -308,12 +299,20 @@ function card(config: DnsConfig): HTMLElement {
   if (matchDomains.length > 0) {
     body.append(row("Only for domains", matchDomains.join(", "), true));
   }
-
+  const interfaces = [
+    ...(config.useWifi ? ["Wi-Fi"] : []),
+    ...(config.useCellular ? ["Cellular"] : []),
+    ...(config.useEthernet ? ["Ethernet"] : []),
+  ];
+  if (interfaces.length > 0) body.append(pillRow("Interfaces", interfaces));
   const rules = [
     ...(config.allowFailover === true ? ["Failover"] : []),
     ...(config.prohibitDisablement ? ["Lock profile"] : []),
   ];
   if (rules.length > 0) body.append(pillRow("Rules", rules));
+  const preset = presetOf(config);
+  const features = preset === undefined ? [] : presetFeatures(preset);
+  if (features.length > 0) body.append(pillRow("Features", features));
 
   article.append(body);
   if (config.fromDeprecatedPayload === true) {
