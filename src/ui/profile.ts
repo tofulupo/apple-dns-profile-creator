@@ -156,6 +156,25 @@ function deprecatedBadge(): HTMLSpanElement {
   return span;
 }
 
+function lineRow(label: string, values: readonly string[]): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+  const term = document.createElement("dt");
+  term.textContent = label;
+  const definition = document.createElement("dd");
+  definition.className = "mono";
+  const list = document.createElement("ul");
+  list.className = "line-list";
+  list.setAttribute("role", "list");
+  for (const value of values) {
+    const item = document.createElement("li");
+    item.textContent = value;
+    list.append(item);
+  }
+  definition.append(list);
+  fragment.append(term, definition);
+  return fragment;
+}
+
 function icon(name: string): HTMLSpanElement {
   const span = document.createElement("span");
   span.className = `icon icon--${name}`;
@@ -282,13 +301,7 @@ function card(config: DnsConfig): HTMLElement {
     body.append(resolverRow(config.serverAddresses));
   }
   if (config.excludedWifi.length > 0) {
-    body.append(
-      row(
-        "Skip for SSID",
-        config.excludedWifi.map((ssid) => `“${ssid}”`).join(", "),
-        true,
-      ),
-    );
+    body.append(lineRow("Skip for SSID", config.excludedWifi));
   }
   if (config.excludedDomains.length > 0) {
     body.append(

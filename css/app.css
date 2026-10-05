@@ -2667,6 +2667,15 @@ summary.rule__head::-webkit-details-marker {
   font-size: 0.85rem;
 }
 
+.line-list {
+  display: grid;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  white-space: pre-wrap;
+}
+
 .profile-card__body dd.profile-card__pills {
   display: flex;
   flex-wrap: wrap;
