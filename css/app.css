@@ -1423,6 +1423,15 @@ textarea::placeholder {
   color: var(--success);
 }
 
+.field--valid .picker__toggle:not([aria-expanded="true"]) {
+  background: color-mix(in srgb, var(--success) 10%, var(--surface));
+  border-color: var(--success);
+}
+
+.field--valid .picker__toggle:not([aria-expanded="true"]):hover {
+  background: color-mix(in srgb, var(--success) 16%, var(--surface));
+}
+
 .field--invalid :is(.picker__status, .picker__label) {
   color: var(--danger);
 }
