@@ -36,6 +36,7 @@ export {
   DEFAULT_IDENTIFIER_PREFIX,
   DNS_PAYLOAD_TYPE,
 } from "./profile.ts";
+export { distinctSettings, sameSettings, settingsKey } from "./settings.ts";
 export { randomUuid, uuidFromBytes } from "./uuid.ts";
 export type {
   DnsConfig,

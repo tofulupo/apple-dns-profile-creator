@@ -79,7 +79,7 @@ describe("profile envelope", () => {
   it("draws every identifier from the injected factory, without reuse", () => {
     const uuid = stubUuid();
     const profile = buildProfile(
-      [config(), config()],
+      [config(), config({ name: "Two" })],
       { systemScope: false },
       uuid,
     );
@@ -96,6 +96,18 @@ describe("profile envelope", () => {
       ]),
     ];
     expect(new Set(identifiers).size).toBe(6);
+  });
+
+  it("writes the same settings once, whatever their paradigm", () => {
+    const profile = build([
+      config({ name: "Quad9", paradigm: "payload" }),
+      config({ name: "Other" }),
+      config({ name: "Quad9", paradigm: "declarations" }),
+    ]);
+    expect(payloadsOf(profile).map((p) => p["PayloadDisplayName"])).toEqual([
+      "Quad9",
+      "Other",
+    ]);
   });
 });
 
@@ -323,6 +335,15 @@ describe("declaration format", () => {
     );
   });
 
+  it("declares the same settings once", () => {
+    const dns = declarationsOf(
+      buildDeclarations([config(), config(), config({ name: "Two" })]),
+    ).filter((d) =>
+      d["Type"] === "com.apple.configuration.network.dns-settings"
+    );
+    expect(dns).toHaveLength(2);
+  });
+
   it("activates exactly the configurations it declares", () => {
     const declarations = declarationsOf(
       buildDeclarations([config(), config({ name: "Two" })]),
@@ -342,7 +363,7 @@ describe("declaration format", () => {
   it("gives every declaration its own identifier and token", () => {
     const uuid = stubUuid();
     const declarations = declarationsOf(
-      buildDeclarations([config(), config()], uuid),
+      buildDeclarations([config(), config({ name: "Two" })], uuid),
     );
     const ids = declarations.flatMap((
       d,

@@ -1,6 +1,7 @@
 import { buildDnsSettings } from "./dnssettings.ts";
 import { buildOnDemandRules } from "./ondemand.ts";
 import { buildPlist, type PlistDict } from "./plist.ts";
+import { distinctSettings } from "./settings.ts";
 import type { DnsConfig, ProfileOptions, UuidFactory } from "./types.ts";
 
 const PROFILE_DESCRIPTION = "DNS Profile Creator (.mobileconfig) iOS/macOS 26";
@@ -103,9 +104,10 @@ export function buildProfile(
     PayloadVersion: 1,
   };
 
+  const distinct = distinctSettings(configs);
   profile.PayloadContent = declarations
-    ? [buildDeclarationsPayload(configs, uuid)]
-    : configs.map((config) => buildPayload(config, uuid));
+    ? [buildDeclarationsPayload(distinct, uuid)]
+    : distinct.map((config) => buildPayload(config, uuid));
 
   if (options.systemScope) {
     profile.PayloadScope = "System";
