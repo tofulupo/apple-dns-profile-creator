@@ -24,10 +24,12 @@
 
   --zone-border: light-dark(#94a3b8, #6b7280);
   --success: light-dark(#1a7f37, #3fb950);
+  --success-contrast: light-dark(#ffffff, #0e1013);
   /* Lighter than --success, keeping the 3:1 icons need. */
   --success-icon: light-dark(#249a74, #3fb950);
   --warning: light-dark(#a8580b, #ffb454);
   --danger: light-dark(#c93a3a, #f28779);
+  --danger-contrast: light-dark(#ffffff, #0e1013);
   --danger-hover: light-dark(#b23232, #f5a197);
   --focus: light-dark(#1a73b8, #59c2ff);
 
@@ -1910,23 +1912,30 @@ summary.rule__head::-webkit-details-marker {
   line-height: 1;
   pointer-events: none;
   translate: 0 -50%;
-  transition: color 0.15s ease;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .field--valid .address-input__index {
-  color: var(--success);
+  background-color: var(--success);
+  border-color: var(--success);
+  color: var(--success-contrast);
+  font-weight: 600;
 }
 
 .field--invalid .address-input__index {
-  color: transparent;
+  background-color: var(--danger);
   border-color: var(--danger);
+  color: transparent;
 }
 
 .field--invalid .address-input__index::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-color: var(--danger);
+  background-color: var(--danger-contrast);
   -webkit-mask: url("icons/close.svg") center / 0.6rem no-repeat;
   mask: url("icons/close.svg") center / 0.6rem no-repeat;
 }
