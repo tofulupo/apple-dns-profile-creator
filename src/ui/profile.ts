@@ -1,9 +1,20 @@
-import { appConfig, presetFeatures, presetOf } from "../config.ts";
+import { appConfig } from "../config.ts";
 import { buildProfileXml } from "../lib/profile.ts";
 import type { ConfigSource, DnsConfig, ProfileFormat } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
-import { configProblems, isIPv4, isIPv6 } from "../lib/validate.ts";
+import { configProblems } from "../lib/validate.ts";
 import { element, input, setFieldError, showNotices } from "./dom.ts";
+
+import {
+  badge,
+  connectionOf,
+  featuresOf,
+  interfacesOf,
+  lineList,
+  paradigmPill,
+  resolverList,
+  rulesOf,
+} from "./card_values.ts";
 
 import { ask, tell } from "./dialogs.ts";
 import { desktopBindings } from "./desktop.ts";
@@ -93,43 +104,19 @@ function row(label: string, value: string, mono = false): DocumentFragment {
   return fragment;
 }
 
-function resolverRow(addresses: readonly string[]): DocumentFragment {
+function nodeRow(
+  label: string,
+  value: Node,
+  className?: string,
+): DocumentFragment {
   const fragment = document.createDocumentFragment();
   const term = document.createElement("dt");
-  term.textContent = "Resolvers";
+  term.textContent = label;
   const definition = document.createElement("dd");
-  const list = document.createElement("ul");
-  list.className = "resolver-list";
-  list.setAttribute("role", "list");
-  const counts = { IPv4: 0, IPv6: 0 };
-  for (const address of addresses) {
-    const family = isIPv4(address)
-      ? "IPv4"
-      : isIPv6(address)
-      ? "IPv6"
-      : undefined;
-    const tag = document.createElement("span");
-    tag.className = "resolver-list__tag";
-    tag.textContent = family === undefined
-      ? "?"
-      : `${family} ${++counts[family]}`;
-    const value = document.createElement("span");
-    value.className = "resolver-list__address";
-    value.textContent = address;
-    const item = document.createElement("li");
-    item.append(tag, value);
-    list.append(item);
-  }
-  definition.append(list);
+  if (className !== undefined) definition.className = className;
+  definition.append(value);
   fragment.append(term, definition);
   return fragment;
-}
-
-function badge(label: string): HTMLSpanElement {
-  const span = document.createElement("span");
-  span.className = "badge";
-  span.textContent = label;
-  return span;
 }
 
 function pillRow(label: string, names: readonly string[]): DocumentFragment {
@@ -139,63 +126,6 @@ function pillRow(label: string, names: readonly string[]): DocumentFragment {
   const definition = document.createElement("dd");
   definition.className = "profile-card__pills";
   definition.append(...names.map(badge));
-  fragment.append(term, definition);
-  return fragment;
-}
-
-const PARADIGMS: Readonly<
-  Record<
-    ProfileFormat,
-    { label: string; modifier: string; explanation: string }
-  >
-> = {
-  payload: {
-    label: "Legacy",
-    modifier: "badge--legacy",
-    explanation:
-      "Uses the classic DNS payload, deprecated in iOS 27 and macOS 27",
-  },
-  declarations: {
-    label: "Declarative",
-    modifier: "badge--declarative",
-    explanation: "Uses DNS declarations, for iOS 27 and macOS 27 and later",
-  },
-};
-
-function paradigmRow(paradigm: ProfileFormat): DocumentFragment {
-  const { label, modifier, explanation } = PARADIGMS[paradigm];
-  const fragment = document.createDocumentFragment();
-  const term = document.createElement("dt");
-  term.textContent = "Profile paradigm";
-  const definition = document.createElement("dd");
-  definition.className = "profile-card__pills";
-  const pill = badge(label);
-  pill.classList.add(modifier);
-  pill.title = explanation;
-  const hidden = document.createElement("span");
-  hidden.className = "visually-hidden";
-  hidden.textContent = `: ${explanation}`;
-  pill.append(hidden);
-  definition.append(pill);
-  fragment.append(term, definition);
-  return fragment;
-}
-
-function lineRow(label: string, values: readonly string[]): DocumentFragment {
-  const fragment = document.createDocumentFragment();
-  const term = document.createElement("dt");
-  term.textContent = label;
-  const definition = document.createElement("dd");
-  definition.className = "mono";
-  const list = document.createElement("ul");
-  list.className = "line-list";
-  list.setAttribute("role", "list");
-  for (const value of values) {
-    const item = document.createElement("li");
-    item.textContent = value;
-    list.append(item);
-  }
-  definition.append(list);
   fragment.append(term, definition);
   return fragment;
 }
@@ -346,19 +276,26 @@ function card(config: DnsConfig): HTMLElement {
 
   const body = document.createElement("dl");
   body.className = "profile-card__body";
-  if (config.paradigm !== undefined) body.append(paradigmRow(config.paradigm));
+  if (config.paradigm !== undefined) {
+    body.append(
+      nodeRow(
+        "Profile paradigm",
+        paradigmPill(config.paradigm),
+        "profile-card__pills",
+      ),
+    );
+  }
   body.append(
-    row(
-      "Connection",
-      config.protocol === "HTTPS" ? "DNS over HTTPS" : "DNS over TLS",
-    ),
+    row("Connection", connectionOf(config)),
     row("Server", config.serverUrl, true),
   );
   if (config.serverAddresses.length > 0) {
-    body.append(resolverRow(config.serverAddresses));
+    body.append(nodeRow("Resolvers", resolverList(config.serverAddresses)));
   }
   if (config.excludedWifi.length > 0) {
-    body.append(lineRow("Skip for SSID", config.excludedWifi));
+    body.append(
+      nodeRow("Skip for SSID", lineList(config.excludedWifi), "mono"),
+    );
   }
   if (config.excludedDomains.length > 0) {
     body.append(
@@ -369,19 +306,11 @@ function card(config: DnsConfig): HTMLElement {
   if (matchDomains.length > 0) {
     body.append(row("Only for domains", matchDomains.join(", "), true));
   }
-  const interfaces = [
-    ...(config.useWifi ? ["Wi-Fi"] : []),
-    ...(config.useCellular ? ["Cellular"] : []),
-    ...(config.useEthernet ? ["Ethernet"] : []),
-  ];
+  const interfaces = interfacesOf(config);
   if (interfaces.length > 0) body.append(pillRow("Interfaces", interfaces));
-  const rules = [
-    ...(config.allowFailover === true ? ["Failover"] : []),
-    ...(config.prohibitDisablement ? ["Lock profile"] : []),
-  ];
+  const rules = rulesOf(config);
   if (rules.length > 0) body.append(pillRow("Rules", rules));
-  const preset = presetOf(config);
-  const features = preset === undefined ? [] : presetFeatures(preset);
+  const features = featuresOf(config);
   if (features.length > 0) body.append(pillRow("Features", features));
 
   article.append(body);
@@ -575,6 +504,7 @@ function init(): void {
     showNotices(importNotice, []);
     render();
   });
+
   store.subscribe(render);
   showNotices(importNotice, store.takeImportWarnings());
   render();
