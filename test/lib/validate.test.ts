@@ -391,15 +391,29 @@ describe("configProblems", () => {
     expect(problem).toContain(`“${"😀".repeat(9)}”`);
   });
 
+  it("requires at least one interface", () => {
+    const none = { useWifi: false, useCellular: false, useEthernet: false };
+    expect(configProblems(config(none)).interfaces).toBe(
+      "Turn on at least one interface.",
+    );
+    for (const one of ["useWifi", "useCellular", "useEthernet"]) {
+      expect(configProblems(config({ ...none, [one]: true }))).toEqual({});
+    }
+  });
+
   it("reports every field at once", () => {
     const broken = config({
       name: "",
       serverUrl: "",
       serverAddresses: ["nope"],
       excludedWifi: ["x".repeat(40)],
+      useWifi: false,
+      useCellular: false,
+      useEthernet: false,
     });
     expect(Object.keys(configProblems(broken)).sort()).toEqual([
       "excludedWifi",
+      "interfaces",
       "name",
       "serverAddresses",
       "serverUrl",

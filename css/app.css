@@ -1815,6 +1815,10 @@ summary.rule__head::-webkit-details-marker {
   text-wrap: pretty;
 }
 
+.rule__warning--error {
+  color: var(--danger);
+}
+
 .toggle-chips {
   display: flex;
   flex-wrap: wrap;

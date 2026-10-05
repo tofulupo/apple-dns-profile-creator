@@ -19,6 +19,7 @@ import type { DnsConfig, DnsProtocol } from "../lib/types.ts";
 import {
   element,
   input,
+  openEnclosing,
   setFieldError,
   setFieldValid,
   showNotices,
@@ -83,6 +84,7 @@ const rulesSummary = element("rulesSummary");
 const wifiSummary = element("wifiSummary");
 const domainSummary = element("domainSummary");
 const interfacesWarning = element("interfacesWarning");
+const interfacesHint = interfacesWarning.textContent;
 const interfaceChecks = [
   input("useWifi"),
   input("useCell"),
@@ -194,6 +196,7 @@ function updateRules(): number {
 
   const interfacesOn = interfaceChecks.filter((check) => check.checked).length;
   const noInterface = interfacesOn === 0;
+  if (!noInterface) setInterfacesError(null);
   interfacesWarning.hidden = !noInterface;
 
   const changed = [
@@ -210,6 +213,15 @@ function updateRules(): number {
     ? "Defaults"
     : `${changed} changed`;
   return changed;
+}
+
+function setInterfacesError(message: string | null): void {
+  interfacesWarning.textContent = message ?? interfacesHint;
+  interfacesWarning.classList.toggle("rule__warning--error", message !== null);
+  if (message !== null) {
+    interfacesWarning.hidden = false;
+    openEnclosing(interfacesWarning);
+  }
 }
 
 function bindRules(): void {
@@ -638,6 +650,9 @@ function validate(config: DnsConfig): boolean {
     if (message !== null) addressesValid = false;
   }
   setFieldError(element("field-exclWifi"), problems.excludedWifi ?? null);
+  if (problems.interfaces !== undefined) {
+    setInterfacesError(problems.interfaces);
+  }
   return !hasProblems(problems) && addressesValid;
 }
 

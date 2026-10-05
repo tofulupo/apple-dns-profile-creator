@@ -134,7 +134,8 @@ export type CheckedField =
   | "name"
   | "serverUrl"
   | "serverAddresses"
-  | "excludedWifi";
+  | "excludedWifi"
+  | "interfaces";
 
 export type ConfigProblems = Readonly<Partial<Record<CheckedField, string>>>;
 
@@ -169,6 +170,10 @@ export function configProblems(config: DnsConfig): ConfigProblems {
       `Wi-Fi network names are at most ${MAX_SSID_BYTES} bytes: ${
         quoteList(longSsids)
       }`;
+  }
+
+  if (!config.useWifi && !config.useCellular && !config.useEthernet) {
+    problems.interfaces = "Turn on at least one interface.";
   }
 
   return problems;
