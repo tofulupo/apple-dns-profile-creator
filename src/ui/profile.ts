@@ -15,6 +15,7 @@ import {
   resolverList,
   rulesOf,
 } from "./card_values.ts";
+import { compareTable } from "./compare_view.ts";
 
 import { ask, tell } from "./dialogs.ts";
 import { desktopBindings } from "./desktop.ts";
@@ -59,6 +60,14 @@ const downloadLabel = element("downloadLabel");
 const downloadIcon = element("downloadIcon");
 const shareButton = element<HTMLButtonElement>("shareBtn");
 const noteSeveral = element("noteSeveral");
+const compareView = element("compareView");
+const compareBody = element("compareBody");
+const compareSummary = element("compareSummary");
+const compareClose = element<HTMLButtonElement>("compareClose");
+
+let picked: number | undefined;
+let comparing: readonly [number, number] | undefined;
+let pickedFrom: string | undefined;
 const canShare = canShareProfile(appConfig.profileFilename);
 const sharesInApp = canShare && desktopBindings() !== undefined;
 
@@ -217,7 +226,40 @@ function sourceFile(source: ConfigSource): HTMLElement {
   return file;
 }
 
-function card(config: DnsConfig): HTMLElement {
+function pick(index: number): void {
+  if (picked === index) {
+    picked = undefined;
+  } else if (picked === undefined) {
+    picked = index;
+    pickedFrom = JSON.stringify(store.list());
+  } else {
+    comparing = [picked, index];
+    picked = undefined;
+  }
+  render();
+  if (comparing !== undefined) compareClose.focus();
+  else focusCompare(index);
+}
+
+function focusCompare(index: number): void {
+  list.querySelector<HTMLButtonElement>(
+    `.profile-card:nth-child(${index + 1}) .profile-card__compare`,
+  )?.focus();
+}
+
+function closeCompare(): void {
+  if (comparing === undefined) return;
+  const [, returnTo] = comparing;
+  comparing = undefined;
+  render();
+  focusCompare(returnTo);
+}
+
+function card(
+  config: DnsConfig,
+  index: number,
+  comparable: boolean,
+): HTMLElement {
   const problems = problemsOf(config);
   const label = config.name.trim() === ""
     ? "Unnamed configuration"
@@ -237,6 +279,17 @@ function card(config: DnsConfig): HTMLElement {
 
   const actions = document.createElement("div");
   actions.className = "profile-card__actions";
+  if (comparable) {
+    const compare = button(
+      "Compare",
+      "btn btn--icon profile-card__compare",
+      () => pick(index),
+      `Compare ${label}`,
+    );
+    compare.setAttribute("aria-pressed", String(picked === index));
+    actions.append(compare);
+    if (picked === index) article.classList.add("profile-card--picked");
+  }
   actions.append(
     button(
       problems.length > 0 ? "Fix" : "Edit",
@@ -322,7 +375,32 @@ function render(): void {
 
   const count = configs.length;
 
-  list.replaceChildren(...configs.map(card));
+  if (
+    (picked !== undefined || comparing !== undefined) &&
+    JSON.stringify(configs) !== pickedFrom
+  ) {
+    picked = undefined;
+    comparing = undefined;
+  }
+  const pair = comparing === undefined
+    ? undefined
+    : [configs[comparing[0]], configs[comparing[1]]] as const;
+  if (pair !== undefined && pair[0] !== undefined && pair[1] !== undefined) {
+    const { table, differences } = compareTable(pair[0], pair[1]);
+    compareBody.replaceChildren(table);
+    compareSummary.textContent = differences === 0
+      ? "No differences"
+      : differences === 1
+      ? "1 difference"
+      : `${differences} differences`;
+  } else {
+    comparing = undefined;
+  }
+  compareView.hidden = comparing === undefined;
+
+  list.replaceChildren(
+    ...configs.map((config, index) => card(config, index, count > 1)),
+  );
   showProfileCount(count);
   const number = document.createElement("strong");
   number.textContent = String(count);
@@ -333,7 +411,10 @@ function render(): void {
   deleteAllButton.hidden = count < 2;
   noteSeveral.hidden = count < 2;
   emptyState.hidden = count > 0;
-  configList.hidden = count === 0;
+  configList.hidden = count === 0 || comparing !== undefined;
+  if (picked !== undefined) {
+    configCount.append(" · pick a second card to compare");
+  }
   downloadPanel.hidden = count === 0;
 
   const invalid = configs.filter((config) => problemsOf(config).length > 0)
@@ -504,7 +585,10 @@ function init(): void {
     showNotices(importNotice, []);
     render();
   });
-
+  compareClose.addEventListener("click", closeCompare);
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && comparing !== undefined) closeCompare();
+  });
   store.subscribe(render);
   showNotices(importNotice, store.takeImportWarnings());
   render();

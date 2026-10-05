@@ -7,6 +7,12 @@ export {
   orderServerAddresses,
   splitServerAddresses,
 } from "./addresses.ts";
+export {
+  compareConfigs,
+  type CompareRow,
+  type SettingsField,
+  shortHash,
+} from "./compare.ts";
 export { buildDnsSettings } from "./dnssettings.ts";
 export { buildOnDemandRules } from "./ondemand.ts";
 export {

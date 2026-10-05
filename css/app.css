@@ -2724,6 +2724,161 @@ summary.rule__head::-webkit-details-marker {
   gap: 0.4rem;
 }
 
+.profile-card--picked {
+  border-color: var(--accent);
+}
+
+.profile-card__compare[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.compare {
+  margin-bottom: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.compare__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem var(--card-padding);
+  background: var(--surface-sunken);
+  border-bottom: 1px solid var(--border);
+}
+
+.compare__title {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.compare__body {
+  padding: 0.5rem var(--card-padding) 0;
+}
+
+.compare__table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 0.9rem;
+}
+
+.compare__table thead th {
+  padding: 0.5rem 0.75rem 0.6rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.compare__table thead td {
+  width: 9.5rem;
+}
+
+.compare__table tbody + tbody tr:first-child > * {
+  border-top: 1px solid var(--border);
+  padding-top: 0.75rem;
+}
+
+.compare__row > * {
+  padding: 0.35rem 0.75rem 0.35rem 0;
+  vertical-align: top;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.compare__row th {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.compare__row--differs th {
+  color: var(--text);
+}
+
+.compare__row--differs th::before {
+  content: "";
+  display: inline-block;
+  width: 0.45rem;
+  height: 0.45rem;
+  margin-right: 0.45rem;
+  background: var(--accent-fill);
+  border-radius: 50%;
+  vertical-align: 0.1em;
+}
+
+.compare__row--differs td {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.compare__table .mono {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+
+.compare__table .profile-card__pills,
+.compare__format {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.compare__none {
+  color: var(--muted);
+}
+
+.compare__summary {
+  margin: 0;
+  padding: 0.75rem var(--card-padding) var(--card-padding);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* The app's window is at least 720px wide (minWidth in tauri.conf.json), so
+   it keeps both columns and narrows the label column instead. */
+:root[data-app="desktop"] .compare__table thead td {
+  width: clamp(7rem, 18%, 9.5rem);
+}
+
+/* Below 768px, on the website only: the two values of a row stack. */
+@media (width < 48rem) {
+  :root:not([data-app="desktop"]) .compare__table thead {
+    display: none;
+  }
+
+  :root:not([data-app="desktop"]) :is(.compare__table, .compare__table tbody, .compare__row, .compare__row > *) {
+    display: block;
+  }
+
+  :root:not([data-app="desktop"]) .compare__row {
+    padding: 0.4rem 0;
+  }
+
+  :root:not([data-app="desktop"]) :is(.compare__row > *, .compare__table tbody + tbody tr:first-child > *) {
+    padding: 0.15rem 0;
+    border-top: 0;
+  }
+
+  :root:not([data-app="desktop"]) .compare__table tbody + tbody tr:first-child {
+    margin-top: 0.4rem;
+    border-top: 1px solid var(--border);
+  }
+
+  :root:not([data-app="desktop"]) .compare__row td::before {
+    content: attr(data-side);
+    display: block;
+    color: var(--muted);
+    font-size: 0.75rem;
+  }
+}
+
 .badge {
   padding: 0.15rem 0.5rem;
   background: var(--surface-sunken);
