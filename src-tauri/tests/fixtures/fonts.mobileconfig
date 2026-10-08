@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>PayloadContent</key>
+	<array>
+		<dict>
+			<key>Font</key>
+			<data>T1RUTwAAAAA=</data>
+			<key>Name</key>
+			<string>Example.otf</string>
+			<key>PayloadIdentifier</key>
+			<string>com.example.fonts.otf</string>
+			<key>PayloadType</key>
+			<string>com.apple.font</string>
+			<key>PayloadUUID</key>
+			<string>99659C06-BBBF-45AA-9674-06B378EC2CD5</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+		<dict>
+			<key>Font</key>
+			<data>AAEAAAAAAAA=</data>
+			<key>Name</key>
+			<string>Example.ttf</string>
+			<key>PayloadIdentifier</key>
+			<string>com.example.fonts.ttf</string>
+			<key>PayloadType</key>
+			<string>com.apple.font</string>
+			<key>PayloadUUID</key>
+			<string>3B1D7E52-6A0C-4F8E-9D21-5C7A9B4E0F13</string>
+			<key>PayloadVersion</key>
+			<integer>1</integer>
+		</dict>
+	</array>
+	<key>PayloadDisplayName</key>
+	<string>Fonts</string>
+	<key>PayloadIdentifier</key>
+	<string>com.example.fonts</string>
+	<key>PayloadType</key>
+	<string>Configuration</string>
+	<key>PayloadUUID</key>
+	<string>9800EA91-30C4-4212-8033-D21CAD4FE99A</string>
+	<key>PayloadVersion</key>
+	<integer>1</integer>
+</dict>
+</plist>

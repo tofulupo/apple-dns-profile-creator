@@ -10,7 +10,21 @@ const DECLARATION_TYPES: [&str; 2] = [
     "com.apple.configuration.network.dns-settings",
 ];
 
+const FONT_PAYLOAD_TYPE: &str = "com.apple.font";
+
 const REFUSED: &str = "The profile holds more than DNS settings, so it was not saved.";
+const NOT_A_FONT: &str =
+    "A font in the profile is not a TrueType or OpenType font, so it was not saved.";
+const COLLECTION: &str =
+    "A font in the profile is a collection (.ttc or .otc), which Apple devices don't install.";
+const WEB_FONT: &str =
+    "A font in the profile is a web font (WOFF), which Apple devices don't install.";
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Kind {
+    Dns,
+    Fonts,
+}
 
 fn payload_type(dict: &Dictionary) -> Option<&str> {
     dict.get("PayloadType")?.as_string()
@@ -40,9 +54,50 @@ fn holds_only_dns_settings(payload: &Value) -> bool {
     }
 }
 
-/// Whether `xml` is a profile of DNS settings, as the pages build them, so
-/// the app saves, shares and signs nothing else.
-pub fn check(xml: &str) -> Result<(), String> {
+fn is_font_payload(payload: &Value) -> bool {
+    payload
+        .as_dictionary()
+        .is_some_and(|payload| payload_type(payload) == Some(FONT_PAYLOAD_TYPE))
+}
+
+fn identified(dict: &Dictionary) -> bool {
+    dict.get("PayloadIdentifier")
+        .and_then(Value::as_string)
+        .is_some_and(|id| !id.is_empty())
+        && dict
+            .get("PayloadUUID")
+            .and_then(Value::as_string)
+            .is_some_and(|uuid| !uuid.is_empty())
+        && dict
+            .get("PayloadVersion")
+            .and_then(Value::as_signed_integer)
+            .is_some()
+}
+
+/// Apple installs one TrueType or OpenType font per payload, told apart by
+/// the first four bytes of the font file.
+fn check_font(payload: &Value) -> Result<(), String> {
+    let Some(payload) = payload
+        .as_dictionary()
+        .filter(|payload| identified(payload))
+    else {
+        return Err(REFUSED.into());
+    };
+    let font = payload
+        .get("Font")
+        .and_then(Value::as_data)
+        .ok_or(NOT_A_FONT)?;
+    match font.get(..4) {
+        Some([0, 1, 0, 0] | b"true" | b"OTTO") => Ok(()),
+        Some(b"ttcf") => Err(COLLECTION.into()),
+        Some(b"wOFF" | b"wOF2") => Err(WEB_FONT.into()),
+        _ => Err(NOT_A_FONT.into()),
+    }
+}
+
+/// Which kind of profile `xml` is: DNS settings as the pages build them, or
+/// fonts by Apple's rules. The app saves, shares and signs nothing else.
+pub fn check(xml: &str) -> Result<Kind, String> {
     if xml.len() as u64 > MAX_PROFILE_BYTES {
         return Err(REFUSED.into());
     }
@@ -50,16 +105,26 @@ pub fn check(xml: &str) -> Result<(), String> {
     let Some(profile) = profile.as_dictionary() else {
         return Err(REFUSED.into());
     };
-    let payloads = profile.get("PayloadContent").and_then(Value::as_array);
-    if payload_type(profile) == Some("Configuration")
-        && payloads.is_some_and(|payloads| {
-            !payloads.is_empty() && payloads.iter().all(holds_only_dns_settings)
-        })
-    {
-        Ok(())
-    } else {
-        Err(REFUSED.into())
+    let Some(payloads) = profile
+        .get("PayloadContent")
+        .and_then(Value::as_array)
+        .filter(|payloads| !payloads.is_empty())
+    else {
+        return Err(REFUSED.into());
+    };
+    if payload_type(profile) != Some("Configuration") {
+        return Err(REFUSED.into());
     }
+    if payloads.iter().all(holds_only_dns_settings) {
+        return Ok(Kind::Dns);
+    }
+    if identified(profile) && payloads.iter().all(is_font_payload) {
+        for payload in payloads {
+            check_font(payload)?;
+        }
+        return Ok(Kind::Fonts);
+    }
+    Err(REFUSED.into())
 }
 
 #[cfg(test)]
@@ -77,7 +142,7 @@ mod tests {
         paths.push("tests/fixtures/declarations.mobileconfig".into());
         for path in paths {
             let xml = std::fs::read_to_string(&path).unwrap();
-            assert_eq!(check(&xml), Ok(()), "{}", path.display());
+            assert_eq!(check(&xml), Ok(Kind::Dns), "{}", path.display());
         }
     }
 
@@ -97,6 +162,62 @@ mod tests {
             declarations.replacen("<data>", &format!("<data>{passcode}</data><data>"), 1),
         ] {
             assert_eq!(check(&xml), Err(REFUSED.into()));
+        }
+    }
+
+    const FONTS: &str = include_str!("../tests/fixtures/fonts.mobileconfig");
+    /// The OpenType font's data in FONTS.
+    const OTF: &str = "<data>T1RUTwAAAAA=</data>";
+
+    #[test]
+    fn accepts_truetype_and_opentype_fonts() {
+        assert_eq!(check(FONTS), Ok(Kind::Fonts));
+        // "true", the old Apple TrueType tag
+        let apple = FONTS.replace(OTF, "<data>dHJ1ZQAAAAA=</data>");
+        assert_eq!(check(&apple), Ok(Kind::Fonts));
+    }
+
+    #[test]
+    fn refuses_collections_and_web_fonts() {
+        for (data, error) in [
+            ("dHRjZgAAAAA=", COLLECTION),
+            ("d09GRgAAAAA=", WEB_FONT),
+            ("d09GMgAAAAA=", WEB_FONT),
+        ] {
+            let xml = FONTS.replace(OTF, &format!("<data>{data}</data>"));
+            assert_eq!(check(&xml), Err(error.into()), "{data}");
+        }
+    }
+
+    #[test]
+    fn refuses_a_font_payload_with_a_missing_or_empty_font() {
+        let empty = FONTS.replace(OTF, "<data></data>");
+        let missing = FONTS.replace(&format!("<key>Font</key>\n\t\t\t{OTF}"), "");
+        assert_ne!(missing, FONTS);
+        for xml in [empty, missing] {
+            assert_eq!(check(&xml), Err(NOT_A_FONT.into()));
+        }
+    }
+
+    #[test]
+    fn refuses_fonts_mixed_with_dns_settings() {
+        let mixed = FONTS.replacen(
+            "<string>com.apple.font</string>",
+            "<string>com.apple.dnsSettings.managed</string>",
+            1,
+        );
+        assert_eq!(check(&mixed), Err(REFUSED.into()));
+    }
+
+    #[test]
+    fn refuses_fonts_without_identifier_uuid_or_version() {
+        for key in ["PayloadIdentifier", "PayloadUUID", "PayloadVersion"] {
+            let renamed = FONTS.replacen(&format!("<key>{key}</key>"), "<key>Unknown</key>", 1);
+            assert_eq!(check(&renamed), Err(REFUSED.into()), "{key} in a payload");
+            let at = FONTS.rfind(&format!("<key>{key}</key>")).unwrap();
+            let mut top = FONTS.to_owned();
+            top.replace_range(at..at + key.len() + 11, "<key>Unknown</key>");
+            assert_eq!(check(&top), Err(REFUSED.into()), "{key} on the profile");
         }
     }
 

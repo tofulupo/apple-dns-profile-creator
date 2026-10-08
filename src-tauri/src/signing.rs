@@ -457,17 +457,21 @@ mod tests {
             }]
         );
 
+        let fonts = include_str!("../tests/fixtures/fonts.mobileconfig");
+        for xml in ["<plist>profile</plist>", fonts] {
+            let signature = keychain.sign(xml, &listed[0].id).unwrap();
+            assert_eq!(signature.name, "DNS Test Valid");
+            let signed = folder.path().join("signed.mobileconfig");
+            std::fs::write(&signed, &signature.signed).unwrap();
+            let decoded = Command::new("/usr/bin/security")
+                .args(["cms", "-D", "-i"])
+                .arg(&signed)
+                .output()
+                .unwrap();
+            assert_eq!(decoded.stdout, xml.as_bytes());
+        }
+
         let xml = "<plist>profile</plist>";
-        let signature = keychain.sign(xml, &listed[0].id).unwrap();
-        assert_eq!(signature.name, "DNS Test Valid");
-        let signed = folder.path().join("signed.mobileconfig");
-        std::fs::write(&signed, &signature.signed).unwrap();
-        let decoded = Command::new("/usr/bin/security")
-            .args(["cms", "-D", "-i"])
-            .arg(&signed)
-            .output()
-            .unwrap();
-        assert_eq!(decoded.stdout, xml.as_bytes());
 
         let error = keychain.sign(xml, "0000").err().unwrap();
         assert!(error.contains("no longer in your Keychain"), "{error}");
