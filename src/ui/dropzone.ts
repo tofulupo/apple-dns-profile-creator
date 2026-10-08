@@ -1,15 +1,22 @@
-import { importProfileXml, type ProfileImport } from "../lib/import.ts";
+import { checkFontProfile } from "../lib/fonts.ts";
+import {
+  extractPlistXml,
+  importProfileXml,
+  type ProfileImport,
+} from "../lib/import.ts";
 import type { ConfigSource } from "../lib/types.ts";
 
 export const DEPRECATED_FORMAT_NOTE =
   "Legacy DNS payload, deprecated by Apple but still working on iOS/macOS 27 and later. Use the Declaration format instead.";
 
-async function sha256(text: string): Promise<string | undefined> {
+async function sha256(
+  content: string | Uint8Array<ArrayBuffer>,
+): Promise<string | undefined> {
   const subtle = globalThis.crypto?.subtle as SubtleCrypto | undefined;
   if (subtle === undefined) return undefined;
   const digest = await subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(text),
+    typeof content === "string" ? new TextEncoder().encode(content) : content,
   );
   return Array.from(
     new Uint8Array(digest),
@@ -38,6 +45,40 @@ export async function readProfileFile(file: File): Promise<ProfileImport> {
     warnings: result.usesDeprecatedPayload
       ? [DEPRECATED_FORMAT_NOTE, ...result.warnings]
       : result.warnings,
+  };
+}
+
+export interface FontProfile {
+  readonly file: string;
+  readonly xml: string;
+  readonly fonts: number;
+  /** Of the file's bytes as dropped, as `shasum -a 256` gives it. */
+  readonly sha256?: string;
+}
+
+/**
+ * The dropped file as a font profile, undefined when it holds no fonts.
+ * Throws when it holds fonts that Apple's rules don't allow.
+ */
+export async function readFontProfile(
+  file: File,
+): Promise<FontProfile | undefined> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let xml: string;
+  try {
+    xml = extractPlistXml(new TextDecoder().decode(bytes));
+  } catch {
+    return undefined;
+  }
+  const check = checkFontProfile(xml);
+  if (check === undefined) return undefined;
+  if (!check.valid) throw new Error(check.error);
+  const hash = await sha256(bytes);
+  return {
+    file: file.name,
+    xml,
+    fonts: check.fonts,
+    ...(hash === undefined ? {} : { sha256: hash }),
   };
 }
 

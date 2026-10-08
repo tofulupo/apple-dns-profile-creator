@@ -139,6 +139,29 @@ describe("the mascot", () => {
   });
 });
 
+describe("the font profile panel", () => {
+  it("is in the desktop app's profile page", async () => {
+    const page = PAGES.find((p) => p.file === "finalize.html");
+    if (page === undefined) throw new Error("No profile page");
+    const html = await renderPage(page, {
+      stylesheet: "app.css",
+      script: "",
+      version: "0.0.0-test",
+      desktop: true,
+    });
+    for (const id of ["fontPanel", "fontFile", "fontCount", "fontHash"]) {
+      expect(html).toContain(`id="${id}"`);
+    }
+  });
+
+  it("is left out of the website", () => {
+    for (const { html } of rendered) {
+      expect(html.toLowerCase()).not.toContain("font profile");
+      expect(html).not.toContain('id="fontPanel"');
+    }
+  });
+});
+
 const settingsHtml = await renderSettings({
   stylesheet: "app.css",
   script: "/* settings script */",

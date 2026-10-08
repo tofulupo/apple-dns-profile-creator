@@ -1,0 +1,23 @@
+<section class="profile-card font-profile" id="fontPanel"
+  aria-labelledby="fontTitle" hidden>
+  <header class="profile-card__head">
+    <div class="profile-card__name">
+      <h2 class="profile-card__title" id="fontTitle">Font profile</h2>
+    </div>
+    <div class="profile-card__actions">
+      <button type="button" id="fontClose" class="btn btn--danger btn--icon"
+        aria-label="Close the font profile"><span class="icon icon--close"
+          aria-hidden="true"></span></button>
+    </div>
+  </header>
+  <dl class="profile-card__body">
+    <dt>File</dt>
+    <dd id="fontFile"></dd>
+    <dt>Fonts</dt>
+    <dd id="fontCount"></dd>
+    <dt>Check</dt>
+    <dd class="font-profile__valid">Valid font profile</dd>
+    <dt>SHA-256</dt>
+    <dd class="mono" id="fontHash"></dd>
+  </dl>
+</section>

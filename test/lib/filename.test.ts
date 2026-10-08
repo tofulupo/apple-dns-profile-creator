@@ -1,7 +1,11 @@
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { profileFilename, safeStem } from "../../src/lib/filename.ts";
+import {
+  profileFilename,
+  safeStem,
+  signedFilename,
+} from "../../src/lib/filename.ts";
 import { config } from "../helpers/configs.ts";
 
 const plain = { signed: false, neutral: false };
@@ -50,6 +54,19 @@ describe("profileFilename", () => {
     expect(profileFilename(configs, { signed: false, neutral: true }))
       .toBe("encrypted-dns.mobileconfig");
     expect(profileFilename(configs, { signed: true, neutral: true }))
+      .toBe("encrypted-dns-signed.mobileconfig");
+  });
+});
+
+describe("signedFilename", () => {
+  it("adds -signed before the extension, once", () => {
+    expect(signedFilename("Inter.mobileconfig"))
+      .toBe("Inter-signed.mobileconfig");
+    expect(signedFilename("fonts.MobileConfig"))
+      .toBe("fonts-signed.mobileconfig");
+    expect(signedFilename("fonts-signed.mobileconfig"))
+      .toBe("fonts-signed.mobileconfig");
+    expect(signedFilename(".mobileconfig"))
       .toBe("encrypted-dns-signed.mobileconfig");
   });
 });

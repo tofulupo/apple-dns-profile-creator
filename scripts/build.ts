@@ -16,6 +16,7 @@ const DIST = join(ROOT, "dist");
 const PAGES_DIR = join(ROOT, "pages");
 const LAYOUT = "pages/_layout.html";
 const MASCOT = "pages/_mascot.html";
+const FONT_PROFILE = "pages/_font_profile.html";
 const PREPAINT = "pages/_prepaint.html";
 const SETTINGS = "pages/_settings.html";
 const SETTINGS_SCRIPT = "src/ui/settings_window.ts";
@@ -351,12 +352,13 @@ export async function renderPage(
   page: Page,
   assets: PageAssets,
 ): Promise<string> {
-  const [layout, content, mascot, prepaint] = await Promise.all([
+  const desktopOnly = (file: string) =>
+    assets.desktop ? Deno.readTextFile(join(ROOT, file)) : Promise.resolve("");
+  const [layout, content, mascot, fontProfile, prepaint] = await Promise.all([
     Deno.readTextFile(join(ROOT, LAYOUT)),
     Deno.readTextFile(join(PAGES_DIR, page.file)),
-    assets.desktop
-      ? Deno.readTextFile(join(ROOT, MASCOT))
-      : Promise.resolve(""),
+    desktopOnly(MASCOT),
+    desktopOnly(FONT_PROFILE),
     Deno.readTextFile(join(ROOT, PREPAINT)),
   ]);
   const jsonLd = `<script type="application/ld+json">${
@@ -374,7 +376,11 @@ export async function renderPage(
     version: escape(assets.version),
     nav: navigation(page),
     mascot: mascot.trim(),
-    content: fill(content.trim(), { presets: presetOptions() }, page.file),
+    content: fill(
+      content.trim(),
+      { presets: presetOptions(), fontProfile: fontProfile.trim() },
+      page.file,
+    ),
   }, LAYOUT);
 }
 

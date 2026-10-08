@@ -2734,6 +2734,10 @@ summary.rule__head::-webkit-details-marker {
   color: var(--accent-text);
 }
 
+.font-profile__valid {
+  color: var(--success);
+}
+
 .compare {
   margin-bottom: 1.5rem;
   background: var(--surface);

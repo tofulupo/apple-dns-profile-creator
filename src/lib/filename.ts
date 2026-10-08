@@ -24,6 +24,13 @@ export function safeStem(name: string): string {
   return (hyphen > 0 ? cut.slice(0, hyphen) : cut).replace(/-+$/, "");
 }
 
+/** A loaded file's name with `-signed` before `.mobileconfig`, once. */
+export function signedFilename(file: string): string {
+  const stem = file.replace(/\.mobileconfig$/i, "").trim();
+  const unsigned = stem.replace(/-signed$/i, "");
+  return `${unsigned === "" ? NEUTRAL_STEM : unsigned}-signed${EXTENSION}`;
+}
+
 export function profileFilename(
   configs: readonly DnsConfig[],
   options: FilenameOptions,

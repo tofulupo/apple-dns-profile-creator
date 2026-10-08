@@ -1,5 +1,6 @@
 import { appConfig } from "../config.ts";
-import { profileFilename } from "../lib/filename.ts";
+import { shortHash } from "../lib/compare.ts";
+import { profileFilename, signedFilename } from "../lib/filename.ts";
 import { buildProfileXml } from "../lib/profile.ts";
 import type { ConfigSource, DnsConfig, ProfileFormat } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
@@ -32,7 +33,13 @@ import {
   shareProfileInApp,
 } from "./download.ts";
 import { showProfileCount } from "./profile_count.ts";
-import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
+import {
+  enableDrop,
+  type FontProfile,
+  readFontProfile,
+  readProfileFile,
+  uploadError,
+} from "./dropzone.ts";
 import {
   enableSaveMenu,
   enableShareMenu,
@@ -70,6 +77,11 @@ const compareView = element("compareView");
 const compareBody = element("compareBody");
 const compareSummary = element("compareSummary");
 const compareClose = element<HTMLButtonElement>("compareClose");
+// Only the app's build has the font panel (pages/_font_profile.html).
+const fontPanel = document.getElementById("fontPanel");
+const downloadOptions = element("downloadOptions");
+
+let fontProfile: FontProfile | undefined;
 
 let picked: number | undefined;
 let comparing: readonly [number, number] | undefined;
@@ -94,13 +106,23 @@ function syncSaveMenu(): void {
 
 function updateDownloadButton(): void {
   const signed = signing.selected() !== undefined;
-  downloadLabel.textContent = signed
+  if (fontProfile !== undefined) {
+    downloadButton.disabled = saving || !signed;
+    downloadBlocked.hidden = signed;
+    downloadBlocked.textContent = signed
+      ? ""
+      : "Choose Signed with Keychain to sign the font profile.";
+  }
+  downloadLabel.textContent = fontProfile !== undefined
+    ? "Sign and save"
+    : signed
     ? "Download signed profile"
     : canShare
     ? "Download"
     : "Download profile";
-  downloadIcon.classList.toggle("icon--shield-check", signed);
-  downloadIcon.classList.toggle("icon--file-download", !signed);
+  const shield = signed || fontProfile !== undefined;
+  downloadIcon.classList.toggle("icon--shield-check", shield);
+  downloadIcon.classList.toggle("icon--file-download", !shield);
   syncSaveMenu();
 }
 
@@ -435,16 +457,63 @@ function render(): void {
     } marked above before ${
       canShare ? "downloading or sharing" : "downloading"
     }.`;
-  syncSaveMenu();
+  renderFontProfile(count);
+  updateDownloadButton();
 }
 
-async function importFile(file: File): Promise<void> {
+function renderFontProfile(count: number): void {
+  if (count > 0) fontProfile = undefined;
+  const fonts = fontProfile !== undefined;
+  downloadOptions.hidden = fonts;
+  shareButton.hidden = fonts || !canShare;
+  if (fontPanel === null) return;
+  fontPanel.hidden = !fonts;
+  if (fontProfile === undefined) return;
+  emptyState.hidden = true;
+  downloadPanel.hidden = false;
+  const field = (name: string) =>
+    fontPanel.querySelector<HTMLElement>(`#${name}`);
+  const file = field("fontFile");
+  const fontCount = field("fontCount");
+  const hash = field("fontHash");
+  if (file !== null) file.textContent = fontProfile.file;
+  if (fontCount !== null) fontCount.textContent = String(fontProfile.fonts);
+  if (hash !== null) {
+    hash.textContent = fontProfile.sha256 === undefined
+      ? "Not available"
+      : shortHash(fontProfile.sha256);
+    hash.title = fontProfile.sha256 ?? "";
+  }
+}
+
+/**
+ * Only dropped files, and only in the app: a profile opened from Finder
+ * reaches the page as text, so its hash wouldn't match the file's.
+ */
+async function importFont(file: File): Promise<boolean> {
+  if (desktopBindings() === undefined || fontPanel === null) return false;
+  let found: FontProfile | undefined;
+  try {
+    found = await readFontProfile(file);
+  } catch (error) {
+    setFieldError(emptyState, uploadError(error));
+    return true;
+  }
+  if (found === undefined) return false;
+  fontProfile = found;
+  setFieldError(emptyState, null);
+  render();
+  return true;
+}
+
+async function importFile(file: File, dropped = false): Promise<void> {
   let configs: DnsConfig[];
   let warnings: string[];
   try {
     ({ configs, warnings } = await readProfileFile(file));
   } catch (error) {
     showNotices(importNotice, []);
+    if (dropped && await importFont(file)) return;
     setFieldError(emptyState, uploadError(error));
     return;
   }
@@ -503,8 +572,28 @@ function selectedFormat(): ProfileFormat {
   return input("declarationsChk").checked ? "declarations" : "payload";
 }
 
+async function downloadFont(profile: FontProfile): Promise<void> {
+  const signWith = signing.selected();
+  if (signWith === undefined) return;
+  saving = true;
+  updateDownloadButton();
+  try {
+    await downloadProfile(signedFilename(profile.file), profile.xml, signWith);
+  } catch (error) {
+    await tell(
+      `Could not save the profile: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  } finally {
+    saving = false;
+    render();
+  }
+}
+
 async function download(): Promise<void> {
   if (saving) return;
+  if (fontProfile !== undefined) return downloadFont(fontProfile);
   const format = selectedFormat();
   const xml = profileXml(format);
   if (xml === undefined) return;
@@ -534,7 +623,7 @@ async function download(): Promise<void> {
 }
 
 async function share(): Promise<void> {
-  if (saving) return;
+  if (saving || fontProfile !== undefined) return;
   const format = selectedFormat();
   const xml = profileXml(format);
   if (xml === undefined) return;
@@ -603,10 +692,13 @@ function init(): void {
   bindNeutralName();
   signing = enableSigning(updateDownloadButton);
   downloadButton.addEventListener("click", () => void download());
-  shareButton.hidden = !canShare;
   shareButton.addEventListener("click", () => void share());
   updateDownloadButton();
-  enableDrop(emptyZone, (file) => void importFile(file));
+  enableDrop(emptyZone, (file) => void importFile(file, true));
+  fontPanel?.querySelector("#fontClose")?.addEventListener("click", () => {
+    fontProfile = undefined;
+    render();
+  });
   deleteAllButton.addEventListener("click", async () => {
     if (!await ask("Delete all configurations on this page?")) return;
     persist(() => store.clear());
