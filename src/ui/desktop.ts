@@ -66,7 +66,7 @@ export function tauriBindings(
         filename,
         xml,
         signWith: signWith ?? null,
-      }) as Promise<void>,
+      }) as Promise<string>,
     shareProfile: (filename, xml, signWith, { x, y, width, height }) =>
       invoke("share_profile", {
         filename,

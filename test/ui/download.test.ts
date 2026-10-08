@@ -4,6 +4,7 @@ import { expect } from "@std/expect";
 import {
   asError,
   canShareProfile,
+  downloadProfile,
   profileFile,
   shareProfile,
   shareProfileInApp,
@@ -101,19 +102,30 @@ describe("in the desktop app", () => {
     delete global.__TAURI__;
   });
 
-  function fakeApp(fail = false) {
+  function fakeApp(fail = false, result?: unknown) {
     const calls: [string, Record<string, unknown> | undefined][] = [];
     global.__TAURI__ = {
       core: {
         invoke: (command, args) => {
           calls.push([command, args]);
-          return fail ? Promise.reject("Keychain said no") : Promise.resolve();
+          return fail
+            ? Promise.reject("Keychain said no")
+            : Promise.resolve(result);
         },
       },
       event: { listen: () => Promise.resolve() },
     };
     return calls;
   }
+
+  it("saves under the name the app reports, numbered if taken", async () => {
+    fakeApp(false, "quad9-2.mobileconfig");
+    expect(await downloadProfile("quad9.mobileconfig", "<plist/>"))
+      .toBe("quad9-2.mobileconfig");
+    fakeApp(false, undefined);
+    expect(await downloadProfile("quad9.mobileconfig", "<plist/>"))
+      .toBe("quad9.mobileconfig");
+  });
 
   it("can always share, through the macOS share menu", () => {
     fakeApp();

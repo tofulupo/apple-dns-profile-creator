@@ -31,8 +31,15 @@ export interface Anchor {
 }
 
 export interface DesktopBindings {
-  /** Saves to ~/Downloads without overwriting, signed with `signWith` if set. */
-  saveProfile(filename: string, xml: string, signWith?: string): Promise<void>;
+  /**
+   * Saves to ~/Downloads without overwriting, signed with `signWith` if set.
+   * Resolves to the file name used, numbered if `filename` was taken.
+   */
+  saveProfile(
+    filename: string,
+    xml: string,
+    signWith?: string,
+  ): Promise<string>;
 
   /** Opens the share menu below `anchor`; resolves once the menu is open. */
   shareProfile(

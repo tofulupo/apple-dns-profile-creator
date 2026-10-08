@@ -87,14 +87,15 @@ async fn list_signing_identities() -> Result<Vec<SigningIdentity>, String> {
     blocking(|| signing::keychain().list()).await
 }
 
-/// Saves the profile to ~/Downloads, signed with `sign_with` if given.
+/// Saves the profile to ~/Downloads, signed with `sign_with` if given, and
+/// returns the file name it was saved under, numbered if the name was taken.
 #[tauri::command]
 async fn save_profile(
     window: WebviewWindow,
     filename: String,
     xml: String,
     sign_with: Option<String>,
-) -> Result<(), String> {
+) -> Result<String, String> {
     profile::check(&xml)?;
     let (contents, signed_by) = match sign_with {
         Some(id) => {
@@ -153,7 +154,7 @@ async fn save_profile(
         )
         .await?;
     }
-    Ok(())
+    Ok(name)
 }
 
 /// Opens the share menu for the profile below `anchor`, signed with `sign_with` if given.

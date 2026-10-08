@@ -21,19 +21,23 @@ export function asError(error: unknown): Error {
   return error instanceof Error ? error : new Error(String(error));
 }
 
+/**
+ * Saves the profile and resolves to the name it got: the app's, numbered if
+ * taken; in a browser the one asked for, since a renamed copy isn't reported.
+ */
 export async function downloadProfile(
   filename: string,
   xml: string,
   signWith?: string,
-): Promise<void> {
+): Promise<string> {
   const save = desktopSave();
   if (save !== undefined) {
     try {
-      await save(filename, xml, signWith);
+      const saved = await save(filename, xml, signWith);
+      return typeof saved === "string" && saved !== "" ? saved : filename;
     } catch (error) {
       throw asError(error);
     }
-    return;
   }
 
   if (signWith !== undefined) {
@@ -52,6 +56,7 @@ export async function downloadProfile(
 
   // Give the browser a moment to start the download.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  return filename;
 }
 
 export function profileFile(filename: string, xml: string): File {
