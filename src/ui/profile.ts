@@ -1,6 +1,7 @@
 import { appConfig } from "../config.ts";
 import { shortHash } from "../lib/compare.ts";
 import { profileFilename, signedFilename } from "../lib/filename.ts";
+import { importProfileXml } from "../lib/import.ts";
 import { buildProfileXml } from "../lib/profile.ts";
 import type { ConfigSource, DnsConfig, ProfileFormat } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
@@ -38,6 +39,7 @@ import {
   type FontProfile,
   readFontProfile,
   readProfileFile,
+  sha256,
   uploadError,
 } from "./dropzone.ts";
 import {
@@ -572,6 +574,27 @@ function selectedFormat(): ProfileFormat {
   return input("declarationsChk").checked ? "declarations" : "payload";
 }
 
+/**
+ * Every card now comes from the file just saved: its name, identifier, scope
+ * and hash. Of a signed file the hash is the profile's inside the signature.
+ */
+async function markSaved(
+  paradigm: ProfileFormat,
+  file: string,
+  xml: string,
+): Promise<void> {
+  const { profileId, systemScope } = importProfileXml(xml);
+  const hash = await sha256(xml);
+  persist(() =>
+    store.markSaved(paradigm, {
+      file,
+      ...(profileId === undefined ? {} : { profileId }),
+      ...(hash === undefined ? {} : { sha256: hash }),
+      ...(systemScope === undefined ? {} : { systemScope }),
+    })
+  );
+}
+
 async function downloadFont(profile: FontProfile): Promise<void> {
   const signWith = signing.selected();
   if (signWith === undefined) return;
@@ -604,12 +627,12 @@ async function download(): Promise<void> {
   syncSaveMenu();
   try {
     const signWith = signing.selected();
-    await downloadProfile(
+    const saved = await downloadProfile(
       filenameFor(signWith !== undefined),
       xml,
       signWith,
     );
-    persist(() => store.setParadigm(format));
+    await markSaved(format, saved, xml);
   } catch (error) {
     await tell(
       `Could not save the profile: ${
@@ -643,7 +666,7 @@ async function share(): Promise<void> {
       );
     } else {
       const shared = await shareProfile(filenameFor(false), xml);
-      if (shared) persist(() => store.setParadigm(format));
+      if (shared) await markSaved(format, filenameFor(false), xml);
     }
   } catch (error) {
     await tell(

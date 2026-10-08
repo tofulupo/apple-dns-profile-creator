@@ -57,7 +57,7 @@ export interface ConfigStore {
   has(config: DnsConfig): boolean;
   add(...configs: readonly DnsConfig[]): void;
   update(original: DnsConfig, next: DnsConfig): void;
-  setParadigm(paradigm: ProfileFormat): void;
+  markSaved(paradigm: ProfileFormat, source: ConfigSource): void;
   remove(config: DnsConfig): void;
   clear(): void;
   startEdit(config: DnsConfig): void;
@@ -228,8 +228,8 @@ export function createConfigStore(storage: StorageArea): ConfigStore {
       write(configs);
     },
 
-    setParadigm(paradigm) {
-      write(read().map((config) => ({ ...config, paradigm })));
+    markSaved(paradigm, source) {
+      write(read().map((config) => ({ ...config, paradigm, source })));
     },
 
     remove(target) {

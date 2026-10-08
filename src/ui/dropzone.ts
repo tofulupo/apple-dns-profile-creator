@@ -9,7 +9,7 @@ import type { ConfigSource } from "../lib/types.ts";
 export const DEPRECATED_FORMAT_NOTE =
   "Legacy DNS payload, deprecated by Apple but still working on iOS/macOS 27 and later. Use the Declaration format instead.";
 
-async function sha256(
+export async function sha256(
   content: string | Uint8Array<ArrayBuffer>,
 ): Promise<string | undefined> {
   const subtle = globalThis.crypto?.subtle as SubtleCrypto | undefined;

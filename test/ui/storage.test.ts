@@ -165,17 +165,27 @@ describe("configuration list", () => {
     expect(store.list()).toEqual([config({ name: "Kept", source })]);
   });
 
-  it("sets one paradigm on every entry, duplicates included", () => {
+  it("marks every entry as saved, duplicates included, edits cleared", () => {
     store.add(
       config({ name: "Twin" }),
       config({ name: "Twin" }),
-      config({ name: "Imported", paradigm: "payload" }),
+      config({
+        name: "Imported",
+        paradigm: "payload",
+        source: { file: "quad9-signed.mobileconfig", edited: true },
+      }),
     );
-    store.setParadigm("declarations");
-    expect(store.list().map((c) => c.paradigm)).toEqual([
-      "declarations",
-      "declarations",
-      "declarations",
+    const saved = {
+      file: "quad9.mobileconfig",
+      profileId: "local.encrypted-dns.1",
+      sha256: "aa",
+      systemScope: true,
+    };
+    store.markSaved("declarations", saved);
+    expect(store.list().map((c) => [c.paradigm, c.source])).toEqual([
+      ["declarations", saved],
+      ["declarations", saved],
+      ["declarations", saved],
     ]);
   });
 

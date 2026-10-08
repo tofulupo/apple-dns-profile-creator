@@ -2,7 +2,11 @@ import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
 import { buildProfileXml } from "../../src/lib/profile.ts";
-import { readFontProfile, readProfileFile } from "../../src/ui/dropzone.ts";
+import {
+  readFontProfile,
+  readProfileFile,
+  sha256,
+} from "../../src/ui/dropzone.ts";
 import { config } from "../helpers/configs.ts";
 import { stubUuid } from "../helpers/uuid.ts";
 
@@ -26,6 +30,12 @@ describe("readProfileFile", () => {
     expect(first?.systemScope).toBe(true);
     expect(first?.sha256).toMatch(/^[0-9a-f]{64}$/);
     expect(second).toEqual(first);
+  });
+
+  it("hashes a saved profile the way it hashed it when saving", async () => {
+    const file = profileFile("quad9.mobileconfig");
+    const { configs } = await readProfileFile(file);
+    expect(configs[0]?.source?.sha256).toBe(await sha256(await file.text()));
   });
 
   it("leaves a font profile to the font panel", async () => {
