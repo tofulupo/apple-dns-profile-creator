@@ -323,7 +323,7 @@ function writeAddresses(addresses: readonly string[]): string[] {
   for (const field of addressFields) {
     setFieldError(addressFieldOf(field), null);
   }
-  if (ipv4.length + ipv6.length > 0) addressDisclosure.open = true;
+  addressDisclosure.open = ipv4.length + ipv6.length > 0;
   updateAddresses();
   return dropped;
 }
