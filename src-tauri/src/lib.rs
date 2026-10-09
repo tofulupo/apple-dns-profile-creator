@@ -2,6 +2,7 @@ mod dialog;
 mod menu;
 mod navigation;
 mod opened;
+mod private;
 mod profile;
 mod save;
 mod share;
@@ -58,6 +59,7 @@ fn page_ready(window: WebviewWindow, background: Option<[u8; 3]>) -> Result<(), 
             .map_err(|error| error.to_string())?;
     }
     if window.label() == MAIN_WINDOW {
+        tighten_folders(window.app_handle());
         show_once(&window)
     } else {
         show_if_hidden(&window)
@@ -328,6 +330,33 @@ fn remember_size(window: &tauri::Window, size: PhysicalSize<u32>) {
     }
 }
 
+/// Where the app and its web view keep files: the window size, shared
+/// profiles, and the pages' storage with the cards.
+fn app_folders(app: &AppHandle) -> Vec<PathBuf> {
+    let path = app.path();
+    let folders = [
+        path.app_config_dir(),
+        path.app_cache_dir(),
+        path.app_data_dir(),
+    ]
+    .into_iter()
+    .filter_map(Result::ok);
+    #[cfg(target_os = "macos")]
+    let folders = folders.chain(
+        path.home_dir()
+            .map(|home| home.join("Library/WebKit").join(&app.config().identifier)),
+    );
+    folders.collect()
+}
+
+fn tighten_folders(app: &AppHandle) {
+    for folder in app_folders(app) {
+        if let Err(error) = private::tighten(&folder) {
+            eprintln!("Could not make {} private: {error}", folder.display());
+        }
+    }
+}
+
 fn clean_up_shares(app: &AppHandle) {
     match share::folder(app) {
         Ok(folder) => share::clean_up(&folder),
@@ -361,6 +390,7 @@ pub fn run() {
         .on_menu_event(|app, event| menu::handle(app, &event))
         .setup(|app| {
             clean_up_shares(app.handle());
+            tighten_folders(app.handle());
             let window = create_window(app.handle(), MAIN_WINDOW)?;
             if let Some(size) = window_size::load(&window_size_path(app.handle())?) {
                 window.set_size(size.logical())?;

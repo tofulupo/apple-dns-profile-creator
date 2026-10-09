@@ -30,9 +30,10 @@ pub fn folder(app: &AppHandle) -> Result<PathBuf, String> {
 
 pub fn write(folder: &Path, requested: &str, contents: &[u8]) -> io::Result<PathBuf> {
     let subfolder = folder.join(NEXT.fetch_add(1, Ordering::Relaxed).to_string());
-    fs::create_dir_all(&subfolder)?;
+    crate::private::create_dir(folder)?;
+    crate::private::create_dir(&subfolder)?;
     let path = subfolder.join(profile_filename(requested));
-    fs::write(&path, contents)?;
+    crate::private::write(&path, contents)?;
     Ok(path)
 }
 
@@ -161,6 +162,17 @@ mod tests {
         }
         assert_eq!(fs::read(&first).unwrap(), b"one");
         assert_eq!(fs::read(&second).unwrap(), b"two");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn writes_shares_only_the_user_can_read() {
+        let temp = tempfile::tempdir().unwrap();
+        let folder = temp.path().join(FOLDER);
+        let path = write(&folder, "a.mobileconfig", b"x").unwrap();
+        assert_eq!(crate::private::mode(&path), 0o600);
+        assert_eq!(crate::private::mode(path.parent().unwrap()), 0o700);
+        assert_eq!(crate::private::mode(&folder), 0o700);
     }
 
     #[test]

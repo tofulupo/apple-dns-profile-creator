@@ -55,10 +55,13 @@ pub fn load(path: &Path) -> Option<WindowSize> {
 
 pub fn save(path: &Path, size: WindowSize) -> io::Result<()> {
     if let Some(folder) = path.parent() {
-        fs::create_dir_all(folder)?;
+        crate::private::create_dir(folder)?;
     }
     let temporary = path.with_extension("json.tmp");
-    fs::write(&temporary, format!("{}\n", serde_json::to_string(&size)?))?;
+    crate::private::write(
+        &temporary,
+        format!("{}\n", serde_json::to_string(&size)?).as_bytes(),
+    )?;
     fs::rename(&temporary, path)
 }
 
@@ -131,6 +134,16 @@ mod tests {
             .map(|entry| entry.unwrap().file_name())
             .collect();
         assert_eq!(names, [FILENAME]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn saves_a_file_only_the_user_can_read() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("app").join(FILENAME);
+        save(&path, WindowSize::new(1000.0, 700.0).unwrap()).unwrap();
+        assert_eq!(crate::private::mode(&path), 0o600);
+        assert_eq!(crate::private::mode(&folder.path().join("app")), 0o700);
     }
 
     #[test]
