@@ -1,7 +1,12 @@
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { parseXml, XmlParseError } from "../../src/lib/xml.ts";
+import {
+  MAX_NESTING,
+  NESTED_TOO_DEEPLY,
+  parseXml,
+  XmlParseError,
+} from "../../src/lib/xml.ts";
 
 describe("parseXml", () => {
   it("reads the root element and its attributes", () => {
@@ -97,6 +102,13 @@ describe("parseXml rejects malformed input", () => {
       expect(() => parseXml(source)).toThrow(XmlParseError);
     });
   }
+
+  it("reads elements nested up to the limit, and refuses one level more", () => {
+    const nested = (depth: number) =>
+      "<a>".repeat(depth) + "x" + "</a>".repeat(depth);
+    expect(() => parseXml(nested(MAX_NESTING))).not.toThrow();
+    expect(() => parseXml(nested(MAX_NESTING + 1))).toThrow(NESTED_TOO_DEEPLY);
+  });
 
   it("reports the line number", () => {
     try {

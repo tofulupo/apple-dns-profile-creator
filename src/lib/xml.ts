@@ -12,6 +12,15 @@ export interface XmlElement {
   readonly text: string;
 }
 
+/**
+ * Profiles the app builds go at most 10 elements deep. Must match MAX_NESTING in
+ * src-tauri/src/profile.rs; a test checks both.
+ */
+export const MAX_NESTING = 64;
+
+export const NESTED_TOO_DEEPLY =
+  "This file is nested too deeply to be a configuration profile.";
+
 const NAME_CHAR = /[A-Za-z0-9_\-:.]/;
 const WHITESPACE = /\s/;
 
@@ -126,7 +135,8 @@ export function parseXml(source: string): XmlElement {
     return source.slice(start, i);
   }
 
-  function parseElement(): XmlElement {
+  function parseElement(depth: number): XmlElement {
+    if (depth > MAX_NESTING) throw new XmlParseError(NESTED_TOO_DEEPLY);
     if (source[i] !== "<") fail("Expected '<'");
     i++;
     const name = readName();
@@ -194,7 +204,7 @@ export function parseXml(source: string): XmlElement {
       }
 
       if (source[i] === "<") {
-        children.push(parseElement());
+        children.push(parseElement(depth + 1));
         continue;
       }
 
@@ -207,7 +217,7 @@ export function parseXml(source: string): XmlElement {
 
   skipMisc();
   if (i >= source.length) fail("Document contains no root element");
-  const root = parseElement();
+  const root = parseElement(1);
   skipMisc();
   if (i < source.length) fail("Unexpected content after the root element");
   return root;

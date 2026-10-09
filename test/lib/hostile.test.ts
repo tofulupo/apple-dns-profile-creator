@@ -2,6 +2,7 @@ import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
 import { importProfileXml } from "../../src/lib/import.ts";
+import { MAX_NESTING, NESTED_TOO_DEEPLY } from "../../src/lib/xml.ts";
 
 const HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n';
 
@@ -27,12 +28,26 @@ describe("hostile profiles", () => {
     expect(result.configs.map((config) => config.name)).toEqual(["&c;"]);
   });
 
-  it("end in an error when dictionaries nest thousands of levels deep", () => {
+  it("are refused in plain words when they nest too deeply", () => {
     const depth = 100_000;
     const xml = HEAD + '<plist version="1.0">' +
       "<dict><key>k</key>".repeat(depth) + "<string>x</string>" +
       "</dict>".repeat(depth) + "</plist>";
-    expect(() => importProfileXml(xml)).toThrow();
+    let message = "";
+    try {
+      importProfileXml(xml);
+    } catch (error) {
+      message = error instanceof Error ? error.message : String(error);
+    }
+    expect(message).toBe(NESTED_TOO_DEEPLY);
+    expect(message).not.toMatch(/stack/i);
+  });
+
+  it("nest no deeper than the app allows when signing", async () => {
+    const rust = await Deno.readTextFile(
+      new URL("../../src-tauri/src/profile.rs", import.meta.url),
+    );
+    expect(rust).toContain(`const MAX_NESTING: usize = ${MAX_NESTING};`);
   });
 
   it("refuse a binary property list", () => {

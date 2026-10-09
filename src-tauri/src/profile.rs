@@ -334,10 +334,49 @@ fn check_font(payload: &Value) -> Result<(), String> {
     }
 }
 
+/// The plist crate parses nested elements recursively and overflows the stack
+/// on deep nesting. Must match MAX_NESTING in src/lib/xml.ts; a test checks
+/// both.
+const MAX_NESTING: usize = 64;
+
+/// Whether elements in `xml` nest deeper than MAX_NESTING. Comments,
+/// declarations, CDATA and processing instructions don't count.
+fn nested_too_deeply(xml: &str) -> bool {
+    let mut depth = 0usize;
+    let mut rest = xml;
+    while let Some(at) = rest.find('<') {
+        rest = &rest[at..];
+        let skip_to = |end: &str| rest.find(end).map_or(rest.len(), |at| at + end.len());
+        let next = if rest.starts_with("<!--") {
+            skip_to("-->")
+        } else if rest.starts_with("<![CDATA[") {
+            skip_to("]]>")
+        } else if rest.starts_with("<?") {
+            skip_to("?>")
+        } else if rest.starts_with("<!") {
+            skip_to(">")
+        } else {
+            let end = skip_to(">");
+            let tag = &rest[..end];
+            if tag.starts_with("</") {
+                depth = depth.saturating_sub(1);
+            } else if !tag.ends_with("/>") {
+                depth += 1;
+                if depth > MAX_NESTING {
+                    return true;
+                }
+            }
+            end
+        };
+        rest = &rest[next..];
+    }
+    false
+}
+
 /// Which kind of profile `xml` is: DNS settings as the pages build them, or
 /// fonts by Apple's rules. The app saves, shares and signs nothing else.
 pub fn check(xml: &str) -> Result<Kind, String> {
-    if xml.len() as u64 > MAX_PROFILE_BYTES {
+    if xml.len() as u64 > MAX_PROFILE_BYTES || nested_too_deeply(xml) {
         return Err(REFUSED.into());
     }
     let parsed = Value::from_reader_xml(xml.as_bytes()).map_err(|_| REFUSED.to_owned())?;
@@ -629,6 +668,24 @@ mod tests {
             top.replace_range(at..at + key.len() + 11, "<key>Unknown</key>");
             assert_eq!(check(&top), Err(REFUSED.into()), "{key} on the profile");
         }
+    }
+
+    #[test]
+    fn refuses_a_profile_nested_deeper_than_any_it_builds() {
+        let nested = |depth: usize| {
+            format!(
+                "<plist version=\"1.0\">{}<string>x</string>{}</plist>",
+                "<dict><key>k</key>".repeat(depth),
+                "</dict>".repeat(depth)
+            )
+        };
+        assert!(!nested_too_deeply(&nested(MAX_NESTING - 2)));
+        assert!(nested_too_deeply(&nested(MAX_NESTING)));
+        assert_eq!(check(&nested(100_000)), Err(REFUSED.into()));
+        assert!(!nested_too_deeply(FULL));
+        assert!(!nested_too_deeply(
+            "<!-- <a><a><a> --><plist><![CDATA[<b><b>]]><true/></plist>"
+        ));
     }
 
     #[test]
