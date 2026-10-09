@@ -34,7 +34,7 @@ function savePreference(id: string | undefined): void {
   }
 }
 
-function optionLabel(
+export function optionLabel(
   identity: SigningIdentity,
   all: readonly SigningIdentity[],
 ): string {

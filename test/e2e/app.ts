@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach } from "@std/testing/bdd";
 import { emptyDir } from "@std/fs";
+import { join } from "@std/path";
 import { fromFileUrl } from "@std/path";
 import { remote } from "webdriverio";
 
@@ -19,6 +20,7 @@ const APP = fromFileUrl(
 const HOME = fromFileUrl(
   new URL("../../src-tauri/target/e2e-home", import.meta.url),
 );
+const DOWNLOADS = join(HOME, "downloads");
 const PORT = 4598;
 
 function ensureFree(port: number): void {
@@ -70,6 +72,11 @@ export function useApp(): () => App {
 
   beforeAll(async () => {
     await emptyDir(HOME);
+    await Deno.mkdir(`${HOME}/config`, { recursive: true });
+    await Deno.writeTextFile(
+      `${HOME}/config/user-dirs.dirs`,
+      `XDG_DOWNLOAD_DIR="${DOWNLOADS}"\n`,
+    );
     driver = await startDriver();
     browser = await remote({
       hostname: "127.0.0.1",
@@ -86,6 +93,7 @@ export function useApp(): () => App {
   });
 
   beforeEach(async () => {
+    await emptyDir(DOWNLOADS);
     await app().execute(() => localStorage.clear());
     await app().url("tauri://localhost/");
   });
@@ -110,6 +118,70 @@ export async function press(
 ): Promise<void> {
   await element.execute((target) => target.scrollIntoView({ block: "center" }));
   await element.click();
+}
+
+export async function openTab(app: App, name: string): Promise<void> {
+  await app.$("nav.tabs").$(`a*=${name}`).click();
+}
+
+function downloaded(): Set<string> {
+  return new Set([...Deno.readDirSync(DOWNLOADS)].map((entry) => entry.name));
+}
+
+// The app saves before it asks "Open it now?", and that native dialog stays
+// open, so the page never hears back. The file is read from disk instead.
+// When the next test leaves the page, Tauri sends the unanswered save again,
+// so only a file that appears after this click counts.
+export async function download(app: App): Promise<string> {
+  const before = downloaded();
+  await press(app.$("#downloadBtn"));
+  for (let attempt = 0; attempt < 50; attempt++) {
+    for (const name of downloaded()) {
+      if (before.has(name)) continue;
+      const text = Deno.readTextFileSync(join(DOWNLOADS, name));
+      if (text.trimEnd().endsWith("</plist>")) return text;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  throw new Error("The app saved no profile");
+}
+
+export async function loadFile(
+  app: App,
+  name: string,
+  text: string,
+): Promise<void> {
+  await app.execute(
+    (name, text) => {
+      const input = document.getElementById("fileupload") as HTMLInputElement;
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([text], name));
+      input.files = transfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    },
+    name,
+    text,
+  );
+}
+
+export function cardRows(
+  app: App,
+  card = 0,
+): Promise<Record<string, string[]>> {
+  return app.execute((card) => {
+    const article = document.querySelectorAll("#dynamicList .profile-card")[
+      card
+    ];
+    const rows: Record<string, string[]> = {};
+    for (const term of article?.querySelectorAll("dt") ?? []) {
+      const definition = term.nextElementSibling;
+      const items = definition?.querySelectorAll(".badge, li") ?? [];
+      rows[term.textContent ?? ""] = items.length > 0
+        ? [...items].map((item) => item.textContent ?? "")
+        : [definition?.textContent ?? ""];
+    }
+    return rows;
+  }, card);
 }
 
 export function cardNames(app: App): Promise<string[]> {
