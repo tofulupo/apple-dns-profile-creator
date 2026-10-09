@@ -189,6 +189,24 @@ fn take_opened_profile(opened: State<'_, OpenedProfiles>) -> Option<OpenedProfil
     opened.take()
 }
 
+/// The text of a signed profile dropped on the page, after the same signature
+/// check as an opened one. `None` when the user doesn't open it after all.
+#[tauri::command]
+async fn open_dropped_profile(
+    app: AppHandle,
+    name: String,
+    bytes: Vec<u8>,
+) -> Result<Option<String>, String> {
+    blocking(move || {
+        let read = opened::read_dropped(name, bytes)?;
+        if read.broken_signature && !open_anyway(&app, &read.profile.name) {
+            return Ok(None);
+        }
+        Ok(Some(read.profile.text))
+    })
+    .await
+}
+
 pub(crate) fn open_profiles(app: AppHandle, paths: Vec<PathBuf>) {
     if paths.is_empty() {
         return;
@@ -378,6 +396,7 @@ pub fn run() {
             save_profile,
             share_profile,
             take_opened_profile,
+            open_dropped_profile,
             dialog::ask,
             dialog::tell,
             menu::set_save_action,

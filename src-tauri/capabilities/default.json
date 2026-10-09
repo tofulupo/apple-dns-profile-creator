@@ -12,6 +12,7 @@
     "allow-save-profile",
     "allow-share-profile",
     "allow-take-opened-profile",
+    "allow-open-dropped-profile",
     "allow-ask",
     "allow-tell",
     "allow-set-save-action",

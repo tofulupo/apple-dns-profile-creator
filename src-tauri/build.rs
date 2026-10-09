@@ -5,6 +5,7 @@ const COMMANDS: &[&str] = &[
     "save_profile",
     "share_profile",
     "take_opened_profile",
+    "open_dropped_profile",
     "ask",
     "tell",
     "set_save_action",

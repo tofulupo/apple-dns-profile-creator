@@ -60,7 +60,7 @@ pub fn read_profile(path: &Path) -> Result<ReadProfile, String> {
         || path.display().to_string(),
         |name| name.to_string_lossy().into_owned(),
     );
-    let failed = |reason: &str| format!("Could not open “{name}”.\n\n{reason}");
+    let failed = |reason: &str| could_not_open(&name, reason);
 
     let file = File::open(path).map_err(|error| failed(&error.to_string()))?;
     let metadata = file
@@ -75,20 +75,37 @@ pub fn read_profile(path: &Path) -> Result<ReadProfile, String> {
         .read_to_end(&mut bytes)
         .map_err(|error| failed(&error.to_string()))?;
     if metadata.len() > MAX_PROFILE_BYTES || bytes.len() as u64 > MAX_PROFILE_BYTES {
-        return Err(failed("It is too large to be a configuration profile."));
+        return Err(failed(TOO_LARGE));
     }
+    Ok(unwrap_profile(name, bytes))
+}
 
+/// A profile dropped on the page, checked as `read_profile` checks an opened one.
+pub fn read_dropped(name: String, bytes: Vec<u8>) -> Result<ReadProfile, String> {
+    if bytes.len() as u64 > MAX_PROFILE_BYTES {
+        return Err(could_not_open(&name, TOO_LARGE));
+    }
+    Ok(unwrap_profile(name, bytes))
+}
+
+const TOO_LARGE: &str = "It is too large to be a configuration profile.";
+
+fn could_not_open(name: &str, reason: &str) -> String {
+    format!("Could not open “{name}”.\n\n{reason}")
+}
+
+fn unwrap_profile(name: String, bytes: Vec<u8>) -> ReadProfile {
     let (bytes, broken_signature) = match unwrap_signed(&bytes) {
         Some(unwrapped) => (unwrapped.content, !unwrapped.intact),
         None => (bytes, false),
     };
-    Ok(ReadProfile {
+    ReadProfile {
         profile: OpenedProfile {
             name,
             text: String::from_utf8_lossy(&bytes).into_owned(),
         },
         broken_signature,
-    })
+    }
 }
 
 #[cfg(test)]
@@ -167,6 +184,57 @@ mod tests {
         file.set_len(MAX_PROFILE_BYTES + 1).unwrap();
         let error = read_profile(&path).unwrap_err();
         assert!(error.ends_with("It is too large to be a configuration profile."));
+    }
+
+    /// tests/fixtures/signed.mobileconfig, signed by `openssl cms -sign`.
+    const SIGNED: &[u8] = include_bytes!("../tests/fixtures/signed.mobileconfig");
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn opens_an_intact_dropped_profile_without_a_question() {
+        let read = read_dropped("signed.mobileconfig".into(), SIGNED.to_vec()).unwrap();
+        assert!(!read.broken_signature);
+        assert!(read.profile.text.starts_with("<?xml"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn catches_a_dropped_profile_changed_after_signing() {
+        let at = SIGNED
+            .windows(5)
+            .position(|window| window == b"quad9")
+            .unwrap();
+        let mut changed = SIGNED.to_vec();
+        changed[at + 4] = b'8';
+        let read = read_dropped("signed.mobileconfig".into(), changed).unwrap();
+        assert!(read.broken_signature);
+        assert!(read.profile.text.contains("quad8"));
+    }
+
+    #[test]
+    fn flags_a_damaged_dropped_profile_and_leaves_a_plain_one_alone() {
+        let damaged = read_dropped("a.mobileconfig".into(), SIGNED[..SIGNED.len() / 2].to_vec());
+        assert!(damaged.unwrap().broken_signature);
+        let plain = read_dropped("b.mobileconfig".into(), b"<plist>profile</plist>".to_vec());
+        assert_eq!(
+            plain,
+            Ok(ReadProfile {
+                profile: OpenedProfile {
+                    name: "b.mobileconfig".into(),
+                    text: "<plist>profile</plist>".into(),
+                },
+                broken_signature: false,
+            })
+        );
+    }
+
+    #[test]
+    fn refuses_a_dropped_file_too_large_to_be_a_profile() {
+        let bytes = vec![b' '; MAX_PROFILE_BYTES as usize + 1];
+        assert_eq!(
+            read_dropped("huge.mobileconfig".into(), bytes),
+            Err("Could not open “huge.mobileconfig”.\n\nIt is too large to be a configuration profile.".into())
+        );
     }
 
     #[test]

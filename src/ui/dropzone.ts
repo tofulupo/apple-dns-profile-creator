@@ -5,9 +5,56 @@ import {
   type ProfileImport,
 } from "../lib/import.ts";
 import type { ConfigSource } from "../lib/types.ts";
+import type { DesktopBindings } from "../desktop/bindings.ts";
+import { desktopBindings } from "./desktop.ts";
+import { asError } from "./download.ts";
 
 export const DEPRECATED_FORMAT_NOTE =
   "Legacy DNS payload, deprecated by Apple but still working on iOS/macOS 27 and later. Use the Declaration format instead.";
+
+export const UNCHECKED_SIGNATURE_NOTE =
+  "Signed. The website can't check the signature.";
+
+/** The tag a DER signed message starts with. A plain profile starts with `<`. */
+const SEQUENCE = 0x30;
+
+export type OpenDropped = DesktopBindings["openDroppedProfile"];
+
+function desktopOpenDropped(): OpenDropped | undefined {
+  const bindings = desktopBindings();
+  return typeof bindings?.openDroppedProfile === "function"
+    ? bindings.openDroppedProfile
+    : undefined;
+}
+
+export interface Unwrapped {
+  readonly file: File;
+  readonly notes: readonly string[];
+}
+
+/**
+ * A dropped or picked file, ready to read. In the app a signed one goes
+ * through the signature check an opened one gets, and comes back as the
+ * profile inside it. Undefined when the user doesn't open it after all.
+ */
+export async function unwrapDropped(
+  file: File,
+  open: OpenDropped | undefined = desktopOpenDropped(),
+): Promise<Unwrapped | undefined> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes[0] !== SEQUENCE) return { file, notes: [] };
+  if (open === undefined) return { file, notes: [UNCHECKED_SIGNATURE_NOTE] };
+  let text: string | null;
+  try {
+    text = await open(file.name, bytes);
+  } catch (error) {
+    throw asError(error);
+  }
+  return text === null ? undefined : {
+    file: new File([text], file.name, { type: file.type }),
+    notes: [],
+  };
+}
 
 export async function sha256(
   content: string | Uint8Array<ArrayBuffer>,

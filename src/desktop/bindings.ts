@@ -70,6 +70,12 @@ export interface DesktopBindings {
   /** The oldest opened profile not yet taken, or null. Use src/ui/opened.ts. */
   takeOpenedProfile(): Promise<OpenedProfile | null>;
 
+  /**
+   * The text of a signed profile dropped on the page, after the same signature
+   * check as an opened one. Null when the user doesn't open it after all.
+   */
+  openDroppedProfile(name: string, bytes: Uint8Array): Promise<string | null>;
+
   /** Calls `listener` when profiles are opened; resolves once listening. */
   onProfilesOpened(listener: () => void): Promise<void>;
 

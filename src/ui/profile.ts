@@ -40,6 +40,7 @@ import {
   readFontProfile,
   readProfileFile,
   sha256,
+  unwrapDropped,
   uploadError,
 } from "./dropzone.ts";
 import {
@@ -512,7 +513,11 @@ async function importFile(file: File, dropped = false): Promise<void> {
   let configs: DnsConfig[];
   let warnings: string[];
   try {
-    ({ configs, warnings } = await readProfileFile(file));
+    const unwrapped = dropped ? await unwrapDropped(file) : { file, notes: [] };
+    if (unwrapped === undefined) return;
+    const read = await readProfileFile(unwrapped.file);
+    configs = read.configs;
+    warnings = [...unwrapped.notes, ...read.warnings];
   } catch (error) {
     showNotices(importNotice, []);
     if (dropped && await importFont(file)) return;

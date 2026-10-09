@@ -40,7 +40,12 @@ import { receiveOpenedProfiles } from "./opened.ts";
 import { holdStillWhenFitting } from "./overscroll.ts";
 import { enablePixelMode } from "./pixel.ts";
 import { signalPageReady } from "./page_ready.ts";
-import { enableDrop, readProfileFile, uploadError } from "./dropzone.ts";
+import {
+  enableDrop,
+  readProfileFile,
+  unwrapDropped,
+  uploadError,
+} from "./dropzone.ts";
 import { showProfileCount } from "./profile_count.ts";
 import { enableSaveMenu, type UpdateSaveMenu } from "./save_menu.ts";
 import { enableSettings } from "./settings.ts";
@@ -687,12 +692,16 @@ function updateProfileCount(): void {
   showProfileCount(store.list().length);
 }
 
-async function handleUpload(file: File): Promise<boolean> {
+async function handleUpload(file: File, dropped = false): Promise<boolean> {
   const uploadField = element("field-fileupload");
   let configs: DnsConfig[];
   let warnings: string[];
   try {
-    ({ configs, warnings } = await readProfileFile(file));
+    const unwrapped = dropped ? await unwrapDropped(file) : { file, notes: [] };
+    if (unwrapped === undefined) return true;
+    const read = await readProfileFile(unwrapped.file);
+    configs = read.configs;
+    warnings = [...unwrapped.notes, ...read.warnings];
   } catch (error) {
     showLoaded(null);
     showNotices(uploadNotice, []);
@@ -763,10 +772,10 @@ function init(): void {
   fileInput.addEventListener("change", () => {
     const file = fileInput.files?.[0];
     fileInput.value = "";
-    if (file !== undefined) void handleUpload(file);
+    if (file !== undefined) void handleUpload(file, true);
   });
 
-  enableDrop(dropzone, (file) => void handleUpload(file));
+  enableDrop(dropzone, (file) => void handleUpload(file, true));
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();

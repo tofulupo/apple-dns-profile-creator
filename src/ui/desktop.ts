@@ -85,6 +85,11 @@ export function tauriBindings(
     tell: (message) => invoke("tell", { message }) as Promise<void>,
     takeOpenedProfile: () =>
       invoke("take_opened_profile") as Promise<OpenedProfile | null>,
+    openDroppedProfile: (name, bytes) =>
+      invoke("open_dropped_profile", {
+        name,
+        bytes: Array.from(bytes),
+      }) as Promise<string | null>,
     onProfilesOpened: async (listener) => {
       await listen(OPENED_EVENT, () => listener());
     },
