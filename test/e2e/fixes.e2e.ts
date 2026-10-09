@@ -50,6 +50,17 @@ describe({
     expect(await notes()).toBe(0);
   });
 
+  it("stays usable after a file too large to be a profile", async () => {
+    await loadFile(app(), "huge.mobileconfig", " ".repeat(5 * 1024 * 1024 + 1));
+
+    await app().$("#field-fileupload .field__error").waitForDisplayed();
+    expect(await app().$("#field-fileupload .field__error").getText()).toBe(
+      "That file is too large to be a configuration profile.",
+    );
+    await addPreset(app(), "Quad9");
+    expect(await cardRows(app())).toHaveProperty("Server");
+  });
+
   it("shows interfaces, rules and features on the card", async () => {
     await addPreset(app(), "Quad9", async () => {
       await press(app().$("#disclosure-rules > summary"));

@@ -15,6 +15,20 @@ export const DEPRECATED_FORMAT_NOTE =
 export const UNCHECKED_SIGNATURE_NOTE =
   "Signed. The website can't check the signature.";
 
+/**
+ * Far above any real profile, which is a few kilobytes. Must match
+ * MAX_PROFILE_BYTES in src-tauri/src/opened.rs; a test checks both.
+ */
+export const MAX_PROFILE_BYTES = 5 * 1024 * 1024;
+
+export const TOO_LARGE =
+  "That file is too large to be a configuration profile.";
+
+/** Refuses a file over the limit before anything reads it. */
+function checkSize(file: File): void {
+  if (file.size > MAX_PROFILE_BYTES) throw new Error(TOO_LARGE);
+}
+
 /** The tag a DER signed message starts with. A plain profile starts with `<`. */
 const SEQUENCE = 0x30;
 
@@ -41,6 +55,7 @@ export async function unwrapDropped(
   file: File,
   open: OpenDropped | undefined = desktopOpenDropped(),
 ): Promise<Unwrapped | undefined> {
+  checkSize(file);
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (bytes[0] !== SEQUENCE) return { file, notes: [] };
   if (open === undefined) return { file, notes: [UNCHECKED_SIGNATURE_NOTE] };
@@ -72,6 +87,7 @@ export async function sha256(
 }
 
 export async function readProfileFile(file: File): Promise<ProfileImport> {
+  checkSize(file);
   const text = await file.text();
   const result = importProfileXml(text);
   if (result.configs.length === 0) {
@@ -110,6 +126,7 @@ export interface FontProfile {
 export async function readFontProfile(
   file: File,
 ): Promise<FontProfile | undefined> {
+  checkSize(file);
   const bytes = new Uint8Array(await file.arrayBuffer());
   let xml: string;
   try {

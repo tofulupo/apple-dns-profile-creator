@@ -3,10 +3,12 @@ import { expect } from "@std/expect";
 
 import { buildProfileXml } from "../../src/lib/profile.ts";
 import {
+  MAX_PROFILE_BYTES,
   type OpenDropped,
   readFontProfile,
   readProfileFile,
   sha256,
+  TOO_LARGE,
   UNCHECKED_SIGNATURE_NOTE,
   unwrapDropped,
   uploadError,
@@ -67,6 +69,62 @@ const SIGNED = new URL(
   "../../src-tauri/tests/fixtures/signed.mobileconfig",
   import.meta.url,
 );
+
+/** A file that records whether anything read its contents. */
+class WatchedFile extends File {
+  read = false;
+  override text(): Promise<string> {
+    this.read = true;
+    return super.text();
+  }
+  override arrayBuffer(): Promise<ArrayBuffer> {
+    this.read = true;
+    return super.arrayBuffer();
+  }
+}
+
+describe("the size limit", () => {
+  const huge = () =>
+    new WatchedFile(
+      [new Uint8Array(MAX_PROFILE_BYTES + 1)],
+      "huge.mobileconfig",
+    );
+
+  it("refuses a file over the limit without reading it", async () => {
+    for (
+      const read of [
+        readProfileFile,
+        readFontProfile,
+        (file: File) => unwrapDropped(file, undefined),
+      ]
+    ) {
+      const file = huge();
+      await expect(read(file)).rejects.toThrow(TOO_LARGE);
+      expect(file.read).toBe(false);
+    }
+  });
+
+  it("still loads a profile at the limit", async () => {
+    const xml = await profileFile("padded.mobileconfig").text();
+    const padded = xml + " ".repeat(
+      MAX_PROFILE_BYTES - new TextEncoder().encode(xml).length,
+    );
+    const file = new File([padded], "padded.mobileconfig");
+    expect(file.size).toBe(MAX_PROFILE_BYTES);
+    const { configs } = await readProfileFile(file);
+    expect(configs).toHaveLength(2);
+  });
+
+  it("is the app's limit for opened files and signing", async () => {
+    const rust = await Deno.readTextFile(
+      new URL("../../src-tauri/src/opened.rs", import.meta.url),
+    );
+    const [, mebibytes] =
+      /pub const MAX_PROFILE_BYTES: u64 = (\d+) \* 1024 \* 1024;/.exec(rust) ??
+        [];
+    expect(Number(mebibytes) * 1024 * 1024).toBe(MAX_PROFILE_BYTES);
+  });
+});
 
 describe("unwrapDropped", () => {
   function app(answer: string | null) {
