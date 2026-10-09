@@ -29,6 +29,32 @@ describe("generated profiles are unchanged", () => {
     });
   }
 
+  // The app's Rust check is tested against this one, so it must cover every
+  // key the declaration format can hold.
+  it("reproduces the declaration fixture of the app's profile check", () => {
+    const xml = buildProfileXml(
+      fullSurfaceConfigs(),
+      {
+        systemScope: true,
+        identifierPrefix: "local.encrypted-dns.",
+        format: "declarations",
+      },
+      stubUuid(),
+    );
+    const fixture = Deno.readTextFileSync(
+      join(
+        here,
+        "..",
+        "..",
+        "src-tauri",
+        "tests",
+        "fixtures",
+        "declarations.mobileconfig",
+      ),
+    );
+    expect(xml).toBe(fixture);
+  });
+
   it("reproduces full-surface", () => {
     const xml = buildProfileXml(
       fullSurfaceConfigs(),

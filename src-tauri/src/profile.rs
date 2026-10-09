@@ -1,4 +1,5 @@
 use plist::{Dictionary, Value};
+use serde_json::Value as Json;
 
 use crate::opened::MAX_PROFILE_BYTES;
 
@@ -30,28 +31,266 @@ fn payload_type(dict: &Dictionary) -> Option<&str> {
     dict.get("PayloadType")?.as_string()
 }
 
-fn declaration_type(data: &Value) -> Option<String> {
-    let json: serde_json::Value = serde_json::from_slice(data.as_data()?).ok()?;
-    Some(json.get("Type")?.as_str()?.to_owned())
+fn is_dns_payload(payload: &Value) -> bool {
+    payload.as_dictionary().is_some_and(|payload| {
+        matches!(
+            payload_type(payload),
+            Some(DNS_PAYLOAD_TYPE | DECLARATIONS_PAYLOAD_TYPE)
+        )
+    })
 }
 
-fn holds_only_dns_settings(payload: &Value) -> bool {
-    let Some(payload) = payload.as_dictionary() else {
-        return false;
-    };
-    match payload_type(payload) {
-        Some(DNS_PAYLOAD_TYPE) => true,
-        Some(DECLARATIONS_PAYLOAD_TYPE) => payload
-            .get("Declarations")
-            .and_then(Value::as_array)
-            .is_some_and(|declarations| {
-                declarations.iter().all(|declaration| {
-                    declaration_type(declaration)
-                        .is_some_and(|kind| DECLARATION_TYPES.contains(&kind.as_str()))
-                })
-            }),
-        _ => false,
+/// The path of the first key or value src/lib/profile.ts doesn't write.
+type Checked = Result<(), String>;
+type Rule = (&'static str, fn(&Json) -> bool);
+
+fn any(_: &Json) -> bool {
+    true
+}
+
+fn string(value: &Json) -> bool {
+    value.is_string()
+}
+
+fn strings(value: &Json) -> bool {
+    value
+        .as_array()
+        .is_some_and(|items| items.iter().all(Json::is_string))
+}
+
+fn boolean(value: &Json) -> bool {
+    value.is_boolean()
+}
+
+fn version_one(value: &Json) -> bool {
+    value.as_i64() == Some(1)
+}
+
+/// Only the keys in `required` and `optional`, each passing its rule.
+fn dict<'a>(
+    value: &'a Json,
+    at: &str,
+    required: &[Rule],
+    optional: &[Rule],
+) -> Result<&'a serde_json::Map<String, Json>, String> {
+    let dict = value.as_object().ok_or_else(|| at.to_owned())?;
+    if let Some((key, _)) = required.iter().find(|(key, _)| !dict.contains_key(*key)) {
+        return Err(format!("{at}.{key} (missing)"));
     }
+    for (key, item) in dict {
+        match required
+            .iter()
+            .chain(optional)
+            .find(|(name, _)| name == key)
+        {
+            Some((_, ok)) if ok(item) => {}
+            _ => return Err(format!("{at}.{key}")),
+        }
+    }
+    Ok(dict)
+}
+
+fn dns_settings(value: &Json, at: &str) -> Checked {
+    let settings = dict(
+        value,
+        at,
+        &[
+            ("DNSProtocol", |v| v == "HTTPS" || v == "TLS"),
+            ("ServerAddresses", strings),
+        ],
+        &[
+            ("ServerURL", string),
+            ("ServerName", string),
+            ("AllowFailover", |v| v == true),
+            ("SupplementalMatchDomains", strings),
+        ],
+    )?;
+    let server = if settings["DNSProtocol"] == "HTTPS" {
+        "ServerURL"
+    } else {
+        "ServerName"
+    };
+    let other = if server == "ServerURL" {
+        "ServerName"
+    } else {
+        "ServerURL"
+    };
+    if !settings.contains_key(server) {
+        return Err(format!("{at}.{server} (missing)"));
+    }
+    if settings.contains_key(other) {
+        return Err(format!("{at}.{other}"));
+    }
+    Ok(())
+}
+
+fn never_connect(value: &Json) -> bool {
+    value.as_array().is_some_and(|parameters| {
+        parameters.iter().all(|parameter| {
+            dict(
+                parameter,
+                "",
+                &[
+                    ("DomainAction", |v| v == "NeverConnect"),
+                    ("Domains", strings),
+                ],
+                &[],
+            )
+            .is_ok()
+        })
+    })
+}
+
+fn on_demand_rules(value: &Json, at: &str) -> Checked {
+    let rules = value.as_array().ok_or_else(|| at.to_owned())?;
+    for (index, rule) in rules.iter().enumerate() {
+        let at = format!("{at}[{index}]");
+        let action = rule
+            .get("Action")
+            .and_then(Json::as_str)
+            .unwrap_or_default();
+        let shape: (&[Rule], &[Rule]) = match action {
+            "Connect" => (
+                &[
+                    ("Action", any),
+                    ("InterfaceTypeMatch", |v| {
+                        v == "WiFi" || v == "Cellular" || v == "Ethernet"
+                    }),
+                ],
+                &[],
+            ),
+            "Disconnect" => (&[("Action", any)], &[("SSIDMatch", strings)]),
+            "EvaluateConnection" => (&[("Action", any), ("ActionParameters", never_connect)], &[]),
+            _ => return Err(format!("{at}.Action")),
+        };
+        dict(rule, &at, shape.0, shape.1)?;
+    }
+    Ok(())
+}
+
+fn dns_payload(value: &Json, at: &str) -> Checked {
+    dict(
+        value,
+        at,
+        &[
+            ("DNSSettings", any),
+            ("OnDemandRules", any),
+            ("PayloadDescription", string),
+            ("PayloadDisplayName", string),
+            ("PayloadIdentifier", string),
+            ("PayloadType", any),
+            ("PayloadUUID", string),
+            ("PayloadVersion", version_one),
+            ("ProhibitDisablement", boolean),
+        ],
+        &[],
+    )?;
+    dns_settings(&value["DNSSettings"], &format!("{at}.DNSSettings"))?;
+    on_demand_rules(&value["OnDemandRules"], &format!("{at}.OnDemandRules"))
+}
+
+fn declaration(value: &Json, at: &str) -> Checked {
+    let kind = value.get("Type").and_then(Json::as_str).unwrap_or_default();
+    if !DECLARATION_TYPES.contains(&kind) {
+        return Err(format!("{at}.Type"));
+    }
+    dict(
+        value,
+        at,
+        &[
+            ("Type", any),
+            ("Identifier", string),
+            ("ServerToken", string),
+            ("Payload", any),
+        ],
+        &[],
+    )?;
+    let payload = &value["Payload"];
+    let at = format!("{at}.Payload");
+    if kind == "com.apple.activation.simple" {
+        dict(payload, &at, &[("StandardConfigurations", strings)], &[])?;
+        return Ok(());
+    }
+    dict(
+        payload,
+        &at,
+        &[
+            ("VisibleName", string),
+            ("DNSSettings", any),
+            ("OnDemandRules", any),
+            ("ProhibitDisablement", boolean),
+        ],
+        &[],
+    )?;
+    dns_settings(&payload["DNSSettings"], &format!("{at}.DNSSettings"))?;
+    on_demand_rules(&payload["OnDemandRules"], &format!("{at}.OnDemandRules"))
+}
+
+fn declarations_payload(value: &Json, plist: &Dictionary, at: &str) -> Checked {
+    dict(
+        value,
+        at,
+        &[
+            ("Declarations", any),
+            ("PayloadDescription", string),
+            ("PayloadDisplayName", string),
+            ("PayloadIdentifier", string),
+            ("PayloadType", any),
+            ("PayloadUUID", string),
+            ("PayloadVersion", version_one),
+        ],
+        &[],
+    )?;
+    let at = format!("{at}.Declarations");
+    let declarations = plist
+        .get("Declarations")
+        .and_then(Value::as_array)
+        .ok_or_else(|| at.clone())?;
+    for (index, data) in declarations.iter().enumerate() {
+        let at = format!("{at}[{index}]");
+        let json: Json = data
+            .as_data()
+            .and_then(|data| serde_json::from_slice(data).ok())
+            .ok_or_else(|| at.clone())?;
+        declaration(&json, &at)?;
+    }
+    Ok(())
+}
+
+/// Exactly the keys and values src/lib/profile.ts writes, at every level.
+fn built_by_the_pages(profile: &Value) -> Checked {
+    let json = serde_json::to_value(profile).map_err(|_| "profile".to_owned())?;
+    dict(
+        &json,
+        "profile",
+        &[
+            ("PayloadContent", any),
+            ("PayloadDescription", string),
+            ("PayloadDisplayName", string),
+            ("PayloadIdentifier", string),
+            ("PayloadRemovalDisallowed", |v| v == false),
+            ("PayloadType", |v| v == "Configuration"),
+            ("PayloadUUID", string),
+            ("PayloadVersion", version_one),
+        ],
+        &[("PayloadScope", |v| v == "System")],
+    )?;
+    let payloads = profile
+        .as_dictionary()
+        .and_then(|profile| profile.get("PayloadContent"))
+        .and_then(Value::as_array)
+        .ok_or("profile.PayloadContent")?;
+    for (index, payload) in payloads.iter().enumerate() {
+        let at = format!("profile.PayloadContent[{index}]");
+        let plist = payload.as_dictionary().ok_or_else(|| at.clone())?;
+        let value = &json["PayloadContent"][index];
+        match payload_type(plist) {
+            Some(DNS_PAYLOAD_TYPE) => dns_payload(value, &at)?,
+            Some(DECLARATIONS_PAYLOAD_TYPE) => declarations_payload(value, plist, &at)?,
+            _ => return Err(format!("{at}.PayloadType")),
+        }
+    }
+    Ok(())
 }
 
 fn is_font_payload(payload: &Value) -> bool {
@@ -101,8 +340,8 @@ pub fn check(xml: &str) -> Result<Kind, String> {
     if xml.len() as u64 > MAX_PROFILE_BYTES {
         return Err(REFUSED.into());
     }
-    let profile = Value::from_reader_xml(xml.as_bytes()).map_err(|_| REFUSED.to_owned())?;
-    let Some(profile) = profile.as_dictionary() else {
+    let parsed = Value::from_reader_xml(xml.as_bytes()).map_err(|_| REFUSED.to_owned())?;
+    let Some(profile) = parsed.as_dictionary() else {
         return Err(REFUSED.into());
     };
     let Some(payloads) = profile
@@ -115,8 +354,14 @@ pub fn check(xml: &str) -> Result<Kind, String> {
     if payload_type(profile) != Some("Configuration") {
         return Err(REFUSED.into());
     }
-    if payloads.iter().all(holds_only_dns_settings) {
-        return Ok(Kind::Dns);
+    if payloads.iter().all(is_dns_payload) {
+        return match built_by_the_pages(&parsed) {
+            Ok(()) => Ok(Kind::Dns),
+            Err(path) => {
+                eprintln!("Refused a DNS profile at {path}");
+                Err(REFUSED.into())
+            }
+        };
     }
     if identified(profile) && payloads.iter().all(is_font_payload) {
         for payload in payloads {
@@ -162,6 +407,171 @@ mod tests {
             declarations.replacen("<data>", &format!("<data>{passcode}</data><data>"), 1),
         ] {
             assert_eq!(check(&xml), Err(REFUSED.into()));
+        }
+    }
+
+    const FULL: &str = include_str!("../../test/golden/full-surface.mobileconfig");
+    const DECLARATIONS: &str = include_str!("../tests/fixtures/declarations.mobileconfig");
+
+    fn refused_at(xml: &str) -> String {
+        assert_eq!(check(xml), Err(REFUSED.into()));
+        let parsed = Value::from_reader_xml(xml.as_bytes()).unwrap();
+        built_by_the_pages(&parsed).unwrap_err()
+    }
+
+    fn add_after(xml: &str, anchor: &str, extra: &str) -> String {
+        assert!(xml.contains(anchor), "{anchor}");
+        xml.replacen(anchor, &format!("{anchor}{extra}"), 1)
+    }
+
+    #[test]
+    fn refuses_a_key_the_builder_does_not_write_at_any_level() {
+        let extra = "<key>Extra</key><string>x</string>";
+        for (anchor, path) in [
+            ("<plist version=\"1.0\">\n<dict>", "profile.Extra"),
+            (
+                "<key>DNSSettings</key>\n\t\t\t<dict>",
+                "profile.PayloadContent[0].DNSSettings.Extra",
+            ),
+            (
+                "<key>OnDemandRules</key>\n\t\t\t<array>\n\t\t\t\t<dict>",
+                "profile.PayloadContent[0].OnDemandRules[0].Extra",
+            ),
+            (
+                "<key>ActionParameters</key>\n\t\t\t\t\t<array>\n\t\t\t\t\t\t<dict>",
+                "profile.PayloadContent[0].OnDemandRules[1].ActionParameters",
+            ),
+        ] {
+            assert_eq!(refused_at(&add_after(FULL, anchor, extra)), path);
+        }
+        let payload = FULL.replacen(
+            "<key>PayloadVersion</key>\n\t\t\t<integer>1</integer>",
+            &format!("<key>PayloadVersion</key>\n\t\t\t<integer>1</integer>{extra}"),
+            1,
+        );
+        assert_eq!(refused_at(&payload), "profile.PayloadContent[0].Extra");
+    }
+
+    #[test]
+    fn refuses_keys_that_would_change_what_installing_means() {
+        for key in [
+            "<key>PayloadCertificateUUID</key><string>x</string>",
+            "<key>ConsentText</key><dict><key>default</key><string>x</string></dict>",
+            "<key>PayloadExpirationDate</key><date>2030-01-01T00:00:00Z</date>",
+        ] {
+            let xml = add_after(FULL, "<plist version=\"1.0\">\n<dict>", key);
+            assert_eq!(check(&xml), Err(REFUSED.into()), "{key}");
+        }
+    }
+
+    #[test]
+    fn refuses_a_profile_that_cannot_be_removed() {
+        let xml = FULL.replace(
+            "<key>PayloadRemovalDisallowed</key>\n\t<false/>",
+            "<key>PayloadRemovalDisallowed</key>\n\t<true/>",
+        );
+        assert_ne!(xml, FULL);
+        assert_eq!(refused_at(&xml), "profile.PayloadRemovalDisallowed");
+    }
+
+    #[test]
+    fn refuses_values_the_builder_never_writes() {
+        for (from, to, path) in [
+            (
+                "<string>HTTPS</string>",
+                "<string>UDP</string>",
+                "profile.PayloadContent[0].DNSSettings.DNSProtocol",
+            ),
+            (
+                "<key>ServerURL</key>",
+                "<key>ServerName</key>",
+                "profile.PayloadContent[0].DNSSettings.ServerURL (missing)",
+            ),
+            (
+                "<key>AllowFailover</key>\n\t\t\t\t<true/>",
+                "<key>AllowFailover</key>\n\t\t\t\t<false/>",
+                "profile.PayloadContent[0].DNSSettings.AllowFailover",
+            ),
+            (
+                "<string>NeverConnect</string>",
+                "<string>ConnectIfNeeded</string>",
+                "profile.PayloadContent[0].OnDemandRules[1].ActionParameters",
+            ),
+            (
+                "<string>WiFi</string>",
+                "<string>Any</string>",
+                "profile.PayloadContent[0].OnDemandRules[2].InterfaceTypeMatch",
+            ),
+            (
+                "<key>PayloadScope</key>\n\t<string>System</string>",
+                "<key>PayloadScope</key>\n\t<string>User</string>",
+                "profile.PayloadScope",
+            ),
+        ] {
+            assert!(
+                FULL.contains(from) || from.contains("PayloadScope"),
+                "{from}"
+            );
+            assert!(FULL.contains(from), "{from}");
+            assert_eq!(refused_at(&FULL.replacen(from, to, 1)), path, "{from}");
+        }
+    }
+
+    #[test]
+    fn refuses_a_declaration_with_a_key_the_builder_does_not_write() {
+        let mut profile = Value::from_reader_xml(DECLARATIONS.as_bytes()).unwrap();
+        let declarations = profile.as_dictionary_mut().unwrap()["PayloadContent"]
+            .as_array_mut()
+            .unwrap()[0]
+            .as_dictionary_mut()
+            .unwrap()["Declarations"]
+            .as_array_mut()
+            .unwrap();
+        let last = declarations.len() - 1;
+        let mut json: Json = serde_json::from_slice(declarations[last].as_data().unwrap()).unwrap();
+        assert_eq!(json["Type"], "com.apple.configuration.network.dns-settings");
+        json["Payload"]["PayloadCertificateUUID"] = "x".into();
+        declarations[last] = Value::Data(serde_json::to_vec(&json).unwrap());
+        let mut xml = Vec::new();
+        profile.to_writer_xml(&mut xml).unwrap();
+        assert_eq!(
+            refused_at(std::str::from_utf8(&xml).unwrap()),
+            format!(
+                "profile.PayloadContent[0].Declarations[{last}].Payload.PayloadCertificateUUID"
+            )
+        );
+    }
+
+    #[test]
+    fn never_signs_payloads_that_could_watch_people() {
+        for kind in [
+            "com.apple.security.root",
+            "com.apple.security.pkcs12",
+            "com.apple.security.scep",
+            "com.apple.vpn.managed",
+            "com.apple.mdm",
+            "com.apple.proxy.http.global",
+            "com.apple.dnsProxy.managed",
+            "com.apple.webClip.managed",
+            "com.apple.wifi.managed",
+        ] {
+            let instead = FULL.replacen(
+                "<string>com.apple.dnsSettings.managed</string>",
+                &format!("<string>{kind}</string>"),
+                1,
+            );
+            assert_eq!(check(&instead), Err(REFUSED.into()), "{kind} instead");
+            let alongside = add_after(
+                FULL,
+                "<key>PayloadContent</key>\n\t<array>",
+                &format!(
+                    "<dict><key>PayloadType</key><string>{kind}</string>\
+                     <key>PayloadIdentifier</key><string>a</string>\
+                     <key>PayloadUUID</key><string>b</string>\
+                     <key>PayloadVersion</key><integer>1</integer></dict>"
+                ),
+            );
+            assert_eq!(check(&alongside), Err(REFUSED.into()), "{kind} alongside");
         }
     }
 
