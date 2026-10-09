@@ -196,6 +196,9 @@ describe("the View menu's pages", () => {
   });
 });
 
+// Only the Settings window changes these.
+const SETTINGS_ONLY = ["forget_on_quit", "set_forget_on_quit"];
+
 describe("the app's commands", () => {
   const read = (path: string) => Deno.readTextFileSync(join(SRC_TAURI, path));
   const declared = [
@@ -220,20 +223,26 @@ describe("the app's commands", () => {
         "core:event:allow-listen",
         "core:window:allow-start-dragging",
         "core:window:allow-internal-toggle-maximize",
-        ...declared.map((name) => `allow-${name?.replaceAll("_", "-")}`),
+        ...declared
+          .filter((name) => !SETTINGS_ONLY.includes(name ?? ""))
+          .map((name) => `allow-${name?.replaceAll("_", "-")}`),
       ].sort(),
     );
   });
 
-  it("grant Settings only showing itself, the appearance and its title bar", () => {
+  it("grant Settings only its own settings, events and title bar", () => {
     const settings = JSON.parse(read("capabilities/settings.json")) as {
       readonly windows: readonly string[];
       readonly permissions: readonly string[];
     };
     expect(settings.windows).toEqual(["settings"]);
     expect([...settings.permissions].sort()).toEqual([
+      "allow-forget-on-quit",
       "allow-page-ready",
       "allow-set-appearance",
+      "allow-set-forget-on-quit",
+      "allow-set-motion",
+      "core:event:allow-listen",
       "core:window:allow-internal-toggle-maximize",
       "core:window:allow-start-dragging",
     ]);

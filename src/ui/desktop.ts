@@ -2,6 +2,8 @@ import type {
   Appearance,
   CardAction,
   DesktopBindings,
+  ForgetState,
+  Motion,
   OpenedProfile,
   SigningIdentity,
 } from "../desktop/bindings.ts";
@@ -32,6 +34,8 @@ export const SHARE_EVENT = "share-requested";
 export const APPEARANCE_EVENT = "appearance-chosen";
 /** Must match `CARD_MENU_EVENT` in src-tauri/src/menu.rs; a test checks both. */
 export const CARD_MENU_EVENT = "card-menu-chosen";
+/** Must match `MOTION_EVENT` in src-tauri/src/app_settings.rs; a test checks both. */
+export const MOTION_EVENT = "motion-chosen";
 
 const APPEARANCES: readonly unknown[] = [
   "system",
@@ -42,6 +46,11 @@ const CARD_ACTIONS: readonly unknown[] = [
   "edit",
   "delete",
 ] satisfies CardAction[];
+const MOTIONS: readonly unknown[] = [
+  "system",
+  "reduce",
+  "full",
+] satisfies Motion[];
 
 function payloadOf(event: unknown): unknown {
   return typeof event === "object" && event !== null && "payload" in event
@@ -108,6 +117,16 @@ export function tauriBindings(
         }
       });
     },
+    setMotion: (motion) => invoke("set_motion", { motion }) as Promise<void>,
+    onMotionChosen: async (listener) => {
+      await listen(MOTION_EVENT, (event) => {
+        const motion = payloadOf(event);
+        if (MOTIONS.includes(motion)) listener(motion as Motion);
+      });
+    },
+    forgetOnQuit: () => invoke("forget_on_quit") as Promise<ForgetState>,
+    setForgetOnQuit: (forget) =>
+      invoke("set_forget_on_quit", { forget }) as Promise<void>,
     showCardMenu: (fix) => invoke("show_card_menu", { fix }) as Promise<void>,
     onCardMenuChosen: async (listener) => {
       await listen(CARD_MENU_EVENT, (event) => {

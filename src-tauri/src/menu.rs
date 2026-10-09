@@ -257,6 +257,7 @@ pub fn handle(app: &AppHandle, event: &MenuEvent) {
                 go_to_page(app, page);
             } else if let Some(appearance) = Appearance::from_menu_id(id) {
                 apply_appearance(app, appearance);
+                crate::app_settings::update(app, |settings| settings.theme = Some(appearance));
                 emit(app, APPEARANCE_EVENT, appearance);
             }
         }
@@ -346,6 +347,9 @@ pub async fn set_share_enabled(app: AppHandle, enabled: bool) -> Result<(), Stri
 #[tauri::command]
 pub async fn set_appearance(app: AppHandle, appearance: Appearance) {
     apply_appearance(&app, appearance);
+    if crate::app_settings::update(&app, |settings| settings.theme = Some(appearance)) {
+        emit(&app, APPEARANCE_EVENT, appearance);
+    }
 }
 
 /// A profile card's context menu. The choice arrives as `CARD_MENU_EVENT`.

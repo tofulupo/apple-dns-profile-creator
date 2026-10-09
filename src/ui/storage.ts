@@ -18,6 +18,11 @@ export const THEME_KEY = `${KEY_PREFIX}theme`;
 export const PIXEL_KEY = `${KEY_PREFIX}pixel`;
 /** Also hardcoded in the layout's inline script; the markup test checks both. */
 export const SETTINGS_KEY = `${KEY_PREFIX}settings:v1`;
+/**
+ * In sessionStorage, once the app has put its saved theme and motion into a
+ * window (src-tauri/src/app_settings.rs); a test checks both.
+ */
+export const SEEDED_KEY = `${KEY_PREFIX}seeded`;
 
 export type StorageArea = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 

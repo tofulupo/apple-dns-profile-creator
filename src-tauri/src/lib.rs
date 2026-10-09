@@ -1,3 +1,4 @@
+mod app_settings;
 mod dialog;
 mod menu;
 mod navigation;
@@ -282,7 +283,10 @@ fn create_window(
         .ok_or_else(|| format!("tauri.conf.json defines no window labelled {label}"))?;
     let navigating = app.clone();
     let opening = app.clone();
+    let stored = app.state::<app_settings::Stored>();
     Ok(WebviewWindowBuilder::from_config(app, config)?
+        .incognito(stored.forgetting)
+        .initialization_script(stored.get().init_script())
         .on_navigation(move |url| navigation::allow(&navigating, url))
         .on_new_window(move |url, _| {
             navigation::open_outside(&opening, &url);
@@ -389,6 +393,11 @@ pub fn run() {
         .menu(menu::build)
         .on_menu_event(|app, event| menu::handle(app, &event))
         .setup(|app| {
+            let stored = app_settings::Stored::load(app.handle());
+            if stored.forgetting {
+                app_settings::forget_web_data(app.handle());
+            }
+            app.manage(stored);
             clean_up_shares(app.handle());
             tighten_folders(app.handle());
             let window = create_window(app.handle(), MAIN_WINDOW)?;
@@ -427,6 +436,9 @@ pub fn run() {
             share_profile,
             take_opened_profile,
             open_dropped_profile,
+            app_settings::set_motion,
+            app_settings::forget_on_quit,
+            app_settings::set_forget_on_quit,
             dialog::ask,
             dialog::tell,
             menu::set_save_action,
@@ -440,6 +452,12 @@ pub fn run() {
             RunEvent::Exit => {
                 save_last_size(app);
                 clean_up_shares(app);
+                if app
+                    .try_state::<app_settings::Stored>()
+                    .is_some_and(|stored| stored.get().forget_on_quit)
+                {
+                    app_settings::forget_web_data(app);
+                }
             }
 
             #[cfg(target_os = "macos")]

@@ -5,6 +5,7 @@ import {
   APPEARANCE_EVENT,
   CARD_MENU_EVENT,
   type Invoke,
+  MOTION_EVENT,
   OPENED_EVENT,
   SAVE_EVENT,
   SHARE_EVENT,
@@ -125,6 +126,31 @@ describe("tauriBindings", () => {
         `pub const ${name}: &str = ${JSON.stringify(value)};`,
       );
     }
+  });
+
+  it("hears motion under the event the app emits, and only known values", async () => {
+    const handlers = new Map<string, (event: unknown) => void>();
+    const bindings = tauriBindings({
+      core: { invoke: () => Promise.resolve() },
+      event: {
+        listen: (event, handler) => {
+          handlers.set(event, handler);
+          return Promise.resolve(() => {});
+        },
+      },
+    });
+    const heard: unknown[] = [];
+    await bindings.onMotionChosen?.((motion) => heard.push(motion));
+    handlers.get(MOTION_EVENT)?.({ payload: "reduce" });
+    handlers.get(MOTION_EVENT)?.({ payload: "slow" });
+    expect(heard).toEqual(["reduce"]);
+
+    const rust = await Deno.readTextFile(
+      new URL("../../src-tauri/src/app_settings.rs", import.meta.url),
+    );
+    expect(rust).toContain(
+      `pub const MOTION_EVENT: &str = ${JSON.stringify(MOTION_EVENT)};`,
+    );
   });
 
   it("listens for opened profiles under the event the app emits", async () => {

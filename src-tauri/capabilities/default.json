@@ -13,6 +13,7 @@
     "allow-share-profile",
     "allow-take-opened-profile",
     "allow-open-dropped-profile",
+    "allow-set-motion",
     "allow-ask",
     "allow-tell",
     "allow-set-save-action",

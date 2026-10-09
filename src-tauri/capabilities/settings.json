@@ -1,12 +1,16 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "settings",
-  "description": "What the Settings window's page may call: showing the window once painted, setting the app's appearance, and dragging and zooming the window from the title bar (data-tauri-drag-region). Nothing else.",
+  "description": "What the Settings window's page may call: showing the window once painted, setting the app's appearance, motion and \"Forget everything when quitting\", hearing those change in the other window, and dragging and zooming the window from the title bar (data-tauri-drag-region). Nothing else.",
   "windows": ["settings"],
   "permissions": [
+    "core:event:allow-listen",
     "core:window:allow-start-dragging",
     "core:window:allow-internal-toggle-maximize",
     "allow-page-ready",
-    "allow-set-appearance"
+    "allow-set-appearance",
+    "allow-set-motion",
+    "allow-forget-on-quit",
+    "allow-set-forget-on-quit"
   ]
 }

@@ -22,6 +22,15 @@ export type Appearance = "system" | "light" | "dark";
 
 export type CardAction = "edit" | "delete";
 
+export type Motion = "system" | "reduce" | "full";
+
+export interface ForgetState {
+  /** As saved, for the next start. */
+  readonly stored: boolean;
+  /** This session's web views keep nothing. */
+  readonly active: boolean;
+}
+
 /** CSS pixels from the viewport's top left, as `getBoundingClientRect()`. */
 export interface Anchor {
   readonly x: number;
@@ -92,6 +101,18 @@ export interface DesktopBindings {
   onAppearanceChosen(
     listener: (appearance: Appearance) => void,
   ): Promise<void>;
+
+  /** Records motion as chosen or found, and tells the other windows. */
+  setMotion(motion: Motion): Promise<void>;
+
+  /** Calls `listener` with motion chosen in any window. */
+  onMotionChosen(listener: (motion: Motion) => void): Promise<void>;
+
+  /** Whether "Forget everything when quitting" is on. Settings window only. */
+  forgetOnQuit(): Promise<ForgetState>;
+
+  /** Saves "Forget everything when quitting" for the next start. Settings window only. */
+  setForgetOnQuit(forget: boolean): Promise<void>;
 
   /** Shows a card's context menu, with Fix instead of Edit when `fix`. */
   showCardMenu(fix: boolean): Promise<void>;

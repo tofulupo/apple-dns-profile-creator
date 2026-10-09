@@ -101,6 +101,26 @@
         </div>
       </section>
 
+      <section class="settings-section" aria-labelledby="privacyTitle">
+        <h2 class="settings-section__title" id="privacyTitle">Privacy</h2>
+        <div class="settings-group">
+          <label class="settings-row">
+            <span class="settings-row__text">
+              <span class="settings-row__title" id="forgetLabel">Forget
+                everything when quitting</span>
+              <span class="settings-row__hint" id="forgetHint">Cards and the
+                signing choice aren't kept on this Mac. Theme, motion and the
+                window size are.</span>
+              <span class="settings-row__hint" id="forgetNote" role="status"
+                hidden></span>
+            </span>
+            <input type="checkbox" role="switch" class="switch" id="forgetChk"
+              aria-labelledby="forgetLabel"
+              aria-describedby="forgetHint forgetNote" disabled>
+          </label>
+        </div>
+      </section>
+
       <footer class="settings-footer">
         <span class="settings-footer__name">DNS Profile Creator</span>
         <a class="version"

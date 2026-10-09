@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach } from "@std/testing/bdd";
-import { emptyDir } from "@std/fs";
+import { emptyDir, walkSync } from "@std/fs";
 import { join } from "@std/path";
 import { fromFileUrl } from "@std/path";
 import { remote } from "webdriverio";
@@ -61,13 +61,49 @@ async function startDriver(): Promise<Deno.ChildProcess> {
   throw new Error("tauri-driver did not start");
 }
 
-export function useApp(): () => App {
+function session(): Promise<App> {
+  return remote({
+    hostname: "127.0.0.1",
+    port: PORT,
+    logLevel: "warn",
+    capabilities: { "tauri:options": { application: APP } },
+  });
+}
+
+export type UseApp = (() => App) & {
+  /** Ends the app the way a force quit does, and starts it again. */
+  restart(): Promise<void>;
+  /**
+   * Starts the app once with web views that keep nothing, which WebKitGTK
+   * doesn't let WebDriver drive, and ends it again.
+   */
+  launchUndriven(): Promise<void>;
+};
+
+export function useApp(): UseApp {
   let driver: Deno.ChildProcess | undefined;
   let browser: App | undefined;
 
   function app(): App {
     if (browser === undefined) throw new Error("No WebDriver session");
     return browser;
+  }
+
+  async function restart(): Promise<void> {
+    await browser?.deleteSession();
+    browser = await session();
+  }
+
+  async function launchUndriven(): Promise<void> {
+    await browser?.deleteSession();
+    browser = undefined;
+    const refused = await session().then(
+      (started) => started.deleteSession().then(() => false),
+      () => true,
+    );
+    if (!refused) {
+      throw new Error("WebDriver drove a web view that keeps nothing");
+    }
   }
 
   beforeAll(async () => {
@@ -78,16 +114,11 @@ export function useApp(): () => App {
       `XDG_DOWNLOAD_DIR="${DOWNLOADS}"\n`,
     );
     driver = await startDriver();
-    browser = await remote({
-      hostname: "127.0.0.1",
-      port: PORT,
-      logLevel: "warn",
-      capabilities: { "tauri:options": { application: APP } },
-    });
+    browser = await session();
   });
 
   afterAll(async () => {
-    await browser?.deleteSession();
+    await browser?.deleteSession().catch(() => {});
     driver?.kill();
     await driver?.status;
   });
@@ -98,7 +129,59 @@ export function useApp(): () => App {
     await app().url("tauri://localhost/");
   });
 
-  return app;
+  return Object.assign(app, { restart, launchUndriven });
+}
+
+const APP_ID = "local.encrypted-dns.tool";
+
+/** Saves the app's settings file, as the Settings window would. */
+export async function saveAppSettings(settings: object): Promise<void> {
+  const folder = join(HOME, "config", APP_ID);
+  await Deno.mkdir(folder, { recursive: true });
+  await Deno.writeTextFile(
+    join(folder, "settings.json"),
+    JSON.stringify(settings),
+  );
+}
+
+/**
+ * Files under the web view's data and cache folders that hold `text`, in
+ * UTF-8 or in the UTF-16 WebKit stores page storage in.
+ */
+export function filesHolding(text: string): string[] {
+  const needles = [
+    new TextEncoder().encode(text),
+    new Uint8Array(
+      [...text].flatMap((
+        char,
+      ) => [char.charCodeAt(0) & 0xff, char.charCodeAt(0) >> 8]),
+    ),
+  ];
+  const holds = (bytes: Uint8Array, needle: Uint8Array) => {
+    outer: for (let i = 0; i + needle.length <= bytes.length; i++) {
+      for (let j = 0; j < needle.length; j++) {
+        if (bytes[i + j] !== needle[j]) continue outer;
+      }
+      return true;
+    }
+    return false;
+  };
+  const found: string[] = [];
+  for (
+    const root of [join(HOME, "data", APP_ID), join(HOME, "cache", APP_ID)]
+  ) {
+    try {
+      for (const entry of walkSync(root, { includeDirs: false })) {
+        const bytes = Deno.readFileSync(entry.path);
+        if (needles.some((needle) => holds(bytes, needle))) {
+          found.push(entry.path.slice(HOME.length + 1));
+        }
+      }
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) throw error;
+    }
+  }
+  return found;
 }
 
 export async function addPreset(

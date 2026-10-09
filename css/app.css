@@ -697,6 +697,13 @@ body.settings-window {
   border-top: 1px solid var(--border);
 }
 
+label.settings-row {
+  margin: 0;
+  font-size: inherit;
+  font-weight: 400;
+  cursor: pointer;
+}
+
 .settings-row--stacked {
   flex-direction: column;
   align-items: stretch;

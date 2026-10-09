@@ -3,6 +3,7 @@
  * `data-motion="reduce"` on the root element.
  */
 
+import { desktopBindings } from "./desktop.ts";
 import { browserStorage, SETTINGS_KEY, type StorageArea } from "./storage.ts";
 
 export { SETTINGS_KEY };
@@ -41,7 +42,24 @@ export function reducesMotion(motion: Motion, systemReduces: boolean): boolean {
   return motion === "reduce" || (motion === "system" && systemReduces);
 }
 
-export function enableSettings(): () => void {
+/** Tells the app, which keeps motion for every window and the next start. */
+export function reportMotion(motion: Motion): void {
+  desktopBindings()?.setMotion?.(motion).catch((error) =>
+    console.error("Could not save the motion setting:", error)
+  );
+}
+
+export function chooseMotion(storage: StorageArea, motion: Motion): void {
+  try {
+    saveSettings(storage, { ...readSettings(storage), motion });
+  } catch (error) {
+    console.error("Could not save the setting:", error);
+  }
+}
+
+export function enableSettings(
+  onMotion: (motion: Motion) => void = () => {},
+): () => void {
   const storage = browserStorage();
   const system = matchMedia("(prefers-reduced-motion: reduce)");
   const root = document.documentElement;
@@ -57,5 +75,13 @@ export function enableSettings(): () => void {
   addEventListener("storage", (event) => {
     if (event.key === SETTINGS_KEY || event.key === null) apply();
   });
+  reportMotion(readSettings(storage).motion);
+  desktopBindings()?.onMotionChosen?.((motion) => {
+    chooseMotion(storage, motion);
+    apply();
+    onMotion(motion);
+  }).catch((error) =>
+    console.error("Could not follow the motion setting:", error)
+  );
   return apply;
 }
