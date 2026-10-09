@@ -1,9 +1,11 @@
+#[cfg(any(target_os = "macos", test))]
 use std::cmp::Ordering;
 
 use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
+#[cfg_attr(not(any(target_os = "macos", test)), allow(dead_code))]
 pub enum IdentityStatus {
     Trusted,
     Untrusted,
@@ -34,6 +36,7 @@ pub struct Unwrapped {
 /// The tag a DER signed message starts with. A plain profile starts with `<`.
 const SEQUENCE: u8 = 0x30;
 
+#[cfg(any(target_os = "macos", test))]
 fn fingerprint(der: &[u8]) -> String {
     sha1_smol::Sha1::from(der)
         .digest()
@@ -42,6 +45,7 @@ fn fingerprint(der: &[u8]) -> String {
 }
 
 /// Close to the page's localeCompare: case only breaks ties.
+#[cfg(any(target_os = "macos", test))]
 fn by_name(a: &SigningIdentity, b: &SigningIdentity) -> Ordering {
     a.name
         .to_lowercase()

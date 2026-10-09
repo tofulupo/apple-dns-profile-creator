@@ -46,6 +46,7 @@ pub fn clean_up(folder: &Path) {
 
 /// AppKit counts y up from the bottom unless the view is flipped, the page
 /// down from the top. CSS pixels are the view's points at the default zoom.
+#[cfg(any(target_os = "macos", test))]
 pub fn view_rect(anchor: Anchor, view_height: f64, flipped: bool) -> [f64; 4] {
     let y = if flipped {
         anchor.y

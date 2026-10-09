@@ -1,10 +1,13 @@
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+#[cfg(any(target_os = "macos", test))]
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use serde::Serialize;
+#[cfg(any(target_os = "macos", test))]
 use tauri::Url;
 
 use crate::signing::unwrap_signed;
@@ -44,6 +47,7 @@ impl OpenedProfiles {
     }
 }
 
+#[cfg(any(target_os = "macos", test))]
 pub fn file_paths(urls: &[Url]) -> Vec<PathBuf> {
     urls.iter()
         .filter(|url| url.scheme() == "file")
