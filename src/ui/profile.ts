@@ -18,7 +18,7 @@ import {
   resolverList,
   rulesOf,
 } from "./card_values.ts";
-import { compareTable } from "./compare_view.ts";
+import { compareViews } from "./compare_view.ts";
 
 import { ask, tell } from "./dialogs.ts";
 import { desktopBindings } from "./desktop.ts";
@@ -88,6 +88,7 @@ let fontProfile: FontProfile | undefined;
 
 let picked: number | undefined;
 let comparing: readonly [number, number] | undefined;
+let compareDifferencesOnly = true;
 let pickedFrom: string | undefined;
 const canShare = canShareProfile(appConfig.profileFilename);
 const sharesInApp = canShare && desktopBindings() !== undefined;
@@ -265,6 +266,7 @@ function pick(index: number): void {
     pickedFrom = JSON.stringify(store.list());
   } else {
     comparing = [picked, index];
+    compareDifferencesOnly = true;
     picked = undefined;
   }
   render();
@@ -417,8 +419,14 @@ function render(): void {
     ? undefined
     : [configs[comparing[0]], configs[comparing[1]]] as const;
   if (pair !== undefined && pair[0] !== undefined && pair[1] !== undefined) {
-    const { table, differences } = compareTable(pair[0], pair[1]);
-    compareBody.replaceChildren(table);
+    const { element: views, differences } = compareViews(pair[0], pair[1], {
+      unsavedFormat: selectedFormat(),
+      onlyDifferences: compareDifferencesOnly,
+      onFilter: (only) => {
+        compareDifferencesOnly = only;
+      },
+    });
+    compareBody.replaceChildren(views);
     compareSummary.textContent = differences === 0
       ? "No differences"
       : differences === 1
@@ -697,6 +705,7 @@ function bindDeclarationFormat(): void {
       system.checked = chosenScope;
     }
     system.disabled = declarations.checked;
+    if (comparing !== undefined) render();
   });
 }
 

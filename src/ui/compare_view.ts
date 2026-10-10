@@ -1,238 +1,470 @@
 import {
   compareConfigs,
+  listDetail,
+  matchDomainsDetail,
+  reordered,
+  resolverDetail,
+  type ResolverSlot,
+  resolverSlots,
   type SettingsField,
   shortHash,
+  type Side,
 } from "../lib/compare.ts";
-import type { DnsConfig } from "../lib/types.ts";
+import type { DnsConfig, ProfileFormat } from "../lib/types.ts";
 import {
   connectionOf,
   featuresOf,
   interfacesOf,
-  lineList,
   paradigmPill,
-  pills,
-  resolverList,
   rulesOf,
 } from "./card_values.ts";
 
-interface Row {
+type Value = () => Node;
+
+interface Field {
   readonly label: string;
-  readonly value: (config: DnsConfig) => Node;
   readonly differs: boolean;
+  /** What differs, as a sentence under the label. */
+  readonly detail?: string | undefined;
+  /** Long monospace values: below 360px A goes above B. */
+  readonly long?: boolean;
+  readonly a?: Value;
+  readonly b?: Value;
+  readonly slots?: readonly ResolverSlot[];
 }
 
-function text(value: string, className?: string): HTMLSpanElement {
-  const span = document.createElement("span");
-  span.textContent = value;
-  if (className !== undefined) span.className = className;
-  return span;
+function tag(
+  name: string,
+  className: string,
+  ...children: (Node | string)[]
+): HTMLElement {
+  const node = document.createElement(name);
+  if (className !== "") node.className = className;
+  node.append(...children);
+  return node;
 }
 
-function none(): HTMLSpanElement {
-  return text("None", "compare__none");
+function hidden(text: string): HTMLElement {
+  return tag("span", "visually-hidden", text);
 }
 
-function list(values: readonly string[], build: (v: string[]) => Node): Node {
-  return values.length === 0 ? none() : build([...values]);
+function none(text = "None"): HTMLElement {
+  return tag("span", "compare-none", text);
 }
 
-function extensionOf(config: DnsConfig): string | undefined {
-  const file = config.source?.file;
-  const dot = file?.lastIndexOf(".") ?? -1;
-  return file === undefined || dot <= 0 ? undefined : file.slice(dot);
+/** Lets URLs and IDs wrap after a slash or a dot instead of mid-word. */
+function breakable(value: string): DocumentFragment {
+  const fragment = document.createDocumentFragment();
+  value.split(/(?<=[/.])/).forEach((part, index) => {
+    if (index > 0) fragment.append(document.createElement("wbr"));
+    fragment.append(part);
+  });
+  return fragment;
 }
 
-function formatOf(config: DnsConfig): Node {
-  const extension = extensionOf(config);
-  if (config.paradigm === undefined && extension === undefined) return none();
-  const value = document.createElement("span");
-  value.className = "compare__format";
-  if (config.paradigm !== undefined) {
-    value.append(paradigmPill(config.paradigm));
+function text(value: string, mono = false): Value {
+  return () => tag("span", mono ? "mono" : "", breakable(value));
+}
+
+function chips(
+  mine: readonly string[],
+  other: readonly string[],
+  options: { all?: readonly string[]; mono?: boolean; empty?: string } = {},
+): HTMLElement {
+  const shown = options.all === undefined
+    ? [...mine]
+    : options.all.filter((value) =>
+      mine.includes(value) || other.includes(value)
+    );
+  if (shown.length === 0) return none(options.empty);
+  const list = tag("span", "compare-chips");
+  for (const value of shown) {
+    const chip = tag(
+      "span",
+      options.mono === true ? "compare-chip mono" : "compare-chip",
+      value,
+    );
+    if (!mine.includes(value)) {
+      chip.classList.add("compare-chip--missing");
+      chip.append(hidden(", not set here"));
+    } else if (!other.includes(value)) {
+      chip.classList.add("compare-chip--only");
+      chip.append(hidden(", only here"));
+    }
+    list.append(chip);
   }
-  if (extension !== undefined) value.append(text(extension, "mono"));
-  return value;
+  return list;
 }
 
-function scopeOf(config: DnsConfig): string | undefined {
+function numbered(addresses: readonly string[]): HTMLElement {
+  if (addresses.length === 0) return none();
+  const list = tag("ol", "compare-ordered");
+  addresses.forEach((address, index) =>
+    list.append(
+      tag(
+        "li",
+        "",
+        tag("span", "compare-ordered__n", String(index + 1)),
+        tag("span", "mono", address),
+      ),
+    )
+  );
+  return list;
+}
+
+function scopeOf(config: DnsConfig): string {
   const scope = config.source?.systemScope;
-  if (config.source === undefined) return undefined;
   return scope === true ? "On" : scope === false ? "Off" : "Not set";
 }
 
-function hashOf(config: DnsConfig): Node {
-  const sha256 = config.source?.sha256;
-  if (sha256 === undefined) return none();
-  const hash = text(shortHash(sha256), "mono");
-  hash.title = sha256;
-  return hash;
-}
-
-function key(config: DnsConfig, build: (c: DnsConfig) => unknown): string {
-  return JSON.stringify(build(config));
-}
-
-function fileRows(a: DnsConfig, b: DnsConfig): Row[] {
-  return [
-    {
-      label: "File",
-      value: (c) =>
-        c.source === undefined ? none() : text(
-          c.source.edited === true
-            ? `${c.source.file} (edited)`
-            : c.source.file,
-        ),
-      differs: false,
-    },
-    {
-      label: "Profile ID",
-      value: (c) =>
-        c.source?.profileId === undefined
-          ? none()
-          : text(c.source.profileId, "mono"),
-      differs: false,
-    },
-    { label: "SHA-256", value: hashOf, differs: false },
-    {
-      label: "Format",
-      value: formatOf,
-      differs: key(a, (c) => [c.paradigm, extensionOf(c)]) !==
-        key(b, (c) => [c.paradigm, extensionOf(c)]),
-    },
-    {
-      label: "System scope",
-      value: (c) => {
-        const scope = scopeOf(c);
-        return scope === undefined ? none() : text(scope);
-      },
-      differs: scopeOf(a) !== scopeOf(b),
-    },
-  ];
-}
-
-function settingsRows(a: DnsConfig, b: DnsConfig): Row[] {
+function fieldsOf(
+  a: DnsConfig,
+  b: DnsConfig,
+  unsaved: ProfileFormat,
+): Field[] {
   const differing = new Set<SettingsField>(
     compareConfigs(a, b).filter((row) => row.differs).map((row) => row.field),
   );
   const any = (...fields: SettingsField[]) =>
     fields.some((field) => differing.has(field));
+  const formatOf = (config: DnsConfig) => config.paradigm ?? unsaved;
+  const format = (config: DnsConfig): Value => () =>
+    paradigmPill(formatOf(config));
+  const list = (
+    label: string,
+    left: readonly string[],
+    right: readonly string[],
+    options: { all?: readonly string[]; mono?: boolean; empty?: string } = {},
+  ): Field => {
+    const detail = label === "Only for domains"
+      ? matchDomainsDetail(left, right)
+      : listDetail(left, right);
+    return {
+      label,
+      differs: detail !== undefined,
+      detail,
+      long: options.mono === true,
+      a: () => chips(left, right, options),
+      b: () => chips(right, left, options),
+    };
+  };
+
+  const addressesA = a.serverAddresses;
+  const addressesB = b.serverAddresses;
+  const resolvers: Field = reordered(addressesA, addressesB)
+    ? {
+      label: "Resolvers",
+      differs: true,
+      detail: resolverDetail(addressesA, addressesB),
+      long: true,
+      a: () => numbered(addressesA),
+      b: () => numbered(addressesB),
+    }
+    : {
+      label: "Resolvers",
+      differs: any("serverAddresses"),
+      detail: resolverDetail(addressesA, addressesB),
+      long: true,
+      slots: resolverSlots(addressesA, addressesB),
+    };
+
   return [
     {
+      label: "Format",
+      differs: formatOf(a) !== formatOf(b),
+      a: format(a),
+      b: format(b),
+    },
+    {
+      label: "System scope",
+      differs: scopeOf(a) !== scopeOf(b),
+      a: text(scopeOf(a)),
+      b: text(scopeOf(b)),
+    },
+    {
       label: "Connection",
-      value: (c) => text(connectionOf(c)),
       differs: any("protocol"),
+      a: text(connectionOf(a)),
+      b: text(connectionOf(b)),
     },
     {
       label: "Server",
-      value: (c) => text(c.serverUrl, "mono"),
       differs: any("serverUrl"),
+      long: true,
+      a: text(a.serverUrl, true),
+      b: text(b.serverUrl, true),
     },
-    {
-      label: "Resolvers",
-      value: (c) => list(c.serverAddresses, resolverList),
-      differs: any("serverAddresses"),
-    },
-    {
-      label: "Skip for SSID",
-      value: (c) =>
-        list(c.excludedWifi, (v) => {
-          const lines = lineList(v);
-          lines.classList.add("mono");
-          return lines;
-        }),
-      differs: any("excludedWifi"),
-    },
-    {
-      label: "Skip for domains",
-      value: (c) => list(c.excludedDomains, (v) => text(v.join(", "), "mono")),
-      differs: any("excludedDomains"),
-    },
-    {
-      label: "Only for domains",
-      value: (c) =>
-        list(
-          c.supplementalMatchDomains ?? [],
-          (v) => text(v.join(", "), "mono"),
-        ),
-      differs: any("supplementalMatchDomains"),
-    },
-    {
-      label: "Interfaces",
-      value: (c) => list(interfacesOf(c), pills),
-      differs: any("useWifi", "useCellular", "useEthernet"),
-    },
-    {
-      label: "Rules",
-      value: (c) => list(rulesOf(c), pills),
-      differs: any("allowFailover", "prohibitDisablement"),
-    },
-    {
-      label: "Features",
-      value: (c) => list(featuresOf(c), pills),
-      differs: key(a, featuresOf) !== key(b, featuresOf),
-    },
+    resolvers,
+    list("Skip for SSID", a.excludedWifi, b.excludedWifi, { mono: true }),
+    list("Skip for domains", a.excludedDomains, b.excludedDomains, {
+      mono: true,
+    }),
+    list(
+      "Only for domains",
+      a.supplementalMatchDomains ?? [],
+      b.supplementalMatchDomains ?? [],
+      { mono: true, empty: "All domains" },
+    ),
+    list("Interfaces", interfacesOf(a), interfacesOf(b), {
+      all: ["Wi-Fi", "Cellular", "Ethernet"],
+    }),
+    list("Rules", rulesOf(a), rulesOf(b), {
+      all: ["Failover", "Lock profile"],
+    }),
+    list("Features", featuresOf(a), featuresOf(b)),
   ];
 }
 
-const SIDES = ["A", "B"] as const;
-
-function labelOf(config: DnsConfig, side: number): string {
-  const name = config.name.trim() === ""
-    ? "Unnamed configuration"
-    : config.name;
-  return `${SIDES[side]} · ${name}`;
+function head(side: Side, config: DnsConfig): HTMLElement {
+  const source = config.source;
+  const card = tag(
+    "div",
+    "compare-head",
+    tag("span", "compare-head__side", side),
+    tag(
+      "strong",
+      "compare-head__name",
+      config.name.trim() === "" ? "Unnamed configuration" : config.name,
+    ),
+    tag(
+      "span",
+      "compare-head__sub",
+      source === undefined ? "Not saved yet" : breakable(
+        source.edited === true ? `${source.file} (edited)` : source.file,
+      ),
+    ),
+  );
+  if (source?.profileId !== undefined) {
+    card.append(
+      tag("span", "compare-head__sub mono", breakable(source.profileId)),
+    );
+  }
+  if (source?.sha256 !== undefined) {
+    const hash = tag(
+      "span",
+      "compare-head__sub mono",
+      `SHA-256 ${shortHash(source.sha256)}`,
+    );
+    hash.title = source.sha256;
+    card.append(hash);
+  }
+  return card;
 }
 
-function body(
-  rows: readonly Row[],
-  a: DnsConfig,
-  b: DnsConfig,
-): HTMLTableSectionElement {
-  const section = document.createElement("tbody");
-  for (const row of rows) {
-    const tr = document.createElement("tr");
-    tr.className = row.differs
-      ? "compare__row compare__row--differs"
-      : "compare__row";
-    const th = document.createElement("th");
-    th.scope = "row";
-    th.textContent = row.label;
-    if (row.differs) {
-      th.append(text(", differs", "visually-hidden"));
-    }
-    tr.append(th);
-    for (const [side, config] of [a, b].entries()) {
-      const td = document.createElement("td");
-      td.dataset["side"] = labelOf(config, side);
-      td.append(row.value(config));
-      tr.append(td);
-    }
-    section.append(tr);
+function filter(total: number, differences: number): HTMLElement {
+  const button = (only: boolean, ...label: (Node | string)[]) => {
+    const node = tag("button", "compare-filter__btn", ...label);
+    (node as HTMLButtonElement).type = "button";
+    node.dataset["only"] = String(only);
+    return node;
+  };
+  const count = (value: number) =>
+    tag("span", "compare-filter__count", String(value));
+  if (differences === 0) {
+    return tag(
+      "div",
+      "compare-filter compare-filter--none",
+      tag("p", "compare-filter__none", `No differences in ${total} fields`),
+      button(false, `Show all ${total}`),
+    );
   }
-  return section;
+  const group = tag(
+    "div",
+    "compare-filter",
+    button(false, "All ", count(total)),
+    button(true, "Only differences ", count(differences)),
+  );
+  group.setAttribute("role", "group");
+  group.setAttribute("aria-label", "Show");
+  return group;
 }
 
-export function compareTable(
+function status(field: Field): HTMLElement[] {
+  return field.differs && field.detail !== undefined
+    ? [tag("p", "compare-detail", field.detail)]
+    : [];
+}
+
+function cards(
   a: DnsConfig,
   b: DnsConfig,
-): { table: HTMLTableElement; differences: number } {
-  const table = document.createElement("table");
-  table.className = "compare__table";
-  const head = document.createElement("thead");
-  const headRow = document.createElement("tr");
-  const corner = document.createElement("td");
-  headRow.append(corner);
-  for (const [side, config] of [a, b].entries()) {
-    const th = document.createElement("th");
-    th.scope = "col";
-    th.textContent = labelOf(config, side);
-    headRow.append(th);
+  fields: readonly Field[],
+  filterBar: HTMLElement,
+): HTMLElement {
+  const view = tag(
+    "div",
+    "compare-cards",
+    tag("div", "compare-cards__heads", head("A", a), head("B", b)),
+    filterBar,
+  );
+  const who = (side: Side) => tag("span", "compare-who", side);
+  for (const field of fields) {
+    let body: HTMLElement;
+    if (field.slots !== undefined) {
+      body = field.slots.length === 0 ? none() : tag(
+        "div",
+        "compare-slots",
+        tag("div", "compare-slot compare-slot--head", who("A"), who("B")),
+        ...field.slots.map((slot) =>
+          tag(
+            "div",
+            slot.a === slot.b ? "compare-slot" : "compare-slot is-different",
+            tag("span", "compare-slot__label", slot.label),
+            tag("span", "compare-slot__a mono", slot.a ?? "–"),
+            tag("span", "compare-slot__b mono", slot.b ?? "–"),
+          )
+        ),
+      );
+    } else {
+      body = tag(
+        "div",
+        field.long === true
+          ? "compare-pair compare-pair--long"
+          : "compare-pair",
+        tag("div", "compare-val", who("A"), field.a!()),
+        tag("div", "compare-val", who("B"), field.b!()),
+      );
+    }
+    const section = tag(
+      "section",
+      "compare-field",
+      tag(
+        "header",
+        "compare-field__head",
+        tag(
+          "div",
+          "",
+          tag("h3", "compare-field__label", field.label),
+          ...status(field),
+        ),
+        tag(
+          "span",
+          "compare-field__badge",
+          field.differs ? "Different" : "Same",
+        ),
+      ),
+      body,
+    );
+    section.dataset["differs"] = String(field.differs);
+    view.append(section);
   }
-  head.append(headRow);
-  const files = fileRows(a, b);
-  const settings = settingsRows(a, b);
-  table.append(head, body(files, a, b), body(settings, a, b));
-  const differences = [...files, ...settings].filter((row) => row.differs)
-    .length;
-  return { table, differences };
+  return view;
+}
+
+function table(
+  a: DnsConfig,
+  b: DnsConfig,
+  fields: readonly Field[],
+  filterBar: HTMLElement,
+): HTMLElement {
+  const grid = tag("table", "compare__table");
+  const column = (side: Side, config: DnsConfig) => {
+    const th = tag("th", "", head(side, config));
+    th.setAttribute("scope", "col");
+    return th;
+  };
+  grid.append(
+    tag(
+      "thead",
+      "",
+      tag("tr", "", tag("td", ""), column("A", a), column("B", b)),
+    ),
+  );
+  const label = (field: Field) => {
+    const th = tag(
+      "th",
+      "compare__label",
+      tag("span", "compare__label-name", field.label),
+    );
+    th.setAttribute("scope", "row");
+    if (field.differs) th.append(hidden(", different"), ...status(field));
+    return th;
+  };
+  for (const field of fields) {
+    const group = tag("tbody", "compare__field");
+    group.dataset["differs"] = String(field.differs);
+    if (field.slots !== undefined && field.slots.length > 0) {
+      field.slots.forEach((slot, index) => {
+        const cell = (value: string | undefined) =>
+          tag(
+            "td",
+            "",
+            tag("span", "compare__slot-tag", slot.label),
+            value === undefined
+              ? tag("span", "compare-none", "–", hidden("not set"))
+              : tag("span", "mono", value),
+          );
+        const row = tag(
+          "tr",
+          slot.a === slot.b ? "compare__slot" : "compare__slot is-different",
+        );
+        if (index === 0) {
+          const th = label(field);
+          th.setAttribute("rowspan", String(field.slots!.length));
+          row.append(th);
+        }
+        row.append(cell(slot.a), cell(slot.b));
+        group.append(row);
+      });
+    } else {
+      group.append(
+        tag(
+          "tr",
+          "",
+          label(field),
+          tag("td", "", field.a?.() ?? none()),
+          tag("td", "", field.b?.() ?? none()),
+        ),
+      );
+    }
+    grid.append(group);
+  }
+  return tag("div", "compare__wide", filterBar, grid);
+}
+
+export interface CompareOptions {
+  /** What a card that was never saved gets: the Download panel's choice. */
+  readonly unsavedFormat: ProfileFormat;
+  readonly onlyDifferences: boolean;
+  readonly onFilter: (onlyDifferences: boolean) => void;
+}
+
+/** Cards on phones and tablets, a table from 768px and in the app. */
+export function compareViews(
+  a: DnsConfig,
+  b: DnsConfig,
+  options: CompareOptions,
+): { element: HTMLElement; differences: number } {
+  const fields = fieldsOf(a, b, options.unsavedFormat);
+  const differences = fields.filter((field) => field.differs).length;
+  const views = tag(
+    "div",
+    "compare-views",
+    cards(a, b, fields, filter(fields.length, differences)),
+    table(a, b, fields, filter(fields.length, differences)),
+  );
+  const show = (onlyDifferences: boolean) => {
+    views.classList.toggle("compare-views--differences", onlyDifferences);
+    for (
+      const button of views.querySelectorAll<HTMLElement>(
+        ".compare-filter__btn",
+      )
+    ) {
+      button.setAttribute(
+        "aria-pressed",
+        String((button.dataset["only"] === "true") === onlyDifferences),
+      );
+    }
+  };
+  views.addEventListener("click", (event) => {
+    const button = (event.target as Element).closest<HTMLElement>(
+      ".compare-filter__btn",
+    );
+    if (button === null) return;
+    const onlyDifferences = button.dataset["only"] === "true";
+    show(onlyDifferences);
+    options.onFilter(onlyDifferences);
+  });
+  show(options.onlyDifferences || differences === 0);
+  return { element: views, differences };
 }
