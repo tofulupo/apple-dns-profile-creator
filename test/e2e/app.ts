@@ -113,6 +113,9 @@ export function useApp(): UseApp {
       `${HOME}/config/user-dirs.dirs`,
       `XDG_DOWNLOAD_DIR="${DOWNLOADS}"\n`,
     );
+    // Forgetting is the default, and WebKitGTK lets WebDriver drive only a
+    // web view that keeps its data.
+    await saveAppSettings({ forgetOnQuit: false });
     driver = await startDriver();
     browser = await session();
   });

@@ -131,8 +131,9 @@ pub enum Motion {
 }
 
 /// Theme and motion stay unknown until a page reports them, so the first
-/// launch after an update keeps what the pages had stored.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
+/// launch after an update keeps what the pages had stored. Cards are forgotten
+/// unless the user turns that off.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -140,6 +141,16 @@ pub struct AppSettings {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub motion: Option<Motion>,
     pub forget_on_quit: bool,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            theme: None,
+            motion: None,
+            forget_on_quit: true,
+        }
+    }
 }
 
 fn field<T: for<'de> Deserialize<'de>>(
@@ -159,7 +170,7 @@ impl AppSettings {
         Self {
             theme: field(&saved, "theme"),
             motion: field(&saved, "motion"),
-            forget_on_quit: field(&saved, "forgetOnQuit").unwrap_or(false),
+            forget_on_quit: field(&saved, "forgetOnQuit").unwrap_or(true),
         }
     }
 
@@ -235,13 +246,14 @@ mod tests {
             }
         );
         assert_eq!(
-            AppSettings::parse(r#"{"theme":"sepia","motion":"full","forgetOnQuit":"yes","x":1}"#),
+            AppSettings::parse(r#"{"theme":"sepia","motion":"full","forgetOnQuit":"no","x":1}"#),
             AppSettings {
                 theme: None,
                 motion: Some(Motion::Full),
-                forget_on_quit: false,
+                forget_on_quit: true,
             }
         );
+        assert!(!AppSettings::parse(r#"{"forgetOnQuit":false}"#).forget_on_quit);
         for text in ["", "not json", "[]", "null"] {
             assert_eq!(AppSettings::parse(text), AppSettings::default(), "{text:?}");
         }
@@ -267,9 +279,11 @@ mod tests {
     }
 
     #[test]
-    fn loads_defaults_from_a_missing_file() {
+    fn forgets_cards_unless_told_otherwise() {
         let folder = tempfile::tempdir().unwrap();
         assert_eq!(load(&folder.path().join(FILENAME)), AppSettings::default());
+        assert!(AppSettings::default().forget_on_quit);
+        assert!(AppSettings::parse("{}").forget_on_quit);
     }
 
     #[test]

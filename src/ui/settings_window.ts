@@ -24,15 +24,11 @@ const MOTIONS: readonly string[] = [
   "full",
 ] satisfies Motion[];
 
-export const FORGET_NEXT_START =
-  "Starts with the next launch. What's stored now is deleted when you quit.";
-export const KEEP_NEXT_START =
-  "Starts with the next launch. Until then, nothing is kept.";
+export const NEXT_START = "Applies from the next start.";
 
-/** What the note under "Forget everything when quitting" says, if anything. */
+/** What the note under "Forget cards when quitting" says, if anything. */
 export function forgetNote(state: ForgetState): string | undefined {
-  if (state.stored === state.active) return undefined;
-  return state.stored ? FORGET_NEXT_START : KEEP_NEXT_START;
+  return state.stored === state.active ? undefined : NEXT_START;
 }
 
 function radios(name: string): HTMLInputElement[] {

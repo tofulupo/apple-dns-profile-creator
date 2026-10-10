@@ -33,7 +33,7 @@ describe({
 }, () => {
   const app = useApp();
 
-  it("keeps the cards by default", async () => {
+  it("keeps the cards when told to", async () => {
     await saveAppSettings({ forgetOnQuit: false });
     await addCardWithWifi(app(), "Office Guest");
 
@@ -43,13 +43,13 @@ describe({
     expect(filesHolding("Office Guest")).not.toEqual([]);
   });
 
-  it("removes what was kept at the first launch with the setting on", async () => {
+  it("forgets the cards unless told otherwise", async () => {
     await saveAppSettings({ forgetOnQuit: false });
     await addCardWithWifi(app(), "Hotel Lobby");
     await app.restart();
     expect(filesHolding("Hotel Lobby")).not.toEqual([]);
 
-    await saveAppSettings({ forgetOnQuit: true });
+    await saveAppSettings({});
     await app.launchUndriven();
 
     expect(filesHolding("Hotel Lobby")).toEqual([]);
@@ -60,7 +60,11 @@ describe({
   });
 
   it("puts the saved theme and motion into a new window", async () => {
-    await saveAppSettings({ theme: "dark", motion: "reduce" });
+    await saveAppSettings({
+      theme: "dark",
+      motion: "reduce",
+      forgetOnQuit: false,
+    });
 
     await app.restart();
 
