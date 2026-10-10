@@ -35,6 +35,38 @@ function ensureFree(port: number): void {
   }
 }
 
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function appRunning(): Promise<boolean> {
+  const { code } = await new Deno.Command("pgrep", {
+    args: ["-f", APP],
+    stdout: "null",
+  }).output();
+  return code === 0;
+}
+
+// The app outlives its session for a moment, and its WebKit helpers write the
+// cache until they notice it is gone. Starting the next file's app before
+// then fails to empty the home folder (ENOTEMPTY).
+async function waitForAppExit(): Promise<void> {
+  for (let attempt = 0; attempt < 50 && await appRunning(); attempt++) {
+    await pause(100);
+  }
+}
+
+async function emptyHome(): Promise<void> {
+  for (let attempt = 0;; attempt++) {
+    try {
+      return await emptyDir(HOME);
+    } catch (error) {
+      if (attempt >= 20 || (error as { code?: string }).code !== "ENOTEMPTY") {
+        throw error;
+      }
+      await pause(100);
+    }
+  }
+}
+
 async function startDriver(): Promise<Deno.ChildProcess> {
   ensureFree(PORT);
   ensureFree(PORT - 1);
@@ -107,7 +139,8 @@ export function useApp(): UseApp {
   }
 
   beforeAll(async () => {
-    await emptyDir(HOME);
+    await waitForAppExit();
+    await emptyHome();
     await Deno.mkdir(`${HOME}/config`, { recursive: true });
     await Deno.writeTextFile(
       `${HOME}/config/user-dirs.dirs`,
@@ -124,6 +157,7 @@ export function useApp(): UseApp {
     await browser?.deleteSession().catch(() => {});
     driver?.kill();
     await driver?.status;
+    await waitForAppExit();
   });
 
   beforeEach(async () => {
