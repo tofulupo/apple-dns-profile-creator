@@ -725,6 +725,7 @@ label.settings-row {
   color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.4;
+  text-wrap: pretty;
 }
 
 .theme-cards {
@@ -2416,6 +2417,7 @@ summary.rule__head::-webkit-details-marker {
   margin: 0;
   color: var(--muted);
   font-size: 0.875rem;
+  text-wrap: pretty;
 }
 
 .list-footer__count strong {
