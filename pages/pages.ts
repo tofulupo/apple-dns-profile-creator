@@ -13,7 +13,7 @@ export interface Page {
 export const SITE_URL = "https://apple.mobileconfig.deno.net/";
 
 /** The website's version. The desktop app's is in deno.json. */
-export const SITE_VERSION = "3.13.3";
+export const SITE_VERSION = "3.15.0";
 
 export const PAGES: readonly Page[] = [
   {
