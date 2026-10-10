@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --env-file=.env --allow-env=INDEXNOW_KEY --allow-net=apple.mobileconfig.deno.net,api.indexnow.org
+#!/usr/bin/env -S deno run --env-file=.env --allow-env=INDEXNOW_KEY --allow-net=mobileconfig.io,api.indexnow.org
 // If SITE_URL moves to another host, update this task's --allow-net hosts in
 // deno.json too.
 import { PAGES, SITE_URL } from "../pages/pages.ts";

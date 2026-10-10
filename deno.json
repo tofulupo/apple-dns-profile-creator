@@ -18,7 +18,7 @@
     "lint:desktop": "deno task build && cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "lint:md": "deno run -A npm:rumdl@^0.2 check .",
     "check": "deno check src pages 'test/**/*.test.ts' test/helpers scripts && deno check 'test/e2e/*.e2e.ts' && deno check --config src/lib/pure.deno.jsonc src/lib && deno lint && deno fmt --check && deno task lint:md && deno task lint:desktop && deno task test",
-    "indexnow": "deno run --env-file=.env --allow-env=INDEXNOW_KEY --allow-net=apple.mobileconfig.deno.net,api.indexnow.org scripts/indexnow.ts",
+    "indexnow": "deno run --env-file=.env --allow-env=INDEXNOW_KEY --allow-net=mobileconfig.io,api.indexnow.org scripts/indexnow.ts",
     "fixtures:fetch": "deno run --allow-net --allow-read --allow-write --allow-run scripts/fetch_fixtures.ts",
     "fixtures:lint": "deno run --allow-read --allow-run scripts/lint_fixtures.ts",
     "deps:update": "deno run --allow-read --allow-write --allow-run=deno,cargo --allow-net=index.crates.io scripts/deps_update.ts"

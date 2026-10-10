@@ -14,8 +14,8 @@ profiles for iOS and macOS. Everything happens in the browser. Nothing is
 uploaded anywhere, and the tool works fully offline, which makes it suitable for
 hosting on a home network.
 
-**[Try it out](https://apple.mobileconfig.deno.net)** - no install, no sign-up,
-nothing leaves your device ([privacy](#privacy)).
+**[Try it out](https://mobileconfig.io)** - no install, no sign-up, nothing
+leaves your device ([privacy](#privacy)).
 
 Apple has supported DNS over HTTPS and DNS over TLS since iOS 14 and macOS 11,
 but exposes no way to use them without an app or a configuration profile. This
@@ -240,10 +240,10 @@ panel keeps `encrypted-dns.mobileconfig` for every profile.
 
 ### Privacy
 
-The website at apple.mobileconfig.deno.net is a showcase. It builds the profile
-in your browser and sends nothing back: no cookies, no analytics, no requests to
-other sites. Your configurations stay in the browser's local storage. The server
-only hands out the site's files and keeps nothing.
+The website at mobileconfig.io is a showcase. It builds the profile in your
+browser and sends nothing back: no cookies, no analytics, no requests to other
+sites. Your configurations stay in the browser's local storage. The server only
+hands out the site's files and keeps nothing.
 
 It runs on Deno Deploy, which records each request (path, status and time) for
 its own operations and, like any host, sees your IP address. If that matters to
