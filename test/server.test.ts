@@ -161,6 +161,14 @@ describe("createHandler", () => {
     );
   });
 
+  it("tells caches that every response depends on Accept-Encoding", async () => {
+    for (const path of ["/", "/app-0123abcd.css"]) {
+      const response = await get(path);
+      await response.body?.cancel();
+      expect(response.headers.get("Vary")).toBe("Accept-Encoding");
+    }
+  });
+
   it("answers a repeat visit with 304, still with security headers", async () => {
     const first = await get("/");
     await first.body?.cancel();

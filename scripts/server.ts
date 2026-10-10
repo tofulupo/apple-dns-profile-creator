@@ -125,6 +125,10 @@ export function createHandler(
       headers.set(name, value);
     }
     if (served.ok) headers.set("Cache-Control", cacheControl(pathname));
+    // Deno.serve compresses only for clients that ask, and adds Vary only when
+    // it does. Without Vary every time, an edge cache that stored the plain
+    // copy for one client serves it to all.
+    headers.set("Vary", "Accept-Encoding");
 
     const isHtml = headers.get("Content-Type")?.startsWith("text/html");
     if (!isHtml || served.body === null) {
