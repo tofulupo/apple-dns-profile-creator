@@ -8,6 +8,84 @@ app shares its version number with the website: app releases have even major and
 minor numbers, like 4.0.0. A release candidate carries an `-rc` suffix and comes
 before the final release.
 
+## [4.0.0-rc.2] - 2026-10-10
+
+The second release candidate of the desktop app, for testing before 4.0.0. Most
+of it is security: the app checks what it opens before loading or signing it,
+refuses files that aren't plain or signed profiles, and keeps its own files
+private. Cards are now cleared when you quit, and keeping them is an opt-in in
+Settings. It also adds a way to compare two cards. It comes without a DMG: build
+it from the `v4.0.0-rc.2` tag with `deno task desktop`, as the README describes.
+
+### Added
+
+#### Profile page
+
+- Compare two cards side by side. Pick Compare on two cards: rows that differ
+  get a marker, and the footer counts them. Close or Escape brings the list
+  back.
+- Cards show where they came from: the file name, with "edited" once you change
+  the card. After a download they show the name it was saved under.
+- Cards show the profile paradigm (Legacy or Declarative), and the interfaces,
+  rules and features you picked, under the same names as the form.
+- With several configurations in the profile, a note says your device uses one
+  at a time, and where to pick it on the iPhone.
+- Drop a font profile on the Profile page and the app checks it: one TrueType or
+  OpenType font per payload, no collections, no web fonts. It shows the file,
+  the number of fonts and a short hash, and signs and saves it with your
+  Keychain certificate.
+
+#### Privacy
+
+- Settings has a Privacy section with "Forget cards when quitting". It's on
+  unless you turn it off: cards and the signing choice are gone after you quit,
+  and theme, motion and window size stay. A change applies from the next start.
+- A neutral file name switch in the Download panel saves as
+  `encrypted-dns.mobileconfig`, so the name doesn't show the provider.
+
+### Changed
+
+- Profiles are named after their configuration: "DNS Bunker" saves as
+  `dns-bunker.mobileconfig`. With several configurations, or with the neutral
+  switch on, it stays `encrypted-dns.mobileconfig`.
+- Breaking: cards are forgotten when you quit. This includes cards kept from
+  4.0.0-rc.1, which are gone after the first start. To keep cards, turn off
+  "Forget cards when quitting" in Settings > Privacy.
+- Breaking: numbered copies use a hyphen, `encrypted-dns-2.mobileconfig` instead
+  of `encrypted-dns 2.mobileconfig`. Anything that looks for the old names in
+  Downloads needs updating.
+- Cards with the same settings from different files are written into the profile
+  once.
+- A configuration with no interface switched on can't be added anymore.
+- Card rows have a fixed order, and each Wi-Fi name is on its own line.
+- The numbers in front of resolver addresses are filled green or red, the picker
+  labels are bold, and the server button turns green once the server is usable.
+- The app icon is the mascot now, light in light mode and dark in dark mode.
+  Before macOS 26 it shows the light one.
+- The Settings window is taller, to fit the Privacy section.
+
+### Fixed
+
+- Loading a file that's already in the profile no longer shows its import notes
+  again.
+- Picking a preset without resolver addresses, like HaGeZi, closes the Resolver
+  addresses section and shows "None".
+
+### Security
+
+- A signed profile dropped on the window or picked with Load gets the same
+  signature check as one opened from Finder. If it was changed after signing,
+  even by adding something in front, the app asks before loading it. A file
+  that's neither a plain nor a signed profile is refused. On the website, a note
+  says it can't check the signature.
+- The app only saves, shares and signs DNS profiles with exactly the keys and
+  values it writes itself. Extra keys, profiles that can't be removed and other
+  payload types are refused.
+- Files over 5 MB are refused before they're read, and so are profiles nested
+  more than 64 levels deep, with a plain message instead of a technical error.
+- The app's own files are readable only by you, its folders included, the web
+  view's data among them.
+
 ## [4.0.0-rc.1] - 2026-10-03
 
 The first release candidate of the desktop app, for testing before 4.0.0. It
@@ -226,4 +304,5 @@ comes without a DMG: build it from the `v4.0.0-rc.1` tag with
   Settings window can only ask the app to change the theme, so it can't save,
   sign or share.
 
+[4.0.0-rc.2]: https://github.com/tofulupo/apple-dns-profile-creator/compare/v4.0.0-rc.1...v4.0.0-rc.2
 [4.0.0-rc.1]: https://github.com/tofulupo/apple-dns-profile-creator/compare/deno-desktop...v4.0.0-rc.1
