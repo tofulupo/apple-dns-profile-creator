@@ -29,8 +29,28 @@ function checkSize(file: File): void {
   if (file.size > MAX_PROFILE_BYTES) throw new Error(TOO_LARGE);
 }
 
+export const NOT_A_PROFILE = "That file isn't a configuration profile.";
+
 /** The tag a DER signed message starts with. A plain profile starts with `<`. */
 const SEQUENCE = 0x30;
+const LESS_THAN = 0x3c;
+const WHITESPACE = [0x20, 0x09, 0x0a, 0x0d];
+
+export type FileKind = "plain" | "signed" | "neither";
+
+/**
+ * What a file holds, by its first byte after an optional UTF-8 BOM and
+ * whitespace. Anything in front of a signed message breaks its signature, so
+ * it still counts as signed and goes to the signature check. Must match
+ * `kind` in src-tauri/src/opened.rs; the tests use the same cases.
+ */
+export function fileKind(bytes: Uint8Array): FileKind {
+  let at = bytes[0] === 0xef && bytes[1] === 0xbb && bytes[2] === 0xbf ? 3 : 0;
+  while (at < bytes.length && WHITESPACE.includes(bytes[at]!)) at++;
+  if (bytes[at] === LESS_THAN) return "plain";
+  if (bytes[at] === SEQUENCE) return "signed";
+  return "neither";
+}
 
 export type OpenDropped = DesktopBindings["openDroppedProfile"];
 
@@ -57,7 +77,9 @@ export async function unwrapDropped(
 ): Promise<Unwrapped | undefined> {
   checkSize(file);
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if (bytes[0] !== SEQUENCE) return { file, notes: [] };
+  const kind = fileKind(bytes);
+  if (kind === "neither") throw new Error(NOT_A_PROFILE);
+  if (kind === "plain") return { file, notes: [] };
   if (open === undefined) return { file, notes: [UNCHECKED_SIGNATURE_NOTE] };
   let text: string | null;
   try {

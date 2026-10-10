@@ -34,7 +34,7 @@ pub struct Unwrapped {
 }
 
 /// The tag a DER signed message starts with. A plain profile starts with `<`.
-const SEQUENCE: u8 = 0x30;
+pub(crate) const SEQUENCE: u8 = 0x30;
 
 #[cfg(any(target_os = "macos", test))]
 fn fingerprint(der: &[u8]) -> String {

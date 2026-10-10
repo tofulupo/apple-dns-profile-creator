@@ -4,6 +4,7 @@ import { expect } from "@std/expect";
 import { buildProfileXml } from "../../src/lib/profile.ts";
 import {
   MAX_PROFILE_BYTES,
+  NOT_A_PROFILE,
   type OpenDropped,
   readFontProfile,
   readProfileFile,
@@ -162,6 +163,42 @@ describe("unwrapDropped", () => {
     const { open } = app(null);
     expect(await unwrapDropped(new File([bytes], "signed.mobileconfig"), open))
       .toBeUndefined();
+  });
+
+  it("has the app check a signed profile with anything in front", async () => {
+    const signed = await Deno.readFile(SIGNED);
+    for (const prefix of [[0xef, 0xbb, 0xbf], [0x0a], [0x20, 0x0d, 0x0a]]) {
+      const { open, calls } = app(null);
+      const file = new File(
+        [new Uint8Array([...prefix, ...signed])],
+        "edited.mobileconfig",
+      );
+      expect(await unwrapDropped(file, open)).toBeUndefined();
+      expect(calls).toHaveLength(1);
+    }
+  });
+
+  it("refuses a file that is neither a plain nor a signed profile", async () => {
+    const signed = await Deno.readFile(SIGNED);
+    for (
+      const bytes of [
+        new Uint8Array([...new TextEncoder().encode("junk"), ...signed]),
+        new Uint8Array(),
+      ]
+    ) {
+      const { open, calls } = app("<plist/>");
+      await expect(unwrapDropped(new File([bytes], "x.mobileconfig"), open))
+        .rejects.toThrow(NOT_A_PROFILE);
+      expect(calls).toEqual([]);
+    }
+  });
+
+  it("reads a plain profile saved with a byte order mark as plain", async () => {
+    const xml = await profileFile("plain.mobileconfig").text();
+    const file = new File(["\ufeff\n" + xml], "bom.mobileconfig");
+    const { open, calls } = app(null);
+    expect(await unwrapDropped(file, open)).toEqual({ file, notes: [] });
+    expect(calls).toEqual([]);
   });
 
   it("shows the app's reason when it refuses the file", async () => {

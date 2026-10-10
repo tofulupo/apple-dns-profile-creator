@@ -10,7 +10,7 @@ use serde::Serialize;
 #[cfg(any(target_os = "macos", test))]
 use tauri::Url;
 
-use crate::signing::unwrap_signed;
+use crate::signing::{SEQUENCE, unwrap_signed};
 
 /// Must match `OPENED_EVENT` in src/ui/desktop.ts; a test checks both.
 pub const OPENED_EVENT: &str = "profiles-opened";
@@ -77,7 +77,7 @@ pub fn read_profile(path: &Path) -> Result<ReadProfile, String> {
     if metadata.len() > MAX_PROFILE_BYTES || bytes.len() as u64 > MAX_PROFILE_BYTES {
         return Err(failed(TOO_LARGE));
     }
-    Ok(unwrap_profile(name, bytes))
+    unwrap_profile(name, bytes)
 }
 
 /// A profile dropped on the page, checked as `read_profile` checks an opened one.
@@ -85,27 +85,56 @@ pub fn read_dropped(name: String, bytes: Vec<u8>) -> Result<ReadProfile, String>
     if bytes.len() as u64 > MAX_PROFILE_BYTES {
         return Err(could_not_open(&name, TOO_LARGE));
     }
-    Ok(unwrap_profile(name, bytes))
+    unwrap_profile(name, bytes)
 }
 
 const TOO_LARGE: &str = "It is too large to be a configuration profile.";
+const NOT_A_PROFILE: &str = "It is not a configuration profile.";
+
+#[derive(Debug, PartialEq, Eq)]
+enum Kind {
+    Plain,
+    Signed,
+    Neither,
+}
+
+/// What a file holds, by its first byte after an optional UTF-8 BOM and
+/// whitespace. Anything in front of a signed message breaks its signature, so
+/// it still counts as signed. Must match `fileKind` in src/ui/dropzone.ts; the
+/// tests use the same cases.
+fn kind(bytes: &[u8]) -> Kind {
+    let rest = bytes.strip_prefix(b"\xef\xbb\xbf").unwrap_or(bytes);
+    match rest
+        .iter()
+        .find(|byte| !matches!(byte, b' ' | b'\t' | b'\n' | b'\r'))
+    {
+        Some(b'<') => Kind::Plain,
+        Some(&byte) if byte == SEQUENCE => Kind::Signed,
+        _ => Kind::Neither,
+    }
+}
 
 fn could_not_open(name: &str, reason: &str) -> String {
     format!("Could not open “{name}”.\n\n{reason}")
 }
 
-fn unwrap_profile(name: String, bytes: Vec<u8>) -> ReadProfile {
-    let (bytes, broken_signature) = match unwrap_signed(&bytes) {
-        Some(unwrapped) => (unwrapped.content, !unwrapped.intact),
-        None => (bytes, false),
+fn unwrap_profile(name: String, bytes: Vec<u8>) -> Result<ReadProfile, String> {
+    let (bytes, broken_signature) = match kind(&bytes) {
+        Kind::Neither => return Err(could_not_open(&name, NOT_A_PROFILE)),
+        Kind::Plain => (bytes, false),
+        // A signed message with something in front doesn't decode: broken.
+        Kind::Signed => match unwrap_signed(&bytes) {
+            Some(unwrapped) => (unwrapped.content, !unwrapped.intact),
+            None => (bytes, true),
+        },
     };
-    ReadProfile {
+    Ok(ReadProfile {
         profile: OpenedProfile {
             name,
             text: String::from_utf8_lossy(&bytes).into_owned(),
         },
         broken_signature,
-    }
+    })
 }
 
 #[cfg(test)]
@@ -226,6 +255,33 @@ mod tests {
                 broken_signature: false,
             })
         );
+    }
+
+    #[test]
+    fn catches_a_signed_profile_with_anything_in_front() {
+        for prefix in [&b"\xef\xbb\xbf"[..], b"\n", b"  \r\n"] {
+            let bytes = [prefix, SIGNED].concat();
+            let read = read_dropped("edited.mobileconfig".into(), bytes).unwrap();
+            assert!(read.broken_signature, "{prefix:?}");
+        }
+    }
+
+    #[test]
+    fn refuses_a_file_that_is_neither_plain_nor_signed() {
+        let junk = [&b"junk"[..], SIGNED].concat();
+        assert_eq!(
+            read_dropped("junk.mobileconfig".into(), junk),
+            Err("Could not open “junk.mobileconfig”.\n\nIt is not a configuration profile.".into())
+        );
+        assert!(read_dropped("empty.mobileconfig".into(), Vec::new()).is_err());
+    }
+
+    #[test]
+    fn reads_a_plain_profile_saved_with_a_byte_order_mark() {
+        let bytes = b"\xef\xbb\xbf\n<plist>profile</plist>".to_vec();
+        let read = read_dropped("bom.mobileconfig".into(), bytes).unwrap();
+        assert!(!read.broken_signature);
+        assert!(read.profile.text.ends_with("<plist>profile</plist>"));
     }
 
     #[test]
