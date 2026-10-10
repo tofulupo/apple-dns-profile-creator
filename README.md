@@ -1,5 +1,14 @@
 # Apple DNS Profile Creator
 
+[![check](https://github.com/tofulupo/apple-dns-profile-creator/actions/workflows/check.yml/badge.svg)](https://github.com/tofulupo/apple-dns-profile-creator/actions/workflows/check.yml)
+[![offline: tested](https://img.shields.io/badge/offline-tested-brightgreen)](test/invariants/)
+[![last commit](https://img.shields.io/github/last-commit/tofulupo/apple-dns-profile-creator)](https://github.com/tofulupo/apple-dns-profile-creator/commits/main)
+
+[![release](https://img.shields.io/github/v/release/tofulupo/apple-dns-profile-creator?include_prereleases&sort=semver)](https://github.com/tofulupo/apple-dns-profile-creator/releases)
+[![macOS 15.8+](https://img.shields.io/badge/macOS-15.8%2B-blue)](#desktop-app)
+
+[![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/tofulupo/donate)
+
 A small website that generates encrypted-DNS (DoH and DoT) configuration
 profiles for iOS and macOS. Everything happens in the browser. Nothing is
 uploaded anywhere, and the tool works fully offline, which makes it suitable for
