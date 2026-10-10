@@ -3148,13 +3148,8 @@ summary.rule__head::-webkit-details-marker {
 }
 
 .compare__table thead th {
-  height: 1px;
   padding: 0 0 0.75rem 0.75rem;
   vertical-align: top;
-}
-
-.compare__table thead .compare-head {
-  height: 100%;
 }
 
 .compare__table thead th:last-child {
