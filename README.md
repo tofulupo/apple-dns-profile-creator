@@ -309,7 +309,7 @@ To build a release yourself, check out its tag and package the app:
 ```sh
 git clone https://github.com/tofulupo/apple-dns-profile-creator.git
 cd apple-dns-profile-creator
-git checkout v4.0.0-rc.1
+git checkout v4.0.0-rc.2
 deno task desktop
 ```
 
