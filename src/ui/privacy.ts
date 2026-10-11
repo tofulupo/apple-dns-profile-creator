@@ -13,17 +13,36 @@ function show(pill: HTMLElement, hint: HTMLElement, forget: boolean): void {
   hint.textContent = forget ? HINT_ON : HINT_OFF;
 }
 
+/**
+ * On phones the popup sits on the floating bar, as wide as the bar; in the
+ * header it hangs from the pill, right edges aligned. It grows out of the pill
+ * (--privacy-origin, read by the stylesheet).
+ */
 function place(panel: HTMLElement, pill: HTMLElement): void {
   const box = pill.getBoundingClientRect();
+  const dock = pill.closest(".dock");
+  const bar = dock !== null && getComputedStyle(dock).position === "fixed"
+    ? dock.getBoundingClientRect()
+    : undefined;
   const margin = 8;
-  const width = Math.min(340, innerWidth - 2 * margin);
-  panel.style.width = `${width}px`;
-  panel.style.left = `${
-    Math.max(margin, Math.min(box.right - width, innerWidth - width - margin))
-  }px`;
-  const below = box.top < innerHeight / 2;
-  panel.style.top = below ? `${box.bottom + margin}px` : "auto";
-  panel.style.bottom = below ? "auto" : `${innerHeight - box.top + margin}px`;
+  let left: number;
+  if (bar !== undefined) {
+    left = bar.left;
+    panel.style.width = `${bar.width}px`;
+    panel.style.top = "auto";
+    panel.style.bottom = `${innerHeight - bar.top + 6}px`;
+  } else {
+    const width = Math.min(320, innerWidth - 2 * margin);
+    left = Math.max(margin, Math.min(box.right - width, innerWidth - width));
+    panel.style.width = `${width}px`;
+    panel.style.top = `${box.bottom + margin}px`;
+    panel.style.bottom = "auto";
+  }
+  panel.style.left = `${left}px`;
+  panel.style.setProperty(
+    "--privacy-origin",
+    `${box.left + box.width / 2 - left}px ${bar === undefined ? "0" : "100%"}`,
+  );
 }
 
 /** The website's Privacy pill (pages/_privacy.html); the app has none. */
@@ -55,8 +74,10 @@ export function enablePrivacy(): void {
     }
     show(pill, hint, toggle.checked);
   });
-  panel.addEventListener("toggle", (event) => {
-    if ((event as ToggleEvent).newState === "open") place(panel, pill);
+  panel.addEventListener("beforetoggle", (event) => {
+    const open = (event as ToggleEvent).newState === "open";
+    pill.classList.toggle("is-open", open);
+    if (open) place(panel, pill);
   });
   addEventListener("resize", () => {
     if (panel.matches(":popover-open")) place(panel, pill);
