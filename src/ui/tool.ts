@@ -36,6 +36,7 @@ import {
   replaceText,
 } from "./editing.ts";
 import { enableMascot } from "./mascot.ts";
+import { enablePrivacy } from "./privacy.ts";
 import { receiveOpenedProfiles } from "./opened.ts";
 import { holdStillWhenFitting } from "./overscroll.ts";
 import { enablePixelMode } from "./pixel.ts";
@@ -757,6 +758,7 @@ function init(): void {
   watchKeyboard();
   enablePixelMode();
   enableMascot();
+  enablePrivacy();
   if (desktopBindings() !== undefined) enableEscapeRevert();
   updateSaveMenu = enableSaveMenu(() => form.requestSubmit(submitButton));
   bindPickers();

@@ -23,6 +23,7 @@ import { compareViews } from "./compare_view.ts";
 import { ask, tell } from "./dialogs.ts";
 import { desktopBindings } from "./desktop.ts";
 import { enableMascot } from "./mascot.ts";
+import { enablePrivacy } from "./privacy.ts";
 import { receiveOpenedProfiles } from "./opened.ts";
 import { holdStillWhenFitting } from "./overscroll.ts";
 import { enablePixelMode } from "./pixel.ts";
@@ -715,6 +716,7 @@ function init(): void {
   watchKeyboard();
   enablePixelMode();
   enableMascot();
+  enablePrivacy();
   updateSaveMenu = enableSaveMenu(() => void download());
   updateShareMenu = enableShareMenu(() => void share());
   desktopBindings()?.onCardMenuChosen?.((action) => {

@@ -2,7 +2,11 @@ import { beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
 import {
+  adoptEarlierData,
   createConfigStore,
+  KEEP_KEY,
+  keepsData,
+  setKeepData,
   StorageUnavailableError,
 } from "../../src/ui/storage.ts";
 import type { ConfigStore, StorageArea } from "../../src/ui/storage.ts";
@@ -406,5 +410,67 @@ describe("edit target", () => {
     expect(store.takeEditTarget()).toBeUndefined();
     storage.raw("dns-mobileconfig:edit-target", '{"name":"Half"}');
     expect(store.takeEditTarget()).toBeUndefined();
+  });
+});
+
+describe("forgetting on close or keeping", () => {
+  let local: FakeStorage;
+  let session: FakeStorage;
+  const keys = (area: FakeStorage) =>
+    Array.from({ length: area.length }, (_, index) => area.key(index)).sort();
+
+  beforeEach(() => {
+    local = new FakeStorage();
+    session = new FakeStorage();
+  });
+
+  it("forgets unless the user keeps their data", () => {
+    expect(keepsData(local)).toBe(false);
+    setKeepData(true, local, session);
+    expect(keepsData(local)).toBe(true);
+  });
+
+  it("moves everything into the browser when keeping is turned on", () => {
+    session.setItem(CONFIGS_KEY, "[]");
+    session.setItem("dns-mobileconfig:theme", "dark");
+    setKeepData(true, local, session);
+    expect(keys(session)).toEqual([]);
+    expect(keys(local)).toEqual([
+      CONFIGS_KEY,
+      KEEP_KEY,
+      "dns-mobileconfig:theme",
+    ]);
+  });
+
+  it("moves everything back into the tab, the switch included, when turned off", () => {
+    setKeepData(true, local, session);
+    local.setItem(CONFIGS_KEY, "[]");
+    setKeepData(false, local, session);
+    expect(keys(local)).toEqual([]);
+    expect(keys(session)).toEqual([CONFIGS_KEY]);
+  });
+
+  it("never touches keys of other sites or apps", () => {
+    local.setItem("other-app:token", "x");
+    session.setItem("other-app:draft", "y");
+    setKeepData(true, local, session);
+    setKeepData(false, local, session);
+    expect(local.getItem("other-app:token")).toBe("x");
+    expect(session.getItem("other-app:draft")).toBe("y");
+  });
+
+  it("loads cards an earlier version kept, and then keeps them only in the tab", () => {
+    local.setItem(CONFIGS_KEY, "[1]");
+    adoptEarlierData(local, session);
+    expect(session.getItem(CONFIGS_KEY)).toBe("[1]");
+    expect(local.getItem(CONFIGS_KEY)).toBeNull();
+  });
+
+  it("leaves the data in the browser when the user keeps it", () => {
+    setKeepData(true, local, session);
+    local.setItem(CONFIGS_KEY, "[1]");
+    adoptEarlierData(local, session);
+    expect(local.getItem(CONFIGS_KEY)).toBe("[1]");
+    expect(keys(session)).toEqual([]);
   });
 });

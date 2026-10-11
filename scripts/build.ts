@@ -17,6 +17,7 @@ const PAGES_DIR = join(ROOT, "pages");
 const LAYOUT = "pages/_layout.html";
 const MASCOT = "pages/_mascot.html";
 const FONT_PROFILE = "pages/_font_profile.html";
+const PRIVACY = "pages/_privacy.html";
 const PREPAINT = "pages/_prepaint.html";
 const SETTINGS = "pages/_settings.html";
 const SETTINGS_SCRIPT = "src/ui/settings_window.ts";
@@ -226,6 +227,20 @@ function fill(
   });
 }
 
+/** The website's version on phones, where the floating bar has no room. */
+function versionEnd(version: string): string {
+  return `<footer class="page-end">
+      <a class="version" href="${REPOSITORY_URL}" target="_blank"
+        rel="noopener"
+        aria-label="v${
+    escape(version)
+  }, source code on GitHub, opens in a new tab"><span
+          class="icon icon--source" aria-hidden="true"></span>v${
+    escape(version)
+  }</a>
+    </footer>`;
+}
+
 function navigation(current: Page): string {
   return PAGES.map((page) => {
     const state = page === current ? ' aria-current="page"' : "";
@@ -354,13 +369,18 @@ export async function renderPage(
 ): Promise<string> {
   const desktopOnly = (file: string) =>
     assets.desktop ? Deno.readTextFile(join(ROOT, file)) : Promise.resolve("");
-  const [layout, content, mascot, fontProfile, prepaint] = await Promise.all([
-    Deno.readTextFile(join(ROOT, LAYOUT)),
-    Deno.readTextFile(join(PAGES_DIR, page.file)),
-    desktopOnly(MASCOT),
-    desktopOnly(FONT_PROFILE),
-    Deno.readTextFile(join(ROOT, PREPAINT)),
-  ]);
+  const websiteOnly = (file: string) =>
+    assets.desktop ? Promise.resolve("") : Deno.readTextFile(join(ROOT, file));
+  const [layout, content, mascot, fontProfile, privacy, prepaint] =
+    await Promise
+      .all([
+        Deno.readTextFile(join(ROOT, LAYOUT)),
+        Deno.readTextFile(join(PAGES_DIR, page.file)),
+        desktopOnly(MASCOT),
+        desktopOnly(FONT_PROFILE),
+        websiteOnly(PRIVACY),
+        Deno.readTextFile(join(ROOT, PREPAINT)),
+      ]);
   const jsonLd = `<script type="application/ld+json">${
     JSON.stringify(structuredData(assets.version)).replaceAll("<", "\\u003c")
   }</script>`;
@@ -376,6 +396,8 @@ export async function renderPage(
     version: escape(assets.version),
     nav: navigation(page),
     mascot: mascot.trim(),
+    privacy: privacy.trim(),
+    versionEnd: assets.desktop ? "" : versionEnd(assets.version),
     content: fill(
       content.trim(),
       { presets: presetOptions(), fontProfile: fontProfile.trim() },

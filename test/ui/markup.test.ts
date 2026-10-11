@@ -139,6 +139,32 @@ describe("the mascot", () => {
   });
 });
 
+describe("the Privacy pill", () => {
+  it("is on every website page, with its popover and the version at the end", () => {
+    for (const { html } of rendered) {
+      expect(html).toContain('id="privacyPill"');
+      expect(html).toContain('popovertarget="privacyPanel"');
+      expect(html).toContain(
+        '<div class="privacy-panel" id="privacyPanel" popover>',
+      );
+      expect(html).toContain('<footer class="page-end">');
+    }
+  });
+
+  it("is left out of the desktop app, which forgets on quit in Settings", async () => {
+    for (const page of PAGES) {
+      const html = await renderPage(page, {
+        stylesheet: "app.css",
+        script: "",
+        version: "0.0.0-test",
+        desktop: true,
+      });
+      expect(html).not.toContain("privacyPill");
+      expect(html).not.toContain("page-end");
+    }
+  });
+});
+
 describe("the font profile panel", () => {
   it("is in the desktop app's profile page", async () => {
     const page = PAGES.find((p) => p.file === "finalize.html");
@@ -180,10 +206,10 @@ describe("the Settings window", () => {
 
   it("applies the theme and reduced motion before first paint", () => {
     expect(html).toContain(
-      `localStorage.getItem(${JSON.stringify(THEME_KEY)})`,
+      `stored(${JSON.stringify(THEME_KEY)})`,
     );
     expect(html).toContain(
-      `localStorage.getItem(${JSON.stringify(SETTINGS_KEY)})`,
+      `stored(${JSON.stringify(SETTINGS_KEY)})`,
     );
   });
 
@@ -260,13 +286,19 @@ for (const { page, html } of rendered) {
 
     it("applies a saved theme before first paint with the module's key", () => {
       expect(html).toContain(
-        `localStorage.getItem(${JSON.stringify(THEME_KEY)})`,
+        `stored(${JSON.stringify(THEME_KEY)})`,
+      );
+    });
+
+    it("reads the tab's storage first before first paint, then the browser's", () => {
+      expect(html).toContain(
+        "sessionStorage.getItem(key) ?? localStorage.getItem(key)",
       );
     });
 
     it("applies reduced motion before first paint with the module's key", () => {
       expect(html).toContain(
-        `localStorage.getItem(${JSON.stringify(SETTINGS_KEY)})`,
+        `stored(${JSON.stringify(SETTINGS_KEY)})`,
       );
     });
 

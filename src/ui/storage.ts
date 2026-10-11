@@ -38,12 +38,100 @@ export class StorageUnavailableError extends Error {
   }
 }
 
+/**
+ * On the website, in localStorage while the user keeps their data. Missing
+ * means "Forget on close": everything lives in sessionStorage, which goes
+ * with the tab. Also read by pages/_prepaint.html.
+ */
+export const KEEP_KEY = `${KEY_PREFIX}keep`;
+
+type MovableStorage = Pick<
+  Storage,
+  "length" | "key" | "getItem" | "setItem" | "removeItem"
+>;
+
+export function keepsData(local: Pick<Storage, "getItem">): boolean {
+  return local.getItem(KEEP_KEY) === "on";
+}
+
+/** Moves every key with the prefix but `KEEP_KEY` from one area to the other. */
+export function moveKeys(from: MovableStorage, to: MovableStorage): void {
+  const keys = Array.from(
+    { length: from.length },
+    (_, index) => from.key(index),
+  )
+    .filter((key): key is string =>
+      key !== null && key.startsWith(KEY_PREFIX) && key !== KEEP_KEY
+    );
+  for (const key of keys) {
+    const value = from.getItem(key);
+    if (value !== null) to.setItem(key, value);
+    from.removeItem(key);
+  }
+}
+
+export function setKeepData(
+  keep: boolean,
+  local: MovableStorage,
+  session: MovableStorage,
+): void {
+  if (keep) {
+    moveKeys(session, local);
+    local.setItem(KEEP_KEY, "on");
+  } else {
+    local.removeItem(KEEP_KEY);
+    moveKeys(local, session);
+  }
+}
+
+/**
+ * Data an earlier version left in localStorage moves into the tab, unless the
+ * user keeps their data. Runs once per page, before the first read.
+ */
+export function adoptEarlierData(
+  local: MovableStorage,
+  session: MovableStorage,
+): void {
+  if (!keepsData(local)) moveKeys(local, session);
+}
+
+// The app forgets on quit itself (src-tauri/src/app_settings.rs), so it
+// always uses localStorage. The same check is in pages/_prepaint.html.
+function inApp(): boolean {
+  return "__TAURI__" in globalThis;
+}
+
+let adopted = false;
+
+function activeStorage(): Storage {
+  const local = globalThis.localStorage;
+  if (inApp()) return local;
+  if (!adopted) {
+    adopted = true;
+    try {
+      adoptEarlierData(local, globalThis.sessionStorage);
+    } catch {
+      // Blocked storage: the reads and writes below report it.
+    }
+  }
+  return keepsData(local) ? local : globalThis.sessionStorage;
+}
+
 export function browserStorage(): StorageArea {
   return {
-    getItem: (key) => globalThis.localStorage.getItem(key),
-    setItem: (key, value) => globalThis.localStorage.setItem(key, value),
-    removeItem: (key) => globalThis.localStorage.removeItem(key),
+    getItem: (key) => activeStorage().getItem(key),
+    setItem: (key, value) => activeStorage().setItem(key, value),
+    removeItem: (key) => activeStorage().removeItem(key),
   };
+}
+
+/** The website's "Forget on close" switch: true unless the user keeps data. */
+export function forgetsOnClose(): boolean {
+  return !inApp() && !keepsData(globalThis.localStorage);
+}
+
+export function setForgetOnClose(forget: boolean): void {
+  setKeepData(!forget, globalThis.localStorage, globalThis.sessionStorage);
 }
 
 export function persist(write: () => void): boolean {

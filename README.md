@@ -118,7 +118,8 @@ src/lib/       pure core - no dependencies, no DOM
 src/ui/        browser layer - DOM wiring only, no profile semantics
   tool.ts        entry point for pages/index.html
   profile.ts     entry point for pages/finalize.html
-  storage.ts     localStorage-backed configuration store
+  storage.ts     configuration store, in the tab or kept in the browser
+  privacy.ts     the website's Privacy pill: forget on close, or keep
   theme.ts       header theme switch: system, light or dark
   download.ts    Blob download, or the desktop binding when present
   signing.ts     desktop-only Signature choice on the profile page
@@ -242,7 +243,10 @@ panel keeps `encrypted-dns.mobileconfig` for every profile.
 
 The website at mobileconfig.io is a showcase. It builds the profile in your
 browser and sends nothing back: no cookies, no analytics, no requests to other
-sites. Your configurations stay in the browser's local storage. The server only
+sites. Your configurations stay in this tab and are deleted when you close it.
+To keep them in the browser, open Privacy at the top of the page (in the bar at
+the bottom on phones) and turn the switch off. The browser's cache and history
+still show the visit. For zero traces, use a private window. The server only
 hands out the site's files and keeps nothing.
 
 It runs on Deno Deploy, which records each request (path, status and time) for
