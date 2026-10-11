@@ -4,7 +4,7 @@ import { expect } from "@std/expect";
 import { forgetNote, NEXT_START } from "../../src/ui/settings_window.ts";
 import { SEEDED_KEY, SETTINGS_KEY, THEME_KEY } from "../../src/ui/storage.ts";
 
-describe("Forget cards when quitting", () => {
+describe("Forget on quit", () => {
   it("says nothing while the saved choice is what this session does", () => {
     expect(forgetNote({ stored: false, active: false })).toBeUndefined();
     expect(forgetNote({ stored: true, active: true })).toBeUndefined();

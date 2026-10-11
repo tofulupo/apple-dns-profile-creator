@@ -53,8 +53,8 @@
         <span class="switch-row__text">
           <span class="switch-row__title" id="systemLabel">Use system
             scope</span>
-          <span class="switch-row__hint" id="systemHint">Required on macOS 26
-            & later.</span>
+          <span class="switch-row__hint"
+            id="systemHint">OS 26+ (required).</span>
         </span>
         <input type="checkbox" role="switch" class="switch" id="systemChk"
           checked aria-labelledby="systemLabel" aria-describedby="systemHint">
@@ -64,7 +64,7 @@
           <span class="switch-row__title" id="declarationsLabel">Declaration
             format <span class="badge badge--warning">Beta</span></span>
           <span class="switch-row__hint"
-            id="declarationsHint">Replaces the legacy payload (iOS/macOS 27+). Requires system scope.</span>
+            id="declarationsHint">OS 26+ (system scope required).</span>
         </span>
         <input type="checkbox" role="switch" class="switch"
           id="declarationsChk" aria-labelledby="declarationsLabel"
@@ -75,8 +75,7 @@
           <span class="switch-row__title" id="neutralNameLabel">Neutral file
             name</span>
           <span class="switch-row__hint" id="neutralNameHint">Saves as
-            encrypted-dns.mobileconfig, so the name doesn't show the
-            provider.</span>
+            'encrypted-dns.mobileconfig'</span>
         </span>
         <input type="checkbox" role="switch" class="switch"
           id="neutralNameChk" aria-labelledby="neutralNameLabel"
@@ -150,7 +149,8 @@
   <div class="note" id="noteSeveral" hidden>
     <span class="icon icon--info" aria-hidden="true"></span>
     <div class="note__body">
-      <p>Your device uses one of these at a time. On iPhone, pick it under Settings › General › VPN &amp; Device Management › DNS, or choose Automatic.</p>
+      <p>One profile active at a time, set it under
+      VPN & Device Management (iOS).</p>
     </div>
   </div>
 </section>

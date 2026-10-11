@@ -26,7 +26,7 @@ const MOTIONS: readonly string[] = [
 
 export const NEXT_START = "Applies from the next start.";
 
-/** What the note under "Forget cards when quitting" says, if anything. */
+/** What the note under "Forget on quit" says, if anything. */
 export function forgetNote(state: ForgetState): string | undefined {
   return state.stored === state.active ? undefined : NEXT_START;
 }

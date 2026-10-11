@@ -245,10 +245,7 @@ fn open_anyway(app: &AppHandle, name: &str) -> bool {
     bring_to_front(app);
     dialog::app_alert(
         app,
-        &format!(
-            "“{name}” has a broken signature.\n\nIt was changed after it was signed, or the \
-             signature is damaged. Open it anyway?"
-        ),
+        &format!("“{name}”\n\n Broken signature. Profile may have been altered since signing\n"),
     )
     .kind(MessageDialogKind::Warning)
     .buttons(MessageDialogButtons::OkCancelCustom(
