@@ -13,7 +13,7 @@ export interface Page {
 export const SITE_URL = "https://mobileconfig.io/";
 
 /** The website's version. The desktop app's is in deno.json. */
-export const SITE_VERSION = "3.17.0";
+export const SITE_VERSION = "3.17.1";
 
 export const PAGES: readonly Page[] = [
   {
