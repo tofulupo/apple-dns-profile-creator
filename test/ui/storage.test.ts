@@ -6,6 +6,7 @@ import {
   createConfigStore,
   KEEP_KEY,
   keepsData,
+  pickStorage,
   setKeepData,
   StorageUnavailableError,
 } from "../../src/ui/storage.ts";
@@ -464,6 +465,25 @@ describe("forgetting on close or keeping", () => {
     adoptEarlierData(local, session);
     expect(session.getItem(CONFIGS_KEY)).toBe("[1]");
     expect(local.getItem(CONFIGS_KEY)).toBeNull();
+  });
+
+  it("writes into the tab while forgetting is on, and nothing into the browser", () => {
+    createConfigStore(pickStorage(local, session, false)).add(config());
+    expect(keys(session)).toEqual([CONFIGS_KEY]);
+    expect(keys(local)).toEqual([]);
+  });
+
+  it("writes into the browser once the user keeps their data", () => {
+    setKeepData(true, local, session);
+    createConfigStore(pickStorage(local, session, false)).add(config());
+    expect(keys(local)).toEqual([CONFIGS_KEY, KEEP_KEY]);
+    expect(keys(session)).toEqual([]);
+  });
+
+  it("always writes into the browser in the app, which forgets on quit itself", () => {
+    createConfigStore(pickStorage(local, session, true)).add(config());
+    expect(keys(local)).toEqual([CONFIGS_KEY]);
+    expect(keys(session)).toEqual([]);
   });
 
   it("leaves the data in the browser when the user keeps it", () => {

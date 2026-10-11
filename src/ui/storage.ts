@@ -101,12 +101,20 @@ function inApp(): boolean {
   return "__TAURI__" in globalThis;
 }
 
+/** Where the site writes: the tab, unless the user keeps data or it's the app. */
+export function pickStorage<T extends Pick<Storage, "getItem">>(
+  local: T,
+  session: T,
+  app: boolean,
+): T {
+  return app || keepsData(local) ? local : session;
+}
+
 let adopted = false;
 
 function activeStorage(): Storage {
   const local = globalThis.localStorage;
-  if (inApp()) return local;
-  if (!adopted) {
+  if (!inApp() && !adopted) {
     adopted = true;
     try {
       adoptEarlierData(local, globalThis.sessionStorage);
@@ -114,7 +122,7 @@ function activeStorage(): Storage {
       // Blocked storage: the reads and writes below report it.
     }
   }
-  return keepsData(local) ? local : globalThis.sessionStorage;
+  return pickStorage(local, globalThis.sessionStorage, inApp());
 }
 
 export function browserStorage(): StorageArea {
