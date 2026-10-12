@@ -1,15 +1,15 @@
-<button type="button" class="privacy-pill" id="privacyPill"
-  popovertarget="privacyPanel" aria-label="Privacy: forget on close is on">
+<button type="button" class="keep-pill" id="keepPill"
+  popovertarget="keepPanel" aria-label="Privacy: forget on close is on">
   <span class="icon icon--fingerprint" aria-hidden="true"></span>
   <span aria-hidden="true">Privacy</span>
 </button>
-<div class="privacy-panel" id="privacyPanel" popover>
+<div class="keep-panel" id="keepPanel" popover>
   <label class="switch-row">
     <span class="switch-row__text">
-      <span class="switch-row__hint" id="privacyHint">Deletes cards and
+      <span class="switch-row__hint" id="keepHint">Deletes cards and
         settings. For zero traces, use a private window.</span>
     </span>
-    <input type="checkbox" role="switch" class="switch" id="privacyChk" checked
-      aria-label="Forget on close" aria-describedby="privacyHint">
+    <input type="checkbox" role="switch" class="switch" id="keepChk" checked
+      aria-label="Forget on close" aria-describedby="keepHint">
   </label>
 </div>

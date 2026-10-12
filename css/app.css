@@ -338,7 +338,7 @@ main {
 }
 
 /* The website's Privacy pill and its popover (pages/_privacy.html). */
-.privacy-pill {
+.keep-pill {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
@@ -356,26 +356,26 @@ main {
   cursor: pointer;
 }
 
-.privacy-pill .icon {
+.keep-pill .icon {
   width: 1rem;
   height: 1rem;
 }
 
-.privacy-pill[data-on="true"] {
+.keep-pill[data-on="true"] {
   color: var(--text);
 }
 
-.privacy-pill[data-on="true"] .icon {
+.keep-pill[data-on="true"] .icon {
   color: var(--accent);
 }
 
-.privacy-pill:hover,
-.privacy-pill.is-open {
+.keep-pill:hover,
+.keep-pill.is-open {
   border-color: var(--border-strong);
   color: var(--text);
 }
 
-.privacy-panel {
+.keep-panel {
   position: fixed;
   inset: auto;
   margin: 0;
@@ -389,7 +389,7 @@ main {
   color: var(--text);
 }
 
-.privacy-panel:popover-open {
+.keep-panel:popover-open {
   transform-origin: var(--privacy-origin, 100% 0);
   animation: privacy-grow 160ms ease-out;
 }
@@ -401,15 +401,15 @@ main {
   }
 }
 
-:root[data-motion="reduce"] .privacy-panel:popover-open {
+:root[data-motion="reduce"] .keep-panel:popover-open {
   animation: none;
 }
 
-.privacy-panel .switch-row {
+.keep-panel .switch-row {
   align-items: flex-start;
 }
 
-.privacy-panel .switch {
+.keep-panel .switch {
   margin-top: 0.1rem;
 }
 
@@ -1166,7 +1166,7 @@ label.settings-row {
   }
 
   :root:not([data-app="desktop"]) .theme-switch,
-  :root:not([data-app="desktop"]) .privacy-pill {
+  :root:not([data-app="desktop"]) .keep-pill {
     height: var(--dock-item);
     background: transparent;
     border-color: transparent;
@@ -1206,7 +1206,7 @@ label.settings-row {
     display: none;
   }
 
-  :root:not([data-app="desktop"]) .privacy-pill {
+  :root:not([data-app="desktop"]) .keep-pill {
     grid-area: 1 / 3;
     justify-self: center;
     padding: 0 0.75rem 0 0.6rem;
@@ -1214,19 +1214,19 @@ label.settings-row {
 
   /* Open, it is selected like the current tab, and its popup is made of the
      same stuff as the bar it sits on. */
-  :root:not([data-app="desktop"]) .privacy-pill.is-open {
+  :root:not([data-app="desktop"]) .keep-pill.is-open {
     background: var(--surface);
     border-color: var(--border);
   }
 
-  :root:not([data-app="desktop"]) .privacy-panel {
+  :root:not([data-app="desktop"]) .keep-panel {
     background: color-mix(in srgb, var(--surface-sunken) 85%, transparent);
     -webkit-backdrop-filter: blur(16px) saturate(160%);
     backdrop-filter: blur(16px) saturate(160%);
     border-radius: 1.5rem;
   }
 
-  :root:not([data-app="desktop"]) .privacy-panel .switch-row {
+  :root:not([data-app="desktop"]) .keep-panel .switch-row {
     padding: 0.85rem 1rem 0.85rem 1.1rem;
   }
 
@@ -1242,14 +1242,14 @@ label.settings-row {
   }
 
   :root:not([data-app="desktop"]) .theme-switch .icon,
-  :root:not([data-app="desktop"]) .privacy-pill .icon {
+  :root:not([data-app="desktop"]) .keep-pill .icon {
     width: 0.95rem;
     height: 0.95rem;
   }
 
   :root:not([data-app="desktop"]) .tab:not([aria-current="page"]):active,
   :root:not([data-app="desktop"]) .theme-switch:active,
-  :root:not([data-app="desktop"]) .privacy-pill:active {
+  :root:not([data-app="desktop"]) .keep-pill:active {
     background: var(--surface);
   }
 
@@ -1296,7 +1296,7 @@ label.settings-row {
 @media (width <= 57rem) and (hover: hover) {
   :root:not([data-app="desktop"]) .tab:not([aria-current="page"]):hover,
   :root:not([data-app="desktop"]) .theme-switch:hover,
-  :root:not([data-app="desktop"]) .privacy-pill:hover {
+  :root:not([data-app="desktop"]) .keep-pill:hover {
     background: var(--surface);
   }
 }

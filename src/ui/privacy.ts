@@ -47,10 +47,10 @@ function place(panel: HTMLElement, pill: HTMLElement): void {
 
 /** The website's Privacy pill (pages/_privacy.html); the app has none. */
 export function enablePrivacy(): void {
-  const pill = document.getElementById("privacyPill");
-  const panel = document.getElementById("privacyPanel");
-  const toggle = document.getElementById("privacyChk");
-  const hint = document.getElementById("privacyHint");
+  const pill = document.getElementById("keepPill");
+  const panel = document.getElementById("keepPanel");
+  const toggle = document.getElementById("keepChk");
+  const hint = document.getElementById("keepHint");
   if (
     pill === null || panel === null || hint === null ||
     !(toggle instanceof HTMLInputElement)

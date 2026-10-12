@@ -142,13 +142,28 @@ describe("the mascot", () => {
 describe("the Privacy pill", () => {
   it("is on every website page, with its popover and the version at the end", () => {
     for (const { html } of rendered) {
-      expect(html).toContain('id="privacyPill"');
-      expect(html).toContain('popovertarget="privacyPanel"');
+      expect(html).toContain('id="keepPill"');
+      expect(html).toContain('popovertarget="keepPanel"');
       expect(html).toContain(
-        '<div class="privacy-panel" id="privacyPanel" popover>',
+        '<div class="keep-panel" id="keepPanel" popover>',
       );
       expect(html).toContain('<footer class="page-end">');
     }
+  });
+
+  // Annoyance filter lists in ad blockers (uBlock Origin's Fanboy list) hide
+  // elements by such words in their class or id.
+  it("has no class or id an ad blocker's annoyance list would hide", () => {
+    const names = rendered.flatMap(({ html }) =>
+      [...html.matchAll(/\s(?:class|id)="([^"]*)"/g)].map((match) => match[1]!)
+    );
+    expect(
+      names.filter((name) =>
+        /privacy|cookie|consent|gdpr|banner|popup|newsletter|subscribe/i.test(
+          name,
+        )
+      ),
+    ).toEqual([]);
   });
 
   it("is left out of the desktop app, which forgets on quit in Settings", async () => {
@@ -159,7 +174,7 @@ describe("the Privacy pill", () => {
         version: "0.0.0-test",
         desktop: true,
       });
-      expect(html).not.toContain("privacyPill");
+      expect(html).not.toContain("keepPill");
       expect(html).not.toContain("page-end");
     }
   });
