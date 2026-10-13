@@ -1,6 +1,3 @@
-//! The same file and format as the earlier `deno desktop` builds, so a saved
-//! size carries over.
-
 use std::fs;
 use std::io;
 use std::path::Path;

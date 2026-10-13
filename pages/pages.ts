@@ -22,7 +22,7 @@ export const PAGES: readonly Page[] = [
     title: "DNS Profile Creator – encrypted DNS profiles for iOS and macOS",
     icon: "upload",
     description:
-      "Build encrypted DNS (DoH and DoT) configuration profiles for iOS and macOS, entirely in your browser.",
+      "Build encrypted DNS (DoH and DoT) configuration profiles for iOS and macOS in your browser, or switch the resolver of a profile you have and keep its rules.",
     script: "src/ui/tool.ts",
     priority: 1.0,
   },

@@ -16,14 +16,21 @@ network's resolver when the encrypted server is unreachable
 (iOS/macOS/visionOS 26+), and preventing profile removal on supervised
 devices.
 
+To switch resolvers, load an existing profile, pick another provider preset or
+enter a different DoH URL and resolver addresses, and download it again. The
+Wi-Fi exceptions, domain rules, interfaces and failover stay as they were.
+This helps with Mullvad's public encrypted DNS, which shuts down on 2 November
+2026: Mullvad says its iOS and macOS DoH profiles stop working then and points
+to Quad9.
+
 Profiles from the website are NOT signed. Unsigned profiles install
 identically; iOS and macOS merely label them "Not Signed" during
 installation. The macOS desktop app can optionally sign them with a
 certificate from the user's Keychain.
 
-The website is a showcase hosted on Deno Deploy. It sets no cookies and has no
-analytics, but the host records request metadata such as path, status and time.
-For more privacy, self-host the static build or use the macOS desktop app.
+The website is static files on its own server. It sets no cookies, has no
+analytics and keeps no access log. For more privacy, self-host the static build
+or use the macOS desktop app.
 
 ## Tool
 

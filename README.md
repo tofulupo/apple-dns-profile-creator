@@ -9,181 +9,218 @@
 
 [![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/tofulupo/donate)
 
-A small website that generates encrypted-DNS (DoH and DoT) configuration
-profiles for iOS and macOS. Everything happens in the browser. Nothing is
-uploaded anywhere, and the tool works fully offline, which makes it suitable for
-hosting on a home network.
+Builds encrypted DNS (DoH and DoT) profiles for iPhone, iPad and Mac, and opens,
+compares and signs the ones you already have. It is a website and a macOS app.
+Nothing is uploaded, and there are no accounts.
 
-**[Try it out](https://mobileconfig.io)** - no install, no sign-up, nothing
+**[Try it out](https://mobileconfig.io)**: no install, no sign-up, nothing
 leaves your device ([privacy](#privacy)).
 
 Apple has supported DNS over HTTPS and DNS over TLS since iOS 14 and macOS 11,
-but exposes no way to use them without an app or a configuration profile. This
-tool builds those profiles.
+but has no screen for it. A configuration profile turns it on without an extra
+app, and this tool builds those profiles.
 
-> [!NOTE]
-> The profile is **unsigned**, iOS and macOS reports "Not Signed" and will ask
-> for confirmation. Use the [Desktop app](#desktop-app) for local signing.
+![The mascot peeking over a window that says: Your device. Your profile. Your rules.](docs/mascot-banner.png)
 
-## First steps
+## What it does
 
-### check out the code
+- Start from one of six presets, or enter any DoH URL or DoT host with up to two
+  IPv4 and two IPv6 addresses. Your own resolver works too. The presets show the
+  country a provider runs in and what it says about logs, DNSSEC and blocking.
+- Turn encrypted DNS off for named Wi-Fi networks or domains, or use it only for
+  named domains
+  ([details](#skip-encrypted-dns-for-vs-use-encrypted-dns-only-for)).
+- Pick Wi-Fi, cellular and Ethernet one by one. With Failover on, the device
+  falls back to the network's own DNS when the encrypted server doesn't answer
+  (OS 26 and later).
+- Put several configurations in one profile. The device uses one at a time
+  ([details](#several-configurations-in-one-profile)).
+- Open a profile you already have, signed or not, and see what is in it. Pick
+  another resolver for it and keep its rules. Compare two cards side by side.
+- Desktop app only: sign with a certificate from your Keychain, and send a
+  profile to an iPhone with AirDrop from the Share button.
 
-```sh
-git clone git@github.com:tofulupo/apple-dns-profile-creator.git
-```
+![The presets menu on the tool page](docs/screenshots/tool_presets.png)
 
-### Tasks to run
+![Two cards compared, showing only what differs](docs/screenshots/compare.png)
 
-> [!NOTE]
-> Requires [Deno](https://deno.com) 2.9 or newer. The desktop app also needs
-> [Rust](https://rustup.rs) 1.85 or newer and Xcode 26 or newer.
+## Who it's for
 
-```sh
-deno task dev              # build, watch and serve on the LAN
-deno task build            # production bundle into dist/
-deno task preview          # build once, then serve
-deno task desktop          # build, then package the macOS app with Tauri
-deno task desktop:dev      # build, then run the app without packaging it
-deno task desktop:icon     # regenerate the app's icon files after editing the icon
+**Setting it up for yourself or for someone else.** Pick a preset, leave the
+rest alone, download. The app has no account and doesn't need an internet
+connection. Installing is the part that takes a few taps on the device, see
+[Installing and removing](#installing-and-removing).
 
-deno task check            # type-check + lint + fmt --check + Markdown lint + all tests
-deno task lint:md          # Markdown lint only (rumdl, settings in .rumdl.toml)
-deno task test             # all tests: the site's and the desktop app's
-deno task test:web         # the site's tests only (Deno)
-deno task test:desktop     # the desktop app's tests only (Rust)
-deno fmt                   # format
-deno task check:live       # check mobileconfig.io: headers, redirects, TLS, security.txt
+**A household with its own resolver.** Enter your DoH URL or DoT host and add
+your home network under Wi-Fi exceptions. Devices then use the network's DNS at
+home and encrypted DNS everywhere else. Leave the exceptions empty to use
+encrypted DNS everywhere. Save one profile per phone and AirDrop each one.
 
+**Looking after a few Macs.** Drop in a colleague's profile to read its settings
+without installing it. A signed profile that was changed after signing gets a
+warning before it loads. Output is the same every time for the same input, and
+CI checks every generated profile against golden files and, on macOS, against
+Apple's `plutil -lint`.
 
-deno task fixtures:fetch   # (re)download upstream .mobileconfig test fixtures
-deno task fixtures:lint    # validate fixtures with Apple's plutil (macOS only)
-deno task deps:update      # latest compatible deps, Tauri's too, a day old at least
-```
+**Working with a serious threat model.** The app makes no network requests,
+opens no port, and has no telemetry, crash reporting or update check. Tests in
+[`test/invariants/`](test/invariants/) fail if that changes. The signing key
+stays in the Keychain. Cards are forgotten when you quit unless you turn that
+off in Settings. Every feature works from a source checkout, so you can
+[build the app yourself](#build-it-yourself).
 
-### local development
+## What a profile can't do
 
-```sh
-deno task dev                      # http://localhost:5173, also on the LAN
-DNS_TOOL_PORT=8080 deno task dev   # different port
-```
+- It changes where DNS lookups go and how they travel. It doesn't hide your IP
+  address, protect a device that is already compromised, or stop someone from
+  watching which servers you connect to.
+- Some apps and tools don't use the system's DNS settings. Reported examples are
+  VPN clients, iCloud Private Relay, the App Store and command line tools like
+  `dig`. Captive portals on hotel and airport Wi-Fi are exempt too. See the
+  [known issues](https://github.com/paulmillr/encrypted-dns#known-issues) of
+  paulmillr's profiles.
+- The app blocks nothing. If a resolver filters ads or malware, that is the
+  resolver's doing.
+- DoT is easier to detect and block than DoH.
+- A signature shows whether a file changed after it was signed. It doesn't show
+  who made it. Devices label a signed profile "Verified" only if they trust the
+  certificate's issuer, and a self-signed certificate shows "Not Verified".
+- Lock profile only does something on supervised devices.
+- A device in Lockdown Mode won't install a profile. Per
+  [Apple](https://support.apple.com/en-us/105120), turn Lockdown Mode off,
+  install, and turn it on again.
+- There is no command line tool, no MDM deployment and no Windows or Linux app.
+  The website opens in any browser, but only Apple devices install the profiles.
 
-`dev` builds `dist/`, serves it, and rebuilds whenever anything in `src/`,
-`css/`, `pages/`, `public/` or `deno.json` changes. There is no hot reload;
-refresh the page. Edits to `pages/pages.ts` itself need a restart.
+## Installing and removing
 
-### Tests
+The app doesn't install profiles. The device does, and asks first.
 
-```sh
-deno task test             # the suite: Deno tests, then the app's Rust tests
-deno task check            # type-check + lint + fmt --check + Markdown lint + the suite
-deno task fixtures:fetch   # required once, for the Mullvad-dependent tests
-```
+- iPhone or iPad: AirDrop the profile from the desktop app, or open the website
+  in Safari and download. Then open Settings and tap Profile Downloaded, then
+  Install. With several configurations, pick the one to use under Settings ›
+  General › VPN & Device Management › DNS.
+- Mac: Download profile saves to `~/Downloads` and offers to open the file,
+  which hands it to System Settings.
+- To remove a profile, remove it in the same place you installed it.
 
-The desktop app's tests live next to its code in `src-tauri/src/`, as Rust
-`#[cfg(test)]` modules; `deno task test:desktop` builds `dist/` first, since the
-app embeds it.
+## Moving from Mullvad's DNS
 
-Expected behaviour is derived from Apple's payload documentation and from real
-profiles known to install on devices.
+Mullvad shuts down its public encrypted DNS on 2 November 2026, and its iOS and
+macOS DoH profiles stop working then
+([Mullvad's announcement](https://mullvad.net/en/blog/shutting-down-our-public-encrypted-dns-servers-and-sponsoring-quad9-instead)).
+Mullvad points to Quad9.
 
-Test fixtures are genuine profiles from upstream projects. The paulmillr
-profiles are public domain and committed here; the Mullvad profiles carry no
-license, so they are fetched on demand and the cases that use them contribute
-nothing until you run `deno task fixtures:fetch`.
+If you installed Mullvad's profile as it came, Quad9's own profile replaces it.
+This tool helps if you changed yours: Wi-Fi networks without encrypted DNS,
+domain rules, interfaces or failover.
 
-`test/golden/` holds the exact profiles the builder produced for every committed
-fixture. A failure there means generated profiles changed, which is a change to
-what users install: review the diff and update the files deliberately, rather
-than regenerating them to make the suite pass.
+1. Drop your Mullvad profile on the Tool page. A note says when it stops.
+2. Under Presets, pick Quad9 or another resolver, or enter a DoH URL. The name,
+   server and addresses change, and your rules stay.
+3. Save changes, then download on the Profile page.
+4. Install the new profile, and remove the Mullvad one under Settings › General
+   › VPN & Device Management.
 
-On macOS the suite additionally pipes generated profiles through Apple's own
-`plutil`. The `check` workflow runs on both Ubuntu and macOS for every push and
-pull request, so that leg is covered in CI.
+What is different from Mullvad's profile:
 
-### Architecture
+- Mullvad signed its profile. The one from the website isn't signed, so the
+  device shows "Not Signed" when installing. It works the same.
+- The desktop app can sign it, but only with a signing certificate that has its
+  private key in your Keychain
+  ([Signing with the Keychain](#signing-with-the-keychain)). You can
+  [make a self-signed one](#create-a-self-signed-signing-certificate); devices
+  then show "Not Verified" unless they trust it.
+- The new profile has its own ID, so the device keeps the old one until you
+  remove it.
+- The website can't check Mullvad's signature and says "Not checked". The
+  desktop app checks it.
 
-```sh
-src/lib/       pure core - no dependencies, no DOM
-  xml.ts         minimal XML reader for the plist subset
-  plist.ts       Apple property list build + parse
-  dnssettings.ts DnsConfig -> DNSSettings dictionary
-  ondemand.ts    DnsConfig -> OnDemandRules array
-  profile.ts     DnsConfig[] -> configuration profile
-  import.ts      .mobileconfig -> DnsConfig[]
-  addresses.ts   resolver address filtering
-  validate.ts    IP validation, list parsing
-  types.ts       domain types
-  mod.ts         public surface
+![The Mullvad note after loading a profile](docs/screenshots/mullvad_note.png)
 
-src/ui/        browser layer - DOM wiring only, no profile semantics
-  tool.ts        entry point for pages/index.html
-  profile.ts     entry point for pages/finalize.html
-  storage.ts     configuration store, in the tab or kept in the browser
-  privacy.ts     the website's Privacy pill: forget on close, or keep
-  theme.ts       header theme switch: system, light or dark
-  download.ts    Blob download, or the desktop binding when present
-  signing.ts     desktop-only Signature choice on the profile page
-  dropzone.ts    drag and drop onto either page's zone, reading the file
-  dialogs.ts     confirm() and alert(), native in the desktop app
-  page_ready.ts  tells the desktop app to show its window
-  desktop.ts     the desktop app's commands, as bindings
-  dom.ts         typed DOM helpers
+## Get the app
 
-pages/         HTML sources
-  pages.ts       page table: nav order, descriptions, entry modules,
-                 SITE_URL (the deployed address)
-  _layout.html   shared shell: head, header, tabs
-  index.html     <main> content of the tool page
-  finalize.html  <main> content of the profile page
-  llms.txt       template for dist/llms.txt; {{ site }} becomes SITE_URL
+The desktop app needs macOS 15.8 or newer and is about 6 MB. Build the app from
+its tag, as described under [Build it yourself](#build-it-yourself).
 
-scripts/       build, dev server, app icon and fonts
-  build.ts       render pages into the layout, deno bundle -> dist/,
-                 sitemap.xml, robots.txt and llms.txt from SITE_URL
-  serve.ts       static file server, --watch rebuilds
-  headers.ts     the website's headers: security headers, CSP, caching
-  check_live.ts  checks the live site against headers.ts, with curl
-  server.ts      dist/ with those headers and compression, for Deno
-                 Deploy, the browser tests and Lighthouse
-  app_icon.ts    AppIcon.png and src-tauri/icons/ from desktop/AppIcon.icon
-  fonts.ts       fonts/source/ -> Latin-only fonts/subset/
+### Desktop app
 
-src/desktop/
-  bindings.ts    the desktop app's commands as the pages call them
+The app is built with [Tauri 2](https://tauri.app) and uses the system's own
+webview. The pages load from inside the app; nothing listens on the network.
 
-src-tauri/     macOS app (Tauri 2): shows dist/ in a native window
-  tauri.conf.json    window, bundle, icon and signing settings
-  src/lib.rs         the commands the pages call, window and app setup
-  src/save.rs        save to a folder without overwriting
-  src/signing.rs     Keychain signing with macOS's Security framework, and
-                     signature checks on opened profiles
-  src/profile.rs     refuses anything but DNS profiles before saving or signing
-  src/window_size.rs remembered window size
-  src/dialog.rs      native alerts, for the pages and the commands
+**Download profile** saves straight to `~/Downloads`, never over an existing
+file (`encrypted-dns-2.mobileconfig` and so on), then offers to open it, which
+hands it to System Settings for installation. The window remembers its size,
+stored in `~/Library/Application Support/local.encrypted-dns.tool/`. The icon
+follows light and dark mode on macOS 26 and later.
 
-desktop/       macOS app icon: AppIcon.icon (light + dark), AppIcon.png fallback
-public/        copied verbatim into the build, names unchanged
-```
+Only macOS is built for now: a `.mobileconfig` can only be installed on Apple
+devices.
 
-> [!NOTE]
-> `dnssettings.ts` and `ondemand.ts` are split out because Apple defines both
-> structures identically for the `.mobileconfig` payload and for the **iOS 27**
-> `com.apple.configuration.network.dns-settings` declaration.
+## Privacy
 
-## The app
+[![TLS 1.3](https://img.shields.io/badge/TLS-1.3-green)](https://www.ssllabs.com/ssltest/analyze.html?d=mobileconfig.io)
+[![Mozilla Observatory](https://img.shields.io/mozilla-observatory/grade/mobileconfig.io?publish)](https://developer.mozilla.org/en-US/observatory/analyze?host=mobileconfig.io)
+[![Security Headers](https://img.shields.io/badge/Security%20Headers-A%2B-brightgreen)](https://securityheaders.com/?q=mobileconfig.io&followRedirects=on)
 
-### Pages
+The website at mobileconfig.io is a showcase. It builds the profile in your
+browser and sends nothing back: no cookies, no analytics, no requests to other
+sites. Your configurations stay in this tab and are deleted when you close it.
+To keep them in the browser, open Privacy at the top of the page (in the bar at
+the bottom on phones) and turn the switch off. The browser's cache and history
+still show the visit. For zero traces, use a private window. The server only
+hands out the site's files and keeps nothing.
 
-| File            | Purpose                                                         |
-| --------------- | --------------------------------------------------------------- |
-| `index.html`    | The tool: upload an existing profile, or enter settings by hand |
-| `finalize.html` | Profile view: review the collected configurations and download  |
+It runs on its own server in Iceland. The server keeps no access log, answers
+only GET and HEAD, and speaks TLS 1.3 only, with HTTP/3 and Encrypted Client
+Hello. Like any server, it sees your IP address while it answers.
+`deno task check:live` checks the headers, TLS, redirects and `security.txt`
+from outside, so you don't have to take this on trust. If that matters to you,
+run the tool yourself on your own machine or home network (see
+[Build it yourself](#build-it-yourself)), or use the
+[desktop app](#desktop-app), which needs no network to build, sign or save a
+profile.
 
-Each page is only its `<main>` content in `pages/`. The build renders it into
-`pages/_layout.html`, filling in the description, the tab bar and the version.
-To add a page, add a fragment to `pages/` and an entry to `PAGES` in
-`pages/pages.ts`. The tabs and `sitemap.xml` follow automatically.
+## Signing
+
+Profiles from the website are **not** signed; the desktop app can sign them with
+a Keychain certificate. An unsigned profile installs identically; iOS and macOS
+just label it "Not Signed" during installation. Signing changes that label and
+adds tamper protection, nothing else.
+
+### Signing with the Keychain
+
+In the desktop app the Download panel offers **Signed with Keychain**: pick a
+certificate that has its private key in your Keychain, and the profile is saved
+with `-signed` in its name, like `encrypted-dns-signed.mobileconfig` (see
+[File names](#file-names)). The app signs it with macOS's Security framework,
+and the key never leaves the Keychain. Expired and not yet valid certificates
+are not listed. Opening a signed profile checks its signature, and the app asks
+before loading one that was changed after signing.
+
+![The Download panel in the desktop app, signing with a Keychain certificate](docs/screenshots/desktop_signed_profile.png)
+
+Devices show a signed profile as "Verified" only if they trust the certificate's
+issuer. A self-signed certificate shows as "Not Verified" unless it is installed
+and trusted on each device.
+
+### Create a self-signed signing certificate
+
+- Open Keychain Access (in /Applications/Utilities/)
+- In the menu bar: Keychain Access → Certificate Assistant → Create
+  Certificate...
+- Fill in:
+  - Name: e.g. MDM Signing Cert (remember this, you'll use it as the signing
+    identity)
+  - Identity Type: Self-Signed Root
+  - Certificate Type: Code Signing
+  - Check "Let me override defaults" if you want to extend the validity period
+    (default is ~1 year; 10 years is common for this)
+- Click Continue through the prompts (you can skip entering an email address)
+- When done, the certificate is created directly in your login keychain, no
+  separate import needed
+
+## Details
 
 ### Skip encrypted DNS for vs. use encrypted DNS only for
 
@@ -242,153 +279,32 @@ The file name shows up in share sheets and folder listings, so it tells anyone
 who sees the file which provider you use. **Neutral file name** in the Download
 panel keeps `encrypted-dns.mobileconfig` for every profile.
 
-### Privacy
+## Build it yourself
 
-The website at mobileconfig.io is a showcase. It builds the profile in your
-browser and sends nothing back: no cookies, no analytics, no requests to other
-sites. Your configurations stay in this tab and are deleted when you close it.
-To keep them in the browser, open Privacy at the top of the page (in the bar at
-the bottom on phones) and turn the switch off. The browser's cache and history
-still show the visit. For zero traces, use a private window. The server only
-hands out the site's files and keeps nothing.
-
-It runs on Deno Deploy, which records each request (path, status and time) for
-its own operations and, like any host, sees your IP address. If that matters to
-you, run the tool yourself on your own machine or home network (see
-[Running on a LAN](#running-on-a-lan)), or use the [desktop app](#desktop-app),
-which needs no network to build, sign or save a profile.
-
-### Running on a LAN
-
-```sh
-deno task preview
-```
-
-Browse to `http://<your-machine-ip>:5173`, configure the profile, and download
-it. iOS (Safari) recognises the media type and offers to install; if it saves
-the file instead, opening it from Files should start the same flow.
-
-For a permanent install, `deno task build` produces a static `dist/` that any
-web server can host, over HTTP or HTTPS. Nothing server-side is required.
-
-### Desktop app
-
-```sh
-deno task desktop
-```
-
-Packages `dist/` into a macOS application,
-`src-tauri/target/release/bundle/macos/DNS Profile Creator.app`, using
-[Tauri 2](https://tauri.app) - about 6 MB, with the system's own webview. The
-pages load from inside the app; nothing listens on the network.
-
-**Download profile** saves straight to `~/Downloads`, never over an existing
-file (`encrypted-dns-2.mobileconfig` and so on), then offers to open it, which
-hands it to System Settings for installation. The window remembers its size,
-stored in `~/Library/Application Support/local.encrypted-dns.tool/`. The icon
-follows light and dark mode on macOS 26 and later.
-
-Versions up to 3.7.4 were built with
-[`deno desktop`](https://docs.deno.com/runtime/desktop/); the `deno-desktop` tag
-marks the last of them.
-
-Only macOS is built for now: a `.mobileconfig` can only be installed on Apple
-devices.
-
-#### Signing with the Keychain
-
-In the desktop app the Download panel offers **Signed with Keychain**: pick a
-certificate that has its private key in your Keychain, and the profile is saved
-with `-signed` in its name, like `encrypted-dns-signed.mobileconfig` (see
-[File names](#file-names)). The app signs it with macOS's Security framework,
-and the key never leaves the Keychain. Expired and not yet valid certificates
-are not listed. Opening a signed profile checks its signature, and the app asks
-before loading one that was changed after signing.
-
-![The Download panel in the desktop app, signing with a Keychain certificate](docs/screenshots/desktop_signed_profile.png)
-
-Devices show a signed profile as "Verified" only if they trust the certificate's
-issuer. A self-signed certificate shows as "Not Verified" unless it is installed
-and trusted on each device.
-
-To build a release yourself, check out its tag and package the app:
+Needs [Deno](https://deno.com) 2.9 or newer. The app also needs
+[Rust](https://rustup.rs) 1.85 or newer and Xcode 26 or newer.
 
 ```sh
 git clone https://github.com/tofulupo/apple-dns-profile-creator.git
 cd apple-dns-profile-creator
-git checkout v4.0.0-rc.2
-deno task desktop
+git checkout v4.0.0-rc.3
+deno task build      # the website, as static files in dist/
+deno task desktop    # the macOS app
 ```
 
-The app is signed ad hoc, which is enough to run it on the Mac that built it.
-Without the licensed Söhne files in `fonts/subset/` it uses a fallback font with
-the same metrics, and nothing else changes. Signed and notarized builds come
-from `deno task desktop:release`, which needs a Developer ID and the Söhne
-files.
+`dist/` works on any web server, over HTTP or HTTPS, with nothing server-side.
+`deno task preview` serves it on your network at port 5173, so a phone can open
+it. The app ends up in `src-tauri/target/release/bundle/macos/`.
 
-### Profile signing
+Your build differs from the official one in two ways: without the licensed Söhne
+fonts it uses a fallback font with the same metrics, and the app is signed ad
+hoc, which is enough to run it on the Mac that built it.
 
-Profiles from the website are **not** signed; the desktop app can sign them with
-a Keychain certificate (see above). An unsigned profile installs identically;
-iOS and macOS just label it "Not Signed" during installation. Signing changes
-that label and adds tamper protection, nothing else. To sign a downloaded
-profile yourself:
+To see which commit mobileconfig.io runs, read its
+[`build.txt`](https://mobileconfig.io/build.txt), or let
+`deno task check:live --commit <sha>` compare it with yours.
 
-#### Create a self-signed signing certificate
-
-- Open Keychain Access (in /Applications/Utilities/)
-- In the menu bar: Keychain Access → Certificate Assistant → Create
-  Certificate...
-- Fill in:
-  - Name: e.g. MDM Signing Cert (remember this, you'll use it as the signing
-    identity)
-  - Identity Type: Self-Signed Root
-  - Certificate Type: Code Signing
-  - Check "Let me override defaults" if you want to extend the validity period
-    (default is ~1 year; 10 years is common for this)
-- Click Continue through the prompts (you can skip entering an email address)
-- When done, the certificate is created directly in your login keychain, no
-  separate import needed
-
-### HTTP or HTTPS
-
-**Plain HTTP is fine.** The one API that would have required https,
-`crypto.randomUUID()`, is wrapped in [`src/lib/uuid.ts`](src/lib/uuid.ts), which
-falls back to `crypto.getRandomValues()`
-
-To serve the dev or preview server over TLS, set both variables:
-
-```sh
-DNS_TOOL_TLS_CERT=/path/cert.pem DNS_TOOL_TLS_KEY=/path/key.pem deno task dev
-```
-
-> [!NOTE]
-> Setting only one is an error rather than a silent fallback to HTTP. For a real
-> deployment, terminating TLS at a reverse proxy
-
-### Configuration
-
-Application settings live in [`src/config.ts`](src/config.ts) as typed
-constants. The version shown in the header is `SITE_VERSION` in
-[`pages/pages.ts`](pages/pages.ts) on the website, and `version` in
-[`deno.json`](deno.json) in the desktop app, both injected at build time.
-
-The **Quick presets** on the tool page are `presets` in the same file: up to six
-providers, each a name, protocol and server, plus optional `serverAddresses`
-(the provider's resolver IPs, filled into the form so one click gives a complete
-profile). `test/config.test.ts` fails the suite if there are more than six, if
-names repeat, if a server would not pass the form's own check, or if an address
-is not a valid IP or appears twice.
-
-| Variable            | Effect                                 |
-| ------------------- | -------------------------------------- |
-| `DNS_TOOL_PORT`     | Dev/preview server port (default 5173) |
-| `DNS_TOOL_TLS_CERT` | PEM certificate path - enables HTTPS   |
-| `DNS_TOOL_TLS_KEY`  | PEM private key path - enables HTTPS   |
-
-Desktop app settings (name, identifier, window, icons, signing) live in
-[`src-tauri/tauri.conf.json`](src-tauri/tauri.conf.json); its version comes from
-`deno.json` too.
+Working on the code: see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
 ## History and thanks
 
