@@ -27,7 +27,7 @@ function capabilities() {
   };
 }
 
-/** The built site from dist/, served as on Deno Deploy, in a fresh browser. */
+/** The built site from dist/, with the server's headers, in a fresh browser. */
 export function useSite(): () => Browser {
   let server: Deno.HttpServer | undefined;
   let browser: Browser | undefined;

@@ -2,106 +2,22 @@ import { afterAll, beforeAll, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join } from "@std/path";
 
-import {
-  cacheControl,
-  contentSecurityPolicy,
-  createHandler,
-  DISABLED_FEATURES,
-  SELF_FEATURES,
-} from "../scripts/server.ts";
+import { cacheControl, SECURITY_HEADERS } from "../scripts/headers.ts";
+import { createHandler } from "../scripts/server.ts";
 
-const THEME = 'document.documentElement.dataset.theme="dark";';
-const PAGE = "console.log(1);";
 const HTML = `<!doctype html><html><head>
-<script type="application/ld+json">{"@type":"WebApplication"}</script>
-<link rel="stylesheet" href="./app-0123abcd.css">
-<script>${THEME}</script></head><body><script>${PAGE}</script></body></html>`;
+<link rel="stylesheet" href="./app-0123abcd.css"></head><body></body></html>`;
 const NOT_FOUND =
-  `<!doctype html><html><head><script src="/app-1b2c3d4e.js"></script></head><body><h1>Page not found</h1></body></html>`;
+  `<!doctype html><html><head></head><body><h1>Page not found</h1></body></html>`;
 
-async function hash(code: string): Promise<string> {
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    new TextEncoder().encode(code),
-  );
-  return `'sha256-${btoa(String.fromCharCode(...new Uint8Array(digest)))}'`;
+function expectHeaders(response: Response, path: string): void {
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+    expect({ path, name, value: response.headers.get(name) })
+      .toEqual({ path, name, value });
+  }
+  expect(response.headers.get("Cache-Control"))
+    .toBe(cacheControl(path, response.status));
 }
-
-describe("cacheControl", () => {
-  it("keeps the fingerprinted stylesheet and scripts for good", () => {
-    for (const path of ["/app-6a0f56fb.css", "/app-1b2c3d4e.js"]) {
-      expect(cacheControl(path)).toBe("public, max-age=31536000, immutable");
-    }
-  });
-
-  it("keeps fonts for a year and icons for a week, without immutable", () => {
-    expect(cacheControl("/fonts/Soehne-Buch.woff2")).toBe(
-      "public, max-age=31536000",
-    );
-    expect(cacheControl("/icons/favicon-96x96.png")).toBe(
-      "public, max-age=604800",
-    );
-  });
-
-  it("revalidates pages and everything else", () => {
-    for (const path of ["/", "/finalize.html", "/app.css", "/robots.txt"]) {
-      expect(cacheControl(path)).toBe("no-cache");
-    }
-  });
-});
-
-describe("contentSecurityPolicy", () => {
-  it("allows the site's own script files, and any inline script by hash", async () => {
-    const csp = await contentSecurityPolicy(HTML);
-    expect(csp).toContain(
-      `script-src 'self' ${await hash(THEME)} ${await hash(PAGE)};`,
-    );
-    expect(csp).toContain("default-src 'none'");
-    expect(csp).toContain("frame-ancestors 'none'");
-  });
-
-  it("lets the page fetch robots.txt and llms.txt from its own origin", async () => {
-    expect(await contentSecurityPolicy(HTML)).toContain("connect-src 'self'");
-  });
-
-  it("allows only the site's own script files where the page has no inline script", async () => {
-    expect(await contentSecurityPolicy("<p>hi</p>")).toContain(
-      "script-src 'self';",
-    );
-  });
-});
-
-describe("DISABLED_FEATURES", () => {
-  it("lists each feature once, in the header's own syntax", () => {
-    expect(new Set(DISABLED_FEATURES).size).toBe(DISABLED_FEATURES.length);
-    for (const feature of DISABLED_FEATURES) {
-      expect(feature).toMatch(/^[a-z]+(-[a-z]+)*$/);
-    }
-  });
-
-  it("leaves out the features Chrome does not recognise", () => {
-    for (
-      const feature of [
-        "interest-cohort",
-        "otp-credentials",
-        "attribution-reporting",
-        "join-ad-interest-group",
-        "run-ad-auction",
-        "private-aggregation",
-        "shared-storage",
-        "shared-storage-select-url",
-      ]
-    ) {
-      expect(DISABLED_FEATURES).not.toContain(feature);
-    }
-  });
-
-  it("does not also disable a feature the pages use", () => {
-    for (const feature of SELF_FEATURES) {
-      expect(DISABLED_FEATURES).not.toContain(feature);
-    }
-  });
-});
 
 describe("createHandler", () => {
   let root = "";
@@ -110,7 +26,11 @@ describe("createHandler", () => {
   beforeAll(async () => {
     root = await Deno.makeTempDir();
     await Deno.writeTextFile(join(root, "index.html"), HTML);
+    await Deno.writeTextFile(join(root, "404.html"), NOT_FOUND);
     await Deno.writeTextFile(join(root, "app-0123abcd.css"), "p{color:red}");
+    await Deno.mkdir(join(root, "fonts"));
+    await Deno.writeFile(join(root, "fonts", "Font.woff2"), new Uint8Array(8));
+    await Deno.writeTextFile(join(root, "site.webmanifest"), "{}");
     handler = createHandler(root);
   });
 
@@ -118,111 +38,60 @@ describe("createHandler", () => {
     await Deno.remove(root, { recursive: true });
   });
 
-  const get = (path: string) =>
-    handler(new Request(`https://example.test${path}`));
+  const get = (path: string, init?: RequestInit) =>
+    handler(new Request(`https://example.test${path}`, init));
 
-  it("serves the start page with its policy and security headers", async () => {
-    const response = await get("/");
-    expect(response.status).toBe(200);
-    expect(await response.text()).toBe(HTML);
-    expect(response.headers.get("Content-Security-Policy")).toBe(
-      await contentSecurityPolicy(HTML),
-    );
-    expect(response.headers.get("Cache-Control")).toBe("no-cache");
-    expect(response.headers.get("Strict-Transport-Security")).toContain(
-      "max-age=",
-    );
-    expect(response.headers.get("Cross-Origin-Opener-Policy")).toBe(
-      "same-origin",
-    );
-    expect(response.headers.get("X-Frame-Options")).toBe("DENY");
-    expect(response.headers.get("Cross-Origin-Embedder-Policy")).toBe(
-      "require-corp",
-    );
-    expect(response.headers.get("Cross-Origin-Resource-Policy")).toBe(
-      "same-origin",
-    );
-    expect(response.headers.get("Permissions-Policy")).toBe(
-      [
-        ...DISABLED_FEATURES.map((feature) => `${feature}=()`),
-        ...SELF_FEATURES.map((feature) => `${feature}=(self)`),
-      ].join(", "),
-    );
-    expect(response.headers.get("Permissions-Policy")).toContain(
-      "web-share=(self)",
-    );
+  it("sends the headers in scripts/headers.ts with every file", async () => {
+    for (
+      const path of [
+        "/",
+        "/app-0123abcd.css",
+        "/fonts/Font.woff2",
+        "/site.webmanifest",
+      ]
+    ) {
+      const response = await get(path);
+      await response.body?.cancel();
+      expect(response.status).toBe(200);
+      expectHeaders(response, path);
+    }
   });
 
-  it("serves the stylesheet as immutable, without a page policy", async () => {
-    const response = await get("/app-0123abcd.css");
-    expect(await response.text()).toBe("p{color:red}");
-    expect(response.headers.get("Cache-Control")).toContain("immutable");
-    expect(response.headers.get("Content-Security-Policy")).toBeNull();
-    expect(response.headers.get("Cross-Origin-Resource-Policy")).toBe(
-      "same-origin",
-    );
+  it("answers a missing path with the 404 page and the same headers", async () => {
+    for (const path of ["/nope", "/a/b/c", "/app-00000000.css"]) {
+      const response = await get(path);
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe(NOT_FOUND);
+      expect(response.headers.get("Content-Type")).toBe(
+        "text/html; charset=UTF-8",
+      );
+      expectHeaders(response, path);
+    }
   });
 
   it("tells caches that every response depends on Accept-Encoding", async () => {
-    for (const path of ["/", "/app-0123abcd.css"]) {
+    for (const path of ["/", "/app-0123abcd.css", "/nope"]) {
       const response = await get(path);
       await response.body?.cancel();
       expect(response.headers.get("Vary")).toBe("Accept-Encoding");
     }
   });
 
-  it("answers a repeat visit with 304, still with security headers", async () => {
+  it("answers a repeat visit with 304, still with the headers", async () => {
     const first = await get("/");
     await first.body?.cancel();
-    const response = await handler(
-      new Request("https://example.test/", {
-        headers: { "If-None-Match": first.headers.get("ETag")! },
-      }),
-    );
+    const response = await get("/", {
+      headers: { "If-None-Match": first.headers.get("ETag")! },
+    });
     expect(response.status).toBe(304);
-    expect(response.headers.get("X-Frame-Options")).toBe("DENY");
-    expect(response.headers.get("Permissions-Policy")).toContain("camera=()");
+    expectHeaders(response, "/");
   });
 
-  it("does not cache a missing file", async () => {
-    const response = await get("/missing.html");
-    await response.body?.cancel();
-    expect(response.status).toBe(404);
-    expect(response.headers.get("Cache-Control")).toBeNull();
-    expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
-  });
-});
-
-describe("createHandler with a 404 page", () => {
-  let root = "";
-  let handler: (request: Request) => Promise<Response>;
-
-  beforeAll(async () => {
-    root = await Deno.makeTempDir();
-    await Deno.writeTextFile(join(root, "index.html"), HTML);
-    await Deno.writeTextFile(join(root, "404.html"), NOT_FOUND);
-    handler = createHandler(root);
-  });
-
-  afterAll(async () => {
-    await Deno.remove(root, { recursive: true });
-  });
-
-  it("answers a missing path with it, status 404, its policy and no-cache", async () => {
-    for (const path of ["/nope", "/a/b/c", "/app-00000000.css"]) {
-      const response = await handler(
-        new Request(`https://example.test${path}`),
-      );
-      expect(response.status).toBe(404);
-      expect(await response.text()).toBe(NOT_FOUND);
-      expect(response.headers.get("Content-Type")).toBe(
-        "text/html; charset=UTF-8",
-      );
-      expect(response.headers.get("Cache-Control")).toBe("no-cache");
-      expect(response.headers.get("Content-Security-Policy")).toBe(
-        await contentSecurityPolicy(NOT_FOUND),
-      );
-      expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+  it("answers anything but GET and HEAD with 405 and Allow", async () => {
+    for (const method of ["POST", "PUT", "DELETE", "OPTIONS"]) {
+      const response = await get("/", { method });
+      expect(response.status).toBe(405);
+      expect(response.headers.get("Allow")).toBe("GET, HEAD");
     }
   });
 });

@@ -53,6 +53,7 @@ deno task test             # all tests: the site's and the desktop app's
 deno task test:web         # the site's tests only (Deno)
 deno task test:desktop     # the desktop app's tests only (Rust)
 deno fmt                   # format
+deno task check:live       # check mobileconfig.io: headers, redirects, TLS, security.txt
 
 
 deno task fixtures:fetch   # (re)download upstream .mobileconfig test fixtures
@@ -141,8 +142,10 @@ scripts/       build, dev server, app icon and fonts
   build.ts       render pages into the layout, deno bundle -> dist/,
                  sitemap.xml, robots.txt and llms.txt from SITE_URL
   serve.ts       static file server, --watch rebuilds
-  server.ts      the website on Deno Deploy: dist/ with caching,
-                 compression and security headers (CSP by script hash)
+  headers.ts     the website's headers: security headers, CSP, caching
+  check_live.ts  checks the live site against headers.ts, with curl
+  server.ts      dist/ with those headers and compression, for Deno
+                 Deploy, the browser tests and Lighthouse
   app_icon.ts    AppIcon.png and src-tauri/icons/ from desktop/AppIcon.icon
   fonts.ts       fonts/source/ -> Latin-only fonts/subset/
 
