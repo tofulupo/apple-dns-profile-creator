@@ -6,6 +6,7 @@ import {
   resolverDetail,
   type ResolverSlot,
   resolverSlots,
+  sameFile,
   type SettingsField,
   shortHash,
   type Side,
@@ -215,7 +216,7 @@ function fieldsOf(
   ];
 }
 
-function head(side: Side, config: DnsConfig): HTMLElement {
+function head(side: Side, config: DnsConfig, same: boolean): HTMLElement {
   const source = config.source;
   const card = tag(
     "div",
@@ -243,7 +244,8 @@ function head(side: Side, config: DnsConfig): HTMLElement {
     const hash = tag(
       "span",
       "compare-head__sub mono",
-      `SHA-256 ${shortHash(source.sha256)}`,
+      "SHA-256 ",
+      tag("span", same ? "hash" : "", shortHash(source.sha256)),
     );
     hash.title = source.sha256;
     card.append(hash);
@@ -291,10 +293,11 @@ function cards(
   fields: readonly Field[],
   filterBar: HTMLElement,
 ): HTMLElement {
+  const same = sameFile(a, b);
   const view = tag(
     "div",
     "compare-cards",
-    tag("div", "compare-cards__heads", head("A", a), head("B", b)),
+    tag("div", "compare-cards__heads", head("A", a, same), head("B", b, same)),
     filterBar,
   );
   const who = (side: Side) => tag("span", "compare-who", side);
@@ -358,8 +361,9 @@ function table(
   filterBar: HTMLElement,
 ): HTMLElement {
   const grid = tag("table", "compare__table");
+  const same = sameFile(a, b);
   const column = (side: Side, config: DnsConfig) => {
-    const th = tag("th", "", head(side, config));
+    const th = tag("th", "", head(side, config, same));
     th.setAttribute("scope", "col");
     return th;
   };

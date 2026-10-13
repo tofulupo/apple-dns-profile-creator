@@ -53,6 +53,11 @@ export function shortHash(sha256: string): string {
   return sha256.slice(0, 8);
 }
 
+export function sameFile(a: DnsConfig, b: DnsConfig): boolean {
+  const hash = a.source?.sha256;
+  return hash !== undefined && hash === b.source?.sha256;
+}
+
 export type Side = "A" | "B";
 
 export function onlyIn(

@@ -503,6 +503,7 @@ function renderFontProfile(count: number): void {
       ? "Not available"
       : shortHash(fontProfile.sha256);
     hash.title = fontProfile.sha256 ?? "";
+    hash.classList.toggle("hash", fontProfile.sha256 !== undefined);
   }
 }
 

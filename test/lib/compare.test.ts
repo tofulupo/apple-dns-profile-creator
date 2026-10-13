@@ -7,6 +7,7 @@ import {
   matchDomainsDetail,
   resolverDetail,
   resolverSlots,
+  sameFile,
   shortHash,
 } from "../../src/lib/compare.ts";
 import { config } from "../helpers/configs.ts";
@@ -119,5 +120,20 @@ describe("shortHash", () => {
     const sha256 =
       "8a42f9e1c0d3b2a4958677a6b5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6";
     expect(shortHash(sha256)).toBe("8a42f9e1");
+  });
+});
+
+describe("sameFile", () => {
+  const from = (sha256?: string) =>
+    config({
+      source: { file: "a.mobileconfig", ...(sha256 ? { sha256 } : {}) },
+    });
+
+  it("is true only when both hashes are known and equal", () => {
+    expect(sameFile(from("aa"), from("aa"))).toBe(true);
+    expect(sameFile(from("aa"), from("bb"))).toBe(false);
+    expect(sameFile(from(), from())).toBe(false);
+    expect(sameFile(from("aa"), config())).toBe(false);
+    expect(sameFile(config(), config())).toBe(false);
   });
 });

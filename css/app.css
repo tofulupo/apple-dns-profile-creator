@@ -3131,6 +3131,10 @@ summary.rule__head::-webkit-details-marker {
   color: var(--success);
 }
 
+.hash {
+  color: var(--accent-text);
+}
+
 .compare {
   margin-bottom: 1.5rem;
   background: var(--surface);
