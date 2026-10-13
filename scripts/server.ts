@@ -116,11 +116,32 @@ export async function contentSecurityPolicy(html: string): Promise<string> {
   ].join("; ");
 }
 
+/** The build's 404 page, as nginx serves it (`error_page 404 /404.html`). */
+async function notFound(fsRoot: string, served: Response): Promise<Response> {
+  let html: string;
+  try {
+    html = await Deno.readTextFile(join(fsRoot, "404.html"));
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) return served;
+    throw error;
+  }
+  await served.body?.cancel();
+  return new Response(html, {
+    status: 404,
+    statusText: "Not Found",
+    headers: {
+      "Content-Type": "text/html; charset=UTF-8",
+      "Cache-Control": "no-cache",
+    },
+  });
+}
+
 export function createHandler(
   fsRoot: string,
 ): (request: Request) => Promise<Response> {
   return async (request) => {
-    const served = await serveDir(request, { fsRoot, quiet: true });
+    let served = await serveDir(request, { fsRoot, quiet: true });
+    if (served.status === 404) served = await notFound(fsRoot, served);
     const { pathname } = new URL(request.url);
     const headers = new Headers(served.headers);
     for (const [name, value] of Object.entries(SECURITY_HEADERS)) {

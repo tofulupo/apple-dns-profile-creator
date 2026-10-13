@@ -8,6 +8,7 @@ import {
   pageHref,
   pageUrl,
   presetHost,
+  renderNotFound,
   renderPage,
   renderSettings,
   scriptTag,
@@ -116,25 +117,23 @@ describe("fontPreloads", () => {
 });
 
 describe("the mascot", () => {
-  it("stands in front of the name in the desktop app", async () => {
-    for (const page of PAGES) {
-      const html = await renderPage(page, {
-        stylesheet: "app.css",
-        prepaint: "",
-        script: "",
-        version: "0.0.0-test",
-        desktop: true,
-      });
-      const brand = html.match(/<div class="brand">([\s\S]*?)<h1/)?.[1];
-      expect(brand).toContain(
-        '<span class="brand__mascot" aria-hidden="true">',
-      );
-    }
-  });
-
-  it("is left out of the website", () => {
-    for (const { html } of rendered) {
-      expect(html).not.toContain("brand__mascot");
+  it("stands in front of the name on the website and in the app", async () => {
+    for (const desktop of [false, true]) {
+      for (const page of PAGES) {
+        const html = await renderPage(page, {
+          stylesheet: "app.css",
+          prepaint: "",
+          script: "",
+          version: "0.0.0-test",
+          desktop,
+        });
+        const brand = html.match(/<div class="brand">([\s\S]*?)<h1/)?.[1];
+        expect({ page: page.file, desktop, brand }).toMatchObject({
+          brand: expect.stringContaining(
+            '<span class="brand__mascot" aria-hidden="true">',
+          ),
+        });
+      }
     }
   });
 });
@@ -244,6 +243,62 @@ describe("the Settings window", () => {
   it("preloads the app's fonts, not the website's", () => {
     expect(html).toContain(fontPreloads(true));
     expect(html).not.toContain("Berkeley_Mono");
+  });
+});
+
+const notFoundHtml = await renderNotFound({
+  stylesheet: "/app-0123abcd.css",
+  prepaint: "/app-prepaint.js",
+});
+
+describe("the 404 page", () => {
+  const html = notFoundHtml;
+
+  it("fills every placeholder", () => {
+    expect(html).not.toContain("{{");
+  });
+
+  it("says what happened and leads back to the tool", () => {
+    expect(html).toContain('<p class="not-found__status">404 · NXDOMAIN</p>');
+    expect(html).toContain('<h1 id="notFoundTitle">Page not found</h1>');
+    expect(html).toContain(
+      "<p>This address doesn't resolve to anything here.</p>",
+    );
+    const links = [...html.matchAll(/<a [^>]*href="([^"]*)"[^>]*>([^<]*)</g)]
+      .map((match) => [match[1], match[2]]);
+    expect(links).toEqual([["/", "Go to the tool"]]);
+  });
+
+  it("loads everything from the site root", () => {
+    const paths = [...html.matchAll(/\s(?:href|src)="([^"]*)"/g)]
+      .map((match) => match[1]);
+    expect(paths.length).toBeGreaterThan(5);
+    for (const path of paths) expect(path).toMatch(/^\/(?!\/)/);
+    expect(html).toContain(fontPreloads(false, undefined, "/"));
+  });
+
+  it("is kept out of search, with no canonical URL or page data", () => {
+    expect(html).toContain('<meta name="robots" content="noindex">');
+    expect(html).not.toContain('rel="canonical"');
+    expect(html).not.toContain("og:");
+    expect(html).not.toContain("application/ld+json");
+  });
+
+  it("runs nothing but the prepaint script, from a file", () => {
+    expect([...html.matchAll(/<script[^>]*>/g)].map((match) => match[0]))
+      .toEqual(['<script src="/app-prepaint.js">']);
+  });
+
+  it("has the mascot peeking over the card, paws on its edge", () => {
+    expect(html).toMatch(
+      /<div class="not-found__peek" aria-hidden="true">\s*(?:<!--[\s\S]*?-->\s*)?<span class="brand__mascot"[\s\S]*<span class="not-found__paws"><\/span>\s*<\/div>\s*<section class="panel not-found__card"/,
+    );
+  });
+
+  it("leaves out the tabs, the Privacy pill and the theme switch", () => {
+    for (const part of ['class="tabs"', "keepPill", "themeSwitch"]) {
+      expect(html).not.toContain(part);
+    }
   });
 });
 

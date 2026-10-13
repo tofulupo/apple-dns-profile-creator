@@ -16,6 +16,8 @@ const HTML = `<!doctype html><html><head>
 <script type="application/ld+json">{"@type":"WebApplication"}</script>
 <link rel="stylesheet" href="./app-0123abcd.css">
 <script>${THEME}</script></head><body><script>${PAGE}</script></body></html>`;
+const NOT_FOUND =
+  `<!doctype html><html><head><script src="/app-1b2c3d4e.js"></script></head><body><h1>Page not found</h1></body></html>`;
 
 async function hash(code: string): Promise<string> {
   const digest = await crypto.subtle.digest(
@@ -188,5 +190,39 @@ describe("createHandler", () => {
     expect(response.status).toBe(404);
     expect(response.headers.get("Cache-Control")).toBeNull();
     expect(response.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+});
+
+describe("createHandler with a 404 page", () => {
+  let root = "";
+  let handler: (request: Request) => Promise<Response>;
+
+  beforeAll(async () => {
+    root = await Deno.makeTempDir();
+    await Deno.writeTextFile(join(root, "index.html"), HTML);
+    await Deno.writeTextFile(join(root, "404.html"), NOT_FOUND);
+    handler = createHandler(root);
+  });
+
+  afterAll(async () => {
+    await Deno.remove(root, { recursive: true });
+  });
+
+  it("answers a missing path with it, status 404, its policy and no-cache", async () => {
+    for (const path of ["/nope", "/a/b/c", "/app-00000000.css"]) {
+      const response = await handler(
+        new Request(`https://example.test${path}`),
+      );
+      expect(response.status).toBe(404);
+      expect(await response.text()).toBe(NOT_FOUND);
+      expect(response.headers.get("Content-Type")).toBe(
+        "text/html; charset=UTF-8",
+      );
+      expect(response.headers.get("Cache-Control")).toBe("no-cache");
+      expect(response.headers.get("Content-Security-Policy")).toBe(
+        await contentSecurityPolicy(NOT_FOUND),
+      );
+      expect(response.headers.get("X-Frame-Options")).toBe("DENY");
+    }
   });
 });

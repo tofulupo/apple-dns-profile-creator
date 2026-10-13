@@ -660,14 +660,17 @@ code {
   grid-row: 3;
 }
 
-.brand__mascot {
+.brand__mascot,
+.not-found__peek {
   /* Must match the fills in public/icons/mascot-light.svg and
      mascot-dark.svg. */
   --mascot-ear: light-dark(#1a73b8, #59c2ff);
   --mascot-ear-inner: light-dark(#0f4a78, #1b4b69);
   --mascot-bezel: light-dark(#94a3b8, #3b414b);
   --mascot-bezel-inner: light-dark(#e2e8f0, #22262d);
+}
 
+.brand__mascot {
   --mascot-depth: calc(var(--name) * 0.12);
 
   position: relative;
@@ -752,6 +755,84 @@ code {
 
 :root[data-motion="reduce"] .mascot__body {
   transition: none;
+}
+
+.not-found {
+  /* The mascot's box; 70% of it shows above the card. */
+  --peek-size: 6rem;
+
+  position: relative;
+  max-width: 36rem;
+  padding-top: calc(var(--peek-size) * 0.7);
+}
+
+.not-found__peek {
+  --name: calc(var(--peek-size) / 2.29);
+
+  position: absolute;
+  top: 0;
+  left: 60%;
+  width: var(--peek-size);
+  height: var(--peek-size);
+}
+
+.not-found__peek .brand__mascot {
+  display: block;
+  margin: 0;
+}
+
+.not-found__peek .mascot__body {
+  transform: perspective(800px) rotateX(4deg) rotateZ(-5deg);
+}
+
+.not-found__card {
+  position: relative;
+}
+
+.not-found__paws {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* Under the bezel's lower corners, clear of the eyes. */
+.not-found__paws::before,
+.not-found__paws::after {
+  content: "";
+  position: absolute;
+  top: 65%;
+  width: 13%;
+  height: 9.5%;
+  background: var(--mascot-bezel);
+  border-radius: 45% 45% 35% 35% / 60% 60% 40% 40%;
+  box-shadow: inset 0 -2px 0 rgb(0 0 0 / 14%);
+}
+
+.not-found__paws::before {
+  left: 21%;
+}
+
+.not-found__paws::after {
+  left: 66%;
+}
+
+.not-found__status {
+  margin: 0 0 0.35rem;
+  color: var(--accent-text);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.not-found__card > p:not(.not-found__status) {
+  margin: 0.4rem 0 1.1rem;
+}
+
+.not-found .btn {
+  text-decoration: none;
+}
+
+.site-header .brand > p.brand__name {
+  margin: 0;
 }
 
 body.settings-window {
@@ -1097,7 +1178,11 @@ label.settings-row {
   }
 
   :root:not([data-app="desktop"]) .brand {
-    --name: clamp(1.55rem, 8vw, 2.1rem);
+    --name: clamp(1.25rem, 6vw, 2.1rem);
+  }
+
+  :root:not([data-app="desktop"]) .brand__mascot {
+    width: calc(var(--name) * 1.9);
   }
 
   :root:not([data-app="desktop"]) .page {

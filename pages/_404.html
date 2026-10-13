@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Page not found – DNS Profile Creator</title>
+    <meta name="robots" content="noindex">
+    <link rel="stylesheet" href="{{ stylesheet }}">
+    {{ fontPreloads }}
+
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/png" sizes="96x96"
+      href="/icons/favicon-96x96.png" />
+    <link rel="icon" type="image/svg+xml" sizes="any"
+      href="/icons/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180"
+      href="/icons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#f8fafc"
+      media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0e1013"
+      media="(prefers-color-scheme: dark)">
+    {{ prepaint }}
+  </head>
+
+  <body>
+    <div class="page">
+      <header class="site-header">
+        <div class="brand">
+          <p class="brand__name">DNS Profile Creator</p>
+          <p class="brand__protocols">Encrypted DNS (DoH/DoT)</p>
+        </div>
+      </header>
+
+      <main class="not-found">
+        <div class="not-found__peek" aria-hidden="true">
+          {{ mascot }}
+          <span class="not-found__paws"></span>
+        </div>
+        <section class="panel not-found__card" aria-labelledby="notFoundTitle">
+          <p class="not-found__status">404 · NXDOMAIN</p>
+          <h1 id="notFoundTitle">Page not found</h1>
+          <p>This address doesn't resolve to anything here.</p>
+          <a class="btn btn--primary" href="/">Go to the tool</a>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

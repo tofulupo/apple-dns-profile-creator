@@ -22,6 +22,7 @@ const FONT_PROFILE = "pages/_font_profile.html";
 const PRIVACY = "pages/_privacy.html";
 const PREPAINT = "pages/_prepaint.js";
 const SETTINGS = "pages/_settings.html";
+const NOT_FOUND = "pages/_404.html";
 const SETTINGS_SCRIPT = "src/ui/settings_window.ts";
 const LLMS = "pages/llms.txt";
 const STYLESHEET = "css/app.css";
@@ -52,20 +53,21 @@ export interface PageAssets {
   readonly fonts?: readonly string[];
 }
 
-function preload(file: string): string {
-  return `<link rel="preload" href="fonts/${file}" as="font"\n` +
+function preload(file: string, base: string): string {
+  return `<link rel="preload" href="${base}fonts/${file}" as="font"\n` +
     `      type="font/woff2" crossorigin>`;
 }
 
 export function fontPreloads(
   desktop: boolean,
   shipped?: readonly string[],
+  base = "",
 ): string {
   return [
     "Soehne-Buch.woff2",
     desktop ? "Lilex-Latin.woff2" : BERKELEY_MONO,
   ].filter((file) => shipped === undefined || shipped.includes(file))
-    .map(preload).join("\n    ");
+    .map((file) => preload(file, base)).join("\n    ");
 }
 
 async function bundle(
@@ -383,7 +385,7 @@ export async function renderPage(
   const [layout, content, mascot, fontProfile, privacy] = await Promise.all([
     Deno.readTextFile(join(ROOT, LAYOUT)),
     Deno.readTextFile(join(PAGES_DIR, page.file)),
-    desktopOnly(MASCOT),
+    Deno.readTextFile(join(ROOT, MASCOT)),
     desktopOnly(FONT_PROFILE),
     websiteOnly(PRIVACY),
   ]);
@@ -424,6 +426,25 @@ export async function renderSettings(
     version: escape(assets.version),
     releaseNotes: escape(releaseNotesUrl(assets.version)),
   }, SETTINGS);
+}
+
+/**
+ * nginx serves it under the missing URL, so every path in it starts at the
+ * site root.
+ */
+export async function renderNotFound(
+  assets: Pick<PageAssets, "stylesheet" | "prepaint" | "fonts">,
+): Promise<string> {
+  const [template, mascot] = await Promise.all([
+    Deno.readTextFile(join(ROOT, NOT_FOUND)),
+    Deno.readTextFile(join(ROOT, MASCOT)),
+  ]);
+  return fill(template, {
+    stylesheet: escape(assets.stylesheet),
+    fontPreloads: fontPreloads(false, assets.fonts, "/"),
+    prepaint: scriptTag(assets.prepaint),
+    mascot: mascot.trim(),
+  }, NOT_FOUND);
 }
 
 export const NAMED_CRAWLERS: readonly string[] = [
@@ -667,6 +688,17 @@ export async function build(): Promise<void> {
         script: await writeScript(await bundleScript(page.script)),
         version,
         desktop,
+        fonts: shipped,
+      }),
+    );
+  }
+
+  if (!desktop) {
+    await Deno.writeTextFile(
+      join(DIST, "404.html"),
+      await renderNotFound({
+        stylesheet: `/${stylesheet}`,
+        prepaint: prepaint.replace(/^\.\//, "/"),
         fonts: shipped,
       }),
     );
