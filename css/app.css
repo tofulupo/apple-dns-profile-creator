@@ -546,6 +546,12 @@ code {
   padding: var(--header-padding-top) 0 var(--header-padding-bottom);
 }
 
+/* The app's isolation iframe ("pattern" in src-tauri/tauri.conf.json). Tauri
+   hides it with an inline <style>, which the CSP's style-src 'self' blocks. */
+#__tauri_isolation__ {
+  display: none;
+}
+
 .titlebar {
   display: none;
 }
