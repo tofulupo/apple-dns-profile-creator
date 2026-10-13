@@ -15,7 +15,7 @@
     "test": "deno task test:web && deno task test:desktop",
     "test:web": "deno test --allow-read --allow-write --allow-run",
     "test:desktop": "deno task build && cargo test --manifest-path src-tauri/Cargo.toml",
-    "test:e2e": "deno task tauri build --debug --no-bundle && deno test --allow-read --allow-write --allow-run=tauri-driver,pgrep,xdotool --allow-env --allow-net=127.0.0.1 test/e2e/*.e2e.ts",
+    "test:e2e": "deno task tauri build --debug --no-bundle && deno test --allow-read --allow-write --allow-run=tauri-driver,pgrep,xdotool,src-tauri/target/debug/dns-profile-creator --allow-env --allow-net=127.0.0.1 test/e2e/*.e2e.ts",
     "test:browser": "deno task build && deno test --allow-read --allow-write --allow-run --allow-env --allow-net --allow-sys=networkInterfaces,homedir,osRelease,uid test/browser/*.browser.ts",
     "lint:desktop": "deno task build && cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "lint:md": "deno run -A npm:rumdl@^0.2 check .",

@@ -37,6 +37,9 @@ pub(crate) const SETTINGS_WINDOW: &str = "settings";
 /// Shows a window anyway if its page fails before calling `page_ready`.
 const SHOW_ANYWAY_AFTER: Duration = Duration::from_secs(3);
 
+/// In the app's cache folder. Only a key: an incognito web view writes nothing.
+const OWN_CONTEXT: &str = "web-context";
+
 #[derive(Default)]
 struct Shown(AtomicBool);
 
@@ -59,6 +62,9 @@ fn page_ready(window: WebviewWindow, background: Option<[u8; 3]>) -> Result<(), 
             .set_background_color(Some(Color(red, green, blue, 255)))
             .map_err(|error| error.to_string())?;
     }
+    // test/e2e/app.ts waits for this line.
+    #[cfg(debug_assertions)]
+    eprintln!("page ready: {}", window.label());
     if window.label() == MAIN_WINDOW {
         tighten_folders(window.app_handle());
         show_once(&window)
@@ -281,15 +287,25 @@ fn create_window(
     let navigating = app.clone();
     let opening = app.clone();
     let stored = app.state::<app_settings::Stored>();
-    Ok(WebviewWindowBuilder::from_config(app, config)?
+    let mut builder = WebviewWindowBuilder::from_config(app, config)?
         .incognito(stored.forgetting)
         .initialization_script(stored.get().init_script())
         .on_navigation(move |url| navigation::allow(&navigating, url))
         .on_new_window(move |url, _| {
             navigation::open_outside(&opening, &url);
             NewWindowResponse::Deny
-        })
-        .build()?)
+        });
+    if needs_own_context(label, stored.forgetting) {
+        builder = builder.data_directory(app.path().app_cache_dir()?.join(OWN_CONTEXT));
+    }
+    Ok(builder.build()?)
+}
+
+/// On Linux, Tauri registers the app's URL schemes once per web context key,
+/// and wry gives each incognito web view a new context, so only the first
+/// incognito window gets them. Another key makes Tauri register them again.
+fn needs_own_context(label: &str, incognito: bool) -> bool {
+    cfg!(target_os = "linux") && incognito && label != MAIN_WINDOW
 }
 
 pub(crate) fn open_settings(app: &AppHandle) {
@@ -461,4 +477,19 @@ pub fn run() {
             RunEvent::Opened { urls } => open_profiles(app.clone(), opened::file_paths(&urls)),
             _ => {}
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gives_settings_its_own_context_when_forgetting_on_linux() {
+        assert_eq!(
+            needs_own_context(SETTINGS_WINDOW, true),
+            cfg!(target_os = "linux")
+        );
+        assert!(!needs_own_context(SETTINGS_WINDOW, false));
+        assert!(!needs_own_context(MAIN_WINDOW, true));
+    }
 }

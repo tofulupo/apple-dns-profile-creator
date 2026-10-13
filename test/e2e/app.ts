@@ -67,16 +67,18 @@ async function emptyHome(): Promise<void> {
   }
 }
 
+const HOME_ENV = {
+  XDG_CONFIG_HOME: `${HOME}/config`,
+  XDG_DATA_HOME: `${HOME}/data`,
+  XDG_CACHE_HOME: `${HOME}/cache`,
+};
+
 async function startDriver(): Promise<Deno.ChildProcess> {
   ensureFree(PORT);
   ensureFree(PORT - 1);
   const driver = new Deno.Command("tauri-driver", {
     args: ["--port", String(PORT), "--native-port", String(PORT - 1)],
-    env: {
-      XDG_CONFIG_HOME: `${HOME}/config`,
-      XDG_DATA_HOME: `${HOME}/data`,
-      XDG_CACHE_HOME: `${HOME}/cache`,
-    },
+    env: HOME_ENV,
     stdout: "null",
   }).spawn();
   for (let attempt = 0; attempt < 50; attempt++) {
@@ -110,6 +112,12 @@ export type UseApp = (() => App) & {
    * doesn't let WebDriver drive, and ends it again.
    */
   launchUndriven(): Promise<void>;
+  /**
+   * Runs the app once without WebDriver, so with the saved settings as they
+   * are, and drives a new one after, keeping its data. `printed` is what the
+   * app wrote to stderr so far.
+   */
+  alone(use: (printed: () => string) => Promise<void>): Promise<void>;
 };
 
 export function useApp(): UseApp {
@@ -135,6 +143,37 @@ export function useApp(): UseApp {
     );
     if (!refused) {
       throw new Error("WebDriver drove a web view that keeps nothing");
+    }
+  }
+
+  async function alone(
+    use: (printed: () => string) => Promise<void>,
+  ): Promise<void> {
+    await browser?.deleteSession();
+    browser = undefined;
+    await waitForAppExit();
+    const child = new Deno.Command(APP, {
+      env: HOME_ENV,
+      stdout: "null",
+      stderr: "piped",
+    }).spawn();
+    let printed = "";
+    const reading = child.stderr.pipeThrough(new TextDecoderStream()).pipeTo(
+      new WritableStream({
+        write(chunk) {
+          printed += chunk;
+        },
+      }),
+    );
+    try {
+      await use(() => printed);
+    } finally {
+      child.kill();
+      await child.status;
+      await reading.catch(() => {});
+      await waitForAppExit();
+      await saveAppSettings({ forgetOnQuit: false });
+      browser = await session();
     }
   }
 
@@ -166,7 +205,7 @@ export function useApp(): UseApp {
     await app().url("tauri://localhost/");
   });
 
-  return Object.assign(app, { restart, launchUndriven });
+  return Object.assign(app, { restart, launchUndriven, alone });
 }
 
 const APP_ID = "local.encrypted-dns.tool";
@@ -189,6 +228,22 @@ export function readAppSettings(): Record<string, unknown> {
   return JSON.parse(
     Deno.readTextFileSync(join(HOME, "config", APP_ID, "settings.json")),
   );
+}
+
+/** Waits until `done` holds, for up to `ms`. */
+export async function until(
+  done: () => boolean,
+  what: string,
+  ms = 10_000,
+): Promise<void> {
+  for (const start = Date.now(); !done(); await pause(100)) {
+    if (Date.now() - start > ms) throw new Error(`Timed out: ${what}`);
+  }
+}
+
+/** Ctrl+, in the main window, as the menu has it. */
+export function pressSettingsKey(): Promise<void> {
+  return pressKeysIn("DNS Profile Creator", "ctrl+comma");
 }
 
 async function pressKeysIn(name: string, keys: string): Promise<void> {
@@ -237,7 +292,7 @@ export async function inSettings(
     (await app.getWindowHandles()).find((handle) => handle !== main);
   let settings = await other();
   if (settings === undefined) {
-    await pressKeysIn("DNS Profile Creator", "ctrl+comma");
+    await pressSettingsKey();
     for (let attempt = 0; attempt < 50 && settings === undefined; attempt++) {
       await pause(100);
       settings = await other();

@@ -10,8 +10,10 @@ import {
   onX11,
   openTab,
   press,
+  pressSettingsKey,
   readAppSettings,
   saveAppSettings,
+  until,
   useApp,
 } from "./app.ts";
 
@@ -103,6 +105,24 @@ describe({
     await openTab(app(), "Profile");
     await app().$("main").waitForExist();
     expect(await cardNames(app())).toEqual(["Quad9"]);
+  });
+
+  // Every window keeps nothing then, and WebDriver can't drive them, so the
+  // app's own "page ready" lines (debug builds) tell that each page loaded
+  // and got its answers.
+  it("opens with Forget on quit on, the default", async () => {
+    await saveAppSettings({});
+    await app.alone(async (printed) => {
+      await until(
+        () => printed().includes("page ready: main"),
+        "the main window's page",
+      );
+      await pressSettingsKey();
+      await until(
+        () => printed().includes("page ready: settings"),
+        "the Settings page, with Forget on quit",
+      );
+    });
   });
 
   it("applies theme and motion to the main window at once and after a restart", async () => {
