@@ -3,7 +3,9 @@ import { expect } from "@std/expect";
 
 import {
   adoptEarlierData,
+  chooseDeclarations,
   createConfigStore,
+  declarationsChosen,
   KEEP_KEY,
   keepsData,
   pickStorage,
@@ -105,11 +107,19 @@ describe("configuration list", () => {
   it("clears everything", () => {
     store.add(config());
     store.startEdit(config());
-    store.setImportWarnings(["Left out a rule."]);
+    store.setImportFacts({
+      file: "a.mobileconfig",
+      configs: 2,
+      signature: "none",
+      legacy: true,
+      dot: 0,
+      mullvad: false,
+      leftOut: ["Left out a rule."],
+    });
     store.clear();
     expect(store.list()).toEqual([]);
     expect(store.takeEditTarget()).toBeUndefined();
-    expect(store.takeImportWarnings()).toEqual([]);
+    expect(store.takeImportFacts()).toBeUndefined();
   });
 
   it("tells whether an equal entry is stored", () => {
@@ -261,7 +271,7 @@ describe("blocked or full storage", () => {
     const blocked = createConfigStore(refusing);
     expect(blocked.list()).toEqual([]);
     expect(blocked.takeEditTarget()).toBeUndefined();
-    expect(blocked.takeImportWarnings()).toEqual([]);
+    expect(blocked.takeImportFacts()).toBeUndefined();
   });
 
   it("reports refused writes as StorageUnavailableError, with the cause", () => {
@@ -366,31 +376,52 @@ describe("fields added after v1", () => {
   });
 });
 
-describe("import warnings", () => {
-  it("are empty when unset", () => {
-    expect(store.takeImportWarnings()).toEqual([]);
+describe("what an import found", () => {
+  const facts = {
+    file: "office.mobileconfig",
+    configs: 2,
+    signature: "unchecked",
+    legacy: true,
+    dot: 1,
+    mullvad: false,
+    leftOut: ["First.", "Second, with a comma."],
+  } as const;
+
+  it("is undefined when unset", () => {
+    expect(store.takeImportFacts()).toBeUndefined();
   });
 
-  it("are consumed exactly once, in order", () => {
-    store.setImportWarnings(["First.", "Second, with a comma."]);
-    expect(store.takeImportWarnings()).toEqual([
-      "First.",
-      "Second, with a comma.",
-    ]);
-    expect(store.takeImportWarnings()).toEqual([]);
+  it("is handed over exactly once, the left-out lines in order", () => {
+    store.setImportFacts(facts);
+    expect(store.takeImportFacts()).toEqual(facts);
+    expect(store.takeImportFacts()).toBeUndefined();
   });
 
-  it("replace earlier ones, even with none", () => {
-    store.setImportWarnings(["Stale."]);
-    store.setImportWarnings([]);
-    expect(store.takeImportWarnings()).toEqual([]);
+  it("replaces what an earlier import found", () => {
+    store.setImportFacts({ ...facts, leftOut: ["Stale."] });
+    const next = {
+      ...facts,
+      signature: "none",
+      legacy: false,
+      leftOut: [],
+    } as const;
+    store.setImportFacts(next);
+    expect(store.takeImportFacts()).toEqual(next);
   });
 
-  it("fall back to empty on corrupt data", () => {
-    storage.raw("dns-mobileconfig:import-warnings", "{not json");
-    expect(store.takeImportWarnings()).toEqual([]);
-    storage.raw("dns-mobileconfig:import-warnings", "[1, 2]");
-    expect(store.takeImportWarnings()).toEqual([]);
+  it("is undefined for corrupt data and the warnings of earlier versions", () => {
+    for (
+      const raw of [
+        "{not json",
+        '["Left out resolver addresses."]',
+        '{"file":"a","configs":2,"signature":"verified","legacy":false,"leftOut":[]}',
+        '{"file":"a","configs":2,"signature":"none","legacy":false,"leftOut":[1]}',
+        '{"signature":"none","legacy":false,"leftOut":[]}',
+      ]
+    ) {
+      storage.raw("dns-mobileconfig:import-warnings", raw);
+      expect(store.takeImportFacts()).toBeUndefined();
+    }
   });
 });
 
@@ -411,6 +442,45 @@ describe("edit target", () => {
     expect(store.takeEditTarget()).toBeUndefined();
     storage.raw("dns-mobileconfig:edit-target", '{"name":"Half"}');
     expect(store.takeEditTarget()).toBeUndefined();
+  });
+});
+
+describe("the Declaration format switch", () => {
+  it("is off until chosen", () => {
+    expect(declarationsChosen(storage)).toBe(false);
+  });
+
+  it("keeps being turned on and off", () => {
+    chooseDeclarations(true, storage);
+    expect(declarationsChosen(storage)).toBe(true);
+    chooseDeclarations(false, storage);
+    expect(declarationsChosen(storage)).toBe(false);
+    expect(storage.length).toBe(0);
+  });
+
+  it("stays off and quiet when the browser refuses storage", () => {
+    const refusing: StorageArea = {
+      getItem: () => {
+        throw new DOMException("denied", "SecurityError");
+      },
+      setItem: () => {
+        throw new DOMException("denied", "SecurityError");
+      },
+      removeItem: () => {
+        throw new DOMException("denied", "SecurityError");
+      },
+    };
+    expect(() => chooseDeclarations(true, refusing)).not.toThrow();
+    expect(declarationsChosen(refusing)).toBe(false);
+  });
+
+  it("moves with the cards when the user keeps or forgets data", () => {
+    const local = new FakeStorage();
+    const session = new FakeStorage();
+    chooseDeclarations(true, session);
+    setKeepData(true, local, session);
+    expect(declarationsChosen(local)).toBe(true);
+    expect(declarationsChosen(session)).toBe(false);
   });
 });
 

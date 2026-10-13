@@ -6,7 +6,7 @@ import { buildProfileXml } from "../lib/profile.ts";
 import type { ConfigSource, DnsConfig, ProfileFormat } from "../lib/types.ts";
 import { randomUuid } from "../lib/uuid.ts";
 import { configProblems } from "../lib/validate.ts";
-import { element, input, setFieldError, showNotices } from "./dom.ts";
+import { element, input, setFieldError } from "./dom.ts";
 
 import {
   badge,
@@ -38,12 +38,13 @@ import { showProfileCount } from "./profile_count.ts";
 import {
   enableDrop,
   type FontProfile,
+  loadProfileFile,
   readFontProfile,
-  readProfileFile,
   sha256,
-  unwrapDropped,
   uploadError,
 } from "./dropzone.ts";
+import { fileName, showFileNotes } from "./file_notes.ts";
+import { type FileFacts, notesFor } from "./notes.ts";
 import {
   enableSaveMenu,
   enableShareMenu,
@@ -53,7 +54,9 @@ import { enableSettings } from "./settings.ts";
 import { enableSigning, type Signing } from "./signing.ts";
 import {
   browserStorage,
+  chooseDeclarations,
   createConfigStore,
+  declarationsChosen,
   NEUTRAL_NAME_KEY,
   persist,
 } from "./storage.ts";
@@ -71,7 +74,8 @@ const configCount = element("configCount");
 const downloadPanel = element("downloadPanel");
 const downloadButton = element<HTMLButtonElement>("downloadBtn");
 const deleteAllButton = element<HTMLButtonElement>("deleteAllBtn");
-const importNotice = element<HTMLUListElement>("importNotice");
+const importNotes = element("importNotes");
+const importNoteList = element("importNoteList");
 const downloadBlocked = element("downloadBlocked");
 const downloadLabel = element("downloadLabel");
 const downloadIcon = element("downloadIcon");
@@ -456,6 +460,10 @@ function render(): void {
     configCount.append(" · pick a second card to compare");
   }
   downloadPanel.hidden = count === 0;
+  if (
+    importFacts !== undefined &&
+    !configs.some((config) => config.source?.file === importFacts?.file)
+  ) showImportNotes(undefined);
 
   const invalid = configs.filter((config) => problemsOf(config).length > 0)
     .length;
@@ -518,17 +526,40 @@ async function importFont(file: File): Promise<boolean> {
   return true;
 }
 
+let importFacts: FileFacts | undefined;
+
+function showImportNotes(facts: FileFacts | undefined): void {
+  importFacts = facts;
+  const declarations = input("declarationsChk");
+  showFileNotes(
+    importNoteList,
+    facts === undefined ? [] : notesFor(facts, declarations.checked),
+    (id) => {
+      const on = id === "use-declarations";
+      if (declarations.checked !== on) {
+        declarations.checked = on;
+        declarations.dispatchEvent(new Event("change"));
+      }
+      importNoteList.querySelector<HTMLElement>("[data-action]")?.focus();
+    },
+  );
+  importNotes.hidden = facts === undefined;
+  if (facts === undefined) return;
+  element("importFile").replaceChildren("Loaded ", fileName(facts.file));
+  element("importCount").textContent = facts.configs === 1
+    ? "1 configuration"
+    : `${facts.configs} configurations`;
+}
+
 async function importFile(file: File, dropped = false): Promise<void> {
   let configs: DnsConfig[];
-  let warnings: string[];
+  let facts: FileFacts;
   try {
-    const unwrapped = dropped ? await unwrapDropped(file) : { file, notes: [] };
-    if (unwrapped === undefined) return;
-    const read = await readProfileFile(unwrapped.file);
-    configs = read.configs;
-    warnings = [...unwrapped.notes, ...read.warnings];
+    const loaded = await loadProfileFile(file, dropped);
+    if (loaded === undefined) return;
+    ({ configs, facts } = loaded);
   } catch (error) {
-    showNotices(importNotice, []);
+    showImportNotes(undefined);
     if (dropped && await importFont(file)) return;
     setFieldError(emptyState, uploadError(error));
     return;
@@ -536,7 +567,7 @@ async function importFile(file: File, dropped = false): Promise<void> {
 
   setFieldError(emptyState, null);
   if (!persist(() => store.add(...configs))) return;
-  showNotices(importNotice, warnings);
+  showImportNotes(facts);
   render();
 }
 
@@ -698,7 +729,7 @@ function bindDeclarationFormat(): void {
   const system = input("systemChk");
   const declarations = input("declarationsChk");
   let chosenScope = system.checked;
-  declarations.addEventListener("change", () => {
+  const apply = () => {
     if (declarations.checked) {
       chosenScope = system.checked;
       system.checked = true;
@@ -706,6 +737,13 @@ function bindDeclarationFormat(): void {
       system.checked = chosenScope;
     }
     system.disabled = declarations.checked;
+  };
+  declarations.checked = declarationsChosen();
+  if (declarations.checked) apply();
+  declarations.addEventListener("change", () => {
+    apply();
+    chooseDeclarations(declarations.checked);
+    if (importFacts !== undefined) showImportNotes(importFacts);
     if (comparing !== undefined) render();
   });
 }
@@ -741,7 +779,7 @@ function init(): void {
   deleteAllButton.addEventListener("click", async () => {
     if (!await ask("Delete all configurations on this page?")) return;
     persist(() => store.clear());
-    showNotices(importNotice, []);
+    showImportNotes(undefined);
     render();
   });
   compareClose.addEventListener("click", closeCompare);
@@ -749,7 +787,7 @@ function init(): void {
     if (event.key === "Escape" && comparing !== undefined) closeCompare();
   });
   store.subscribe(render);
-  showNotices(importNotice, store.takeImportWarnings());
+  showImportNotes(store.takeImportFacts());
   render();
 }
 

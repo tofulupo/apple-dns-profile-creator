@@ -6,12 +6,14 @@ import type {
   ProfileFormat,
 } from "../lib/types.ts";
 import { tell } from "./dialogs.ts";
+import type { FileFacts, Signature } from "./notes.ts";
 
 export const KEY_PREFIX = "dns-mobileconfig:";
 const CONFIGS_KEY = `${KEY_PREFIX}configs:v1`;
 const EDIT_TARGET_KEY = `${KEY_PREFIX}edit-target`;
 const IMPORT_WARNINGS_KEY = `${KEY_PREFIX}import-warnings`;
 export const NEUTRAL_NAME_KEY = `${KEY_PREFIX}neutral-name`;
+const DECLARATIONS_KEY = `${KEY_PREFIX}declarations`;
 /** Also hardcoded in the layout's inline script; the markup test checks both. */
 export const THEME_KEY = `${KEY_PREFIX}theme`;
 /** Also hardcoded in the layout's inline script; the markup test checks both. */
@@ -142,6 +144,28 @@ export function setForgetOnClose(forget: boolean): void {
   setKeepData(!forget, globalThis.localStorage, globalThis.sessionStorage);
 }
 
+export function declarationsChosen(
+  storage: StorageArea = browserStorage(),
+): boolean {
+  try {
+    return storage.getItem(DECLARATIONS_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function chooseDeclarations(
+  on: boolean,
+  storage: StorageArea = browserStorage(),
+): void {
+  try {
+    if (on) storage.setItem(DECLARATIONS_KEY, "true");
+    else storage.removeItem(DECLARATIONS_KEY);
+  } catch {
+    // Not remembering the choice is acceptable; it still applies now.
+  }
+}
+
 export function persist(write: () => void): boolean {
   try {
     write();
@@ -163,8 +187,8 @@ export interface ConfigStore {
   clear(): void;
   startEdit(config: DnsConfig): void;
   takeEditTarget(): DnsConfig | undefined;
-  setImportWarnings(warnings: readonly string[]): void;
-  takeImportWarnings(): string[];
+  setImportFacts(facts: FileFacts): void;
+  takeImportFacts(): FileFacts | undefined;
   subscribe(listener: () => void): void;
 }
 
@@ -192,6 +216,20 @@ function isParadigm(value: unknown): value is ProfileFormat {
 
 function optional<T>(guard: Guard<T>): Guard<T | undefined> {
   return (value): value is T | undefined => value === undefined || guard(value);
+}
+
+function isSignature(value: unknown): value is Signature {
+  return value === "none" || value === "unchecked" || value === "unknown";
+}
+
+function isFileFacts(value: unknown): value is FileFacts {
+  if (typeof value !== "object" || value === null) return false;
+  const facts = value as Record<string, unknown>;
+  return isString(facts["file"]) &&
+    Number.isInteger(facts["configs"]) &&
+    Number.isInteger(facts["dot"]) && isBoolean(facts["mullvad"]) &&
+    isSignature(facts["signature"]) && isBoolean(facts["legacy"]) &&
+    isStringArray(facts["leftOut"]);
 }
 
 function isSource(value: unknown): value is ConfigSource {
@@ -356,14 +394,13 @@ export function createConfigStore(storage: StorageArea): ConfigStore {
       return isDnsConfig(decoded) ? decoded : undefined;
     },
 
-    setImportWarnings(warnings) {
-      if (warnings.length === 0) unset(IMPORT_WARNINGS_KEY);
-      else set(IMPORT_WARNINGS_KEY, JSON.stringify(warnings));
+    setImportFacts(facts) {
+      set(IMPORT_WARNINGS_KEY, JSON.stringify(facts));
     },
 
-    takeImportWarnings() {
+    takeImportFacts() {
       const decoded = take(IMPORT_WARNINGS_KEY);
-      return isStringArray(decoded) ? decoded : [];
+      return isFileFacts(decoded) ? decoded : undefined;
     },
 
     subscribe(listener) {

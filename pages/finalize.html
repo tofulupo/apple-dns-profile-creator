@@ -10,8 +10,17 @@
 </div>
 
 <div role="status">
-  <ul class="notices notices--block" id="importNotice"
-    aria-label="Notes on the loaded profile" hidden></ul>
+  <section class="import-notes" id="importNotes" aria-labelledby="importFile"
+    hidden>
+    <p class="import-notes__head">
+      <span class="icon icon--profile import-notes__icon"
+        aria-hidden="true"></span>
+      <span class="import-notes__file" id="importFile"></span>
+      <span class="import-notes__count" id="importCount"></span>
+    </p>
+    <div class="file-notes" id="importNoteList" role="group"
+      aria-label="Notes on the loaded profile"></div>
+  </section>
 </div>
 
 <section class="config-list" id="configList" aria-labelledby="configListTitle"

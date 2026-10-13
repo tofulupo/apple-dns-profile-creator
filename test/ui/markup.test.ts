@@ -379,7 +379,7 @@ for (const { page, html } of rendered) {
       // `.page:has(> main > #mainForm)` and a three-row subgrid in <main>.
       it("has the upload zone and the form as <main>'s only children", () => {
         expect(html).toMatch(
-          /<main>\s*<div class="field" id="field-fileupload">[\s\S]*<\/div>\s*<form id="mainForm"[\s\S]*<\/form>\s*<\/main>/,
+          /<main>\s*<div class="field zone-field" id="field-fileupload">[\s\S]*<\/div>\s*<form id="mainForm"[\s\S]*<\/form>\s*<\/main>/,
         );
       });
 

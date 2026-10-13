@@ -41,16 +41,19 @@ import { receiveOpenedProfiles } from "./opened.ts";
 import { holdStillWhenFitting } from "./overscroll.ts";
 import { enablePixelMode } from "./pixel.ts";
 import { signalPageReady } from "./page_ready.ts";
-import {
-  enableDrop,
-  readProfileFile,
-  unwrapDropped,
-  uploadError,
-} from "./dropzone.ts";
+import { enableDrop, loadProfileFile, uploadError } from "./dropzone.ts";
+import { fileName, showFileNotes } from "./file_notes.ts";
+import { ALREADY_IN_PROFILE, type FileFacts, notesFor } from "./notes.ts";
 import { showProfileCount } from "./profile_count.ts";
 import { enableSaveMenu, type UpdateSaveMenu } from "./save_menu.ts";
 import { enableSettings } from "./settings.ts";
-import { browserStorage, createConfigStore, persist } from "./storage.ts";
+import {
+  browserStorage,
+  chooseDeclarations,
+  createConfigStore,
+  declarationsChosen,
+  persist,
+} from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
 import { watchKeyboard } from "./dock.ts";
 
@@ -62,7 +65,11 @@ const submit = element("addToProfileLabel");
 const dropzone = element("dropzone");
 const uploadStatus = element("uploadStatus");
 const uploadHint = uploadStatus.textContent;
-const uploadNotice = element<HTMLUListElement>("uploadNotice");
+const zoneTitles = [
+  ...dropzone.querySelectorAll<HTMLElement>(".zone__title > span"),
+];
+const zoneHints = zoneTitles.map((title) => title.textContent);
+const uploadNotes = element("uploadNotes");
 
 const serverCheckText = element("serverCheckText");
 const nameField = element("field-provName");
@@ -282,13 +289,16 @@ function onServerInput(event?: Event): void {
   syncPresets();
 }
 
+let tileTellsDot = false;
+
 function updateQuickInsert(): void {
   const doh = selectedProtocol() === "HTTPS";
+  const note = !doh && !tileTellsDot;
   quickInsert.hidden = !doh;
-  protocolNote.hidden = doh;
+  protocolNote.hidden = !note;
   input("serverUrl").setAttribute(
     "aria-describedby",
-    doh ? "serverCheckText" : "serverCheckText protocolNote",
+    note ? "serverCheckText protocolNote" : "serverCheckText",
   );
   const server = input("serverUrl").value.trim();
   insertScheme.disabled = withHttpsScheme(server) === server;
@@ -665,47 +675,56 @@ function validate(config: DnsConfig): boolean {
 
 type LoadOutcome = "added" | "duplicate" | "unsaved";
 
+const LOAD_TITLES: Record<LoadOutcome, string> = {
+  added: "Added to profile",
+  duplicate: "Loaded",
+  unsaved: "Loaded",
+};
+
 function showLoaded(name: null): void;
 function showLoaded(name: string, outcome: LoadOutcome): void;
 function showLoaded(name: string | null, outcome?: LoadOutcome): void {
   dropzone.classList.toggle("zone--loaded", name !== null);
   if (name === null) {
+    zoneTitles.forEach((title, index) => {
+      title.textContent = zoneHints[index] ?? "";
+    });
     uploadStatus.textContent = uploadHint;
     return;
   }
-  const file = document.createElement("strong");
-  file.textContent = name;
-  file.title = name;
-  switch (outcome) {
-    case "added":
-      uploadStatus.replaceChildren("Added ", file, " to profile");
-      break;
-    case "duplicate":
-      uploadStatus.replaceChildren("Already in profile: ", file);
-      break;
-    case "unsaved":
-      uploadStatus.replaceChildren("Loaded ", file);
-      break;
-  }
+  const heading = LOAD_TITLES[outcome ?? "added"];
+  for (const title of zoneTitles) title.textContent = heading;
+  const said = document.createElement("span");
+  said.className = "visually-hidden";
+  said.textContent = `${heading}: `;
+  uploadStatus.replaceChildren(said, fileName(name));
 }
 
 function updateProfileCount(): void {
   showProfileCount(store.list().length);
 }
 
+function showLoadNotes(facts: FileFacts): void {
+  showFileNotes(uploadNotes, notesFor(facts, declarationsChosen()), (id) => {
+    chooseDeclarations(id === "use-declarations");
+    showLoadNotes(facts);
+    uploadNotes.querySelector<HTMLElement>("[data-action]")?.focus();
+  });
+}
+
 async function handleUpload(file: File, dropped = false): Promise<boolean> {
   const uploadField = element("field-fileupload");
   let configs: DnsConfig[];
-  let warnings: string[];
+  let facts: FileFacts;
   try {
-    const unwrapped = dropped ? await unwrapDropped(file) : { file, notes: [] };
-    if (unwrapped === undefined) return true;
-    const read = await readProfileFile(unwrapped.file);
-    configs = read.configs;
-    warnings = [...unwrapped.notes, ...read.warnings];
+    const loaded = await loadProfileFile(file, dropped);
+    if (loaded === undefined) return true;
+    ({ configs, facts } = loaded);
   } catch (error) {
     showLoaded(null);
-    showNotices(uploadNotice, []);
+    showFileNotes(uploadNotes, []);
+    tileTellsDot = false;
+    updateQuickInsert();
     setFieldError(uploadField, uploadError(error));
     return true;
   }
@@ -725,14 +744,17 @@ async function handleUpload(file: File, dropped = false): Promise<boolean> {
       file.name,
       duplicate ? "duplicate" : saved ? "added" : "unsaved",
     );
-    showNotices(uploadNotice, duplicate ? [] : warnings);
+    if (duplicate) showFileNotes(uploadNotes, [ALREADY_IN_PROFILE]);
+    else showLoadNotes(facts);
+    tileTellsDot = !duplicate && facts.dot > 0;
+    updateQuickInsert();
     validate(readForm());
     return true;
   }
 
   const saved = persist(() => {
     store.add(...configs);
-    store.setImportWarnings(warnings);
+    store.setImportFacts(facts);
   });
   if (!saved) return true;
   location.href = "finalize.html";

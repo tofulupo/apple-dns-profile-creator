@@ -3,17 +3,15 @@ import {
   extractPlistXml,
   importProfileXml,
   type ProfileImport,
+  ProfileImportError,
 } from "../lib/import.ts";
-import type { ConfigSource } from "../lib/types.ts";
+import { PlistParseError } from "../lib/plist.ts";
+import { XmlParseError } from "../lib/xml.ts";
+import type { ConfigSource, DnsConfig } from "../lib/types.ts";
 import type { DesktopBindings } from "../desktop/bindings.ts";
 import { desktopBindings } from "./desktop.ts";
 import { asError } from "./download.ts";
-
-export const DEPRECATED_FORMAT_NOTE =
-  "Legacy DNS payload, deprecated by Apple but still working on iOS/macOS 27 and later. Use the Declaration format instead.";
-
-export const UNCHECKED_SIGNATURE_NOTE =
-  "Signed. The website can't check the signature.";
+import { type FileFacts, onMullvad, type Signature } from "./notes.ts";
 
 /**
  * Far above any real profile, which is a few kilobytes. Must match
@@ -22,14 +20,23 @@ export const UNCHECKED_SIGNATURE_NOTE =
 export const MAX_PROFILE_BYTES = 5 * 1024 * 1024;
 
 export const TOO_LARGE =
-  "That file is too large to be a configuration profile.";
+  "This file is too large to be a configuration profile. Try another .mobileconfig file.";
 
 /** Refuses a file over the limit before anything reads it. */
 function checkSize(file: File): void {
   if (file.size > MAX_PROFILE_BYTES) throw new Error(TOO_LARGE);
 }
 
-export const NOT_A_PROFILE = "That file isn't a configuration profile.";
+export const NOT_A_PROFILE =
+  "This isn't a configuration profile. Try a .mobileconfig file.";
+
+export const DAMAGED =
+  "This file is damaged or isn't a configuration profile. Try another .mobileconfig file.";
+
+export const NO_DNS_SETTINGS =
+  "This profile has no DNS settings. Try a profile with encrypted DNS.";
+
+export const UNREADABLE = "Couldn't read this file. Try loading it again.";
 
 /** The tag a DER signed message starts with. A plain profile starts with `<`. */
 const SEQUENCE = 0x30;
@@ -63,7 +70,7 @@ function desktopOpenDropped(): OpenDropped | undefined {
 
 export interface Unwrapped {
   readonly file: File;
-  readonly notes: readonly string[];
+  readonly signature: Signature;
 }
 
 /**
@@ -79,8 +86,8 @@ export async function unwrapDropped(
   const bytes = new Uint8Array(await file.arrayBuffer());
   const kind = fileKind(bytes);
   if (kind === "neither") throw new Error(NOT_A_PROFILE);
-  if (kind === "plain") return { file, notes: [] };
-  if (open === undefined) return { file, notes: [UNCHECKED_SIGNATURE_NOTE] };
+  if (kind === "plain") return { file, signature: "none" };
+  if (open === undefined) return { file, signature: "unchecked" };
   let text: string | null;
   try {
     text = await open(file.name, bytes);
@@ -89,7 +96,7 @@ export async function unwrapDropped(
   }
   return text === null ? undefined : {
     file: new File([text], file.name, { type: file.type }),
-    notes: [],
+    signature: "unknown",
   };
 }
 
@@ -113,7 +120,7 @@ export async function readProfileFile(file: File): Promise<ProfileImport> {
   const text = await file.text();
   const result = importProfileXml(text);
   if (result.configs.length === 0) {
-    throw new Error("That profile contains no DNS settings.");
+    throw new Error(NO_DNS_SETTINGS);
   }
   const hash = await sha256(text);
   const source: ConfigSource = {
@@ -127,9 +134,40 @@ export async function readProfileFile(file: File): Promise<ProfileImport> {
   return {
     ...result,
     configs: result.configs.map((config) => ({ ...config, source })),
-    warnings: result.usesDeprecatedPayload
-      ? [DEPRECATED_FORMAT_NOTE, ...result.warnings]
-      : result.warnings,
+  };
+}
+
+export interface LoadedProfile {
+  readonly configs: DnsConfig[];
+  readonly facts: FileFacts;
+}
+
+/**
+ * A dropped or picked file, or one the app opened, which reaches the page
+ * with its signature already checked. Undefined when the user doesn't open
+ * it after all.
+ */
+export async function loadProfileFile(
+  file: File,
+  dropped: boolean,
+  open: OpenDropped | undefined = desktopOpenDropped(),
+): Promise<LoadedProfile | undefined> {
+  const unwrapped: Unwrapped | undefined = dropped
+    ? await unwrapDropped(file, open)
+    : { file, signature: "unknown" };
+  if (unwrapped === undefined) return undefined;
+  const read = await readProfileFile(unwrapped.file);
+  return {
+    configs: read.configs,
+    facts: {
+      file: file.name,
+      configs: read.configs.length,
+      signature: unwrapped.signature,
+      legacy: read.usesDeprecatedPayload,
+      dot: read.configs.filter((config) => config.protocol === "TLS").length,
+      mullvad: read.configs.some((config) => onMullvad(config.serverUrl)),
+      leftOut: read.warnings,
+    },
   };
 }
 
@@ -169,7 +207,11 @@ export async function readFontProfile(
 }
 
 export function uploadError(error: unknown): string {
-  return error instanceof Error ? error.message : "Could not read that file.";
+  if (
+    error instanceof XmlParseError || error instanceof PlistParseError ||
+    error instanceof ProfileImportError
+  ) return DAMAGED;
+  return error instanceof Error ? error.message : UNREADABLE;
 }
 
 function isInside(zone: HTMLElement, event: Event): boolean {

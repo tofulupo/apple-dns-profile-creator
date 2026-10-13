@@ -32,22 +32,26 @@ describe({
     expect(await app().$("#addressCount").getText()).toBe("None");
   });
 
-  it("adds no import notes for a file already in the profile", async () => {
+  it("only says so for a file already in the profile", async () => {
     const notes = () =>
-      app().execute(() => document.querySelectorAll("#uploadNotice li").length);
+      app().execute(() =>
+        [...document.querySelectorAll("#uploadNotes .file-note__value")].map(
+          (value) => value.textContent,
+        )
+      );
     await loadFile(app(), "quad9.mobileconfig", LEGACY);
     await app().$("#uploadStatus*=Added").waitForExist();
-    expect(await notes()).toBeGreaterThan(0);
+    expect(await notes()).toContain("Legacy payload");
 
     await loadFile(app(), "quad9.mobileconfig", LEGACY);
 
-    await app().$("#uploadStatus*=Already in profile").waitForExist();
+    await app().$("#uploadStatus*=Loaded").waitForExist();
     expect(
       await app().execute(() =>
         document.getElementById("uploadStatus")?.textContent
       ),
-    ).toBe("Already in profile: quad9.mobileconfig");
-    expect(await notes()).toBe(0);
+    ).toBe("Loaded: quad9");
+    expect(await notes()).toEqual(["Already in profile"]);
   });
 
   it("stays usable after a file too large to be a profile", async () => {
@@ -55,7 +59,7 @@ describe({
 
     await app().$("#field-fileupload .field__error").waitForDisplayed();
     expect(await app().$("#field-fileupload .field__error").getText()).toBe(
-      "That file is too large to be a configuration profile.",
+      "This file is too large to be a configuration profile. Try another .mobileconfig file.",
     );
     await addPreset(app(), "Quad9");
     expect(await cardRows(app())).toHaveProperty("Server");

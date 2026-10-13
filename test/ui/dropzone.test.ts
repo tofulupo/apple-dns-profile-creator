@@ -3,17 +3,21 @@ import { expect } from "@std/expect";
 
 import { buildProfileXml } from "../../src/lib/profile.ts";
 import {
+  DAMAGED,
+  loadProfileFile,
   MAX_PROFILE_BYTES,
+  NO_DNS_SETTINGS,
   NOT_A_PROFILE,
   type OpenDropped,
   readFontProfile,
   readProfileFile,
   sha256,
   TOO_LARGE,
-  UNCHECKED_SIGNATURE_NOTE,
+  UNREADABLE,
   unwrapDropped,
   uploadError,
 } from "../../src/ui/dropzone.ts";
+import { MAX_NESTING } from "../../src/lib/xml.ts";
 import { config } from "../helpers/configs.ts";
 import { stubUuid } from "../helpers/uuid.ts";
 
@@ -48,7 +52,7 @@ describe("readProfileFile", () => {
   it("leaves a font profile to the font panel", async () => {
     const bytes = await Deno.readFile(FONTS);
     await expect(readProfileFile(new File([bytes], "fonts.mobileconfig")))
-      .rejects.toThrow("That profile contains no DNS settings.");
+      .rejects.toThrow(NO_DNS_SETTINGS);
   });
 
   it("hashes the content, not the name", async () => {
@@ -140,7 +144,10 @@ describe("unwrapDropped", () => {
   it("passes a plain profile through without asking the app", async () => {
     const file = profileFile("plain.mobileconfig");
     const { open, calls } = app(null);
-    expect(await unwrapDropped(file, open)).toEqual({ file, notes: [] });
+    expect(await unwrapDropped(file, open)).toEqual({
+      file,
+      signature: "none",
+    });
     expect(calls).toEqual([]);
   });
 
@@ -153,7 +160,7 @@ describe("unwrapDropped", () => {
       open,
     );
     expect(calls).toEqual([{ name: "signed.mobileconfig", bytes }]);
-    expect(unwrapped?.notes).toEqual([]);
+    expect(unwrapped?.signature).toBe("unknown");
     expect(unwrapped?.file.name).toBe("signed.mobileconfig");
     expect(await unwrapped?.file.text()).toBe(xml);
   });
@@ -197,7 +204,10 @@ describe("unwrapDropped", () => {
     const xml = await profileFile("plain.mobileconfig").text();
     const file = new File(["\ufeff\n" + xml], "bom.mobileconfig");
     const { open, calls } = app(null);
-    expect(await unwrapDropped(file, open)).toEqual({ file, notes: [] });
+    expect(await unwrapDropped(file, open)).toEqual({
+      file,
+      signature: "none",
+    });
     expect(calls).toEqual([]);
   });
 
@@ -212,16 +222,138 @@ describe("unwrapDropped", () => {
     expect(uploadError(error)).toBe(reason);
   });
 
-  it("notes on the website that the signature isn't checked", async () => {
+  it("says on the website that the signature isn't checked", async () => {
     const file = new File([await Deno.readFile(SIGNED)], "signed.mobileconfig");
     expect(await unwrapDropped(file, undefined)).toEqual({
       file,
-      notes: [UNCHECKED_SIGNATURE_NOTE],
+      signature: "unchecked",
     });
     const { configs } = await readProfileFile(file);
     expect(configs.map((config) => config.name)).toEqual([
       "Quad9 Encrypted DNS over TLS",
     ]);
+  });
+});
+
+describe("uploadError", () => {
+  async function refusal(text: string): Promise<string> {
+    const error = await readProfileFile(new File([text], "x.mobileconfig"))
+      .catch((error: unknown) => error);
+    return uploadError(error);
+  }
+
+  it("says the same plain sentence for every broken file", async () => {
+    const nested = "<plist>" + "<array>".repeat(MAX_NESTING + 1) +
+      "</array>".repeat(MAX_NESTING + 1) + "</plist>";
+    for (
+      const text of [
+        "",
+        "bplist00\u0000\u0001",
+        "<plist><dict><string>a</string></dict></plist>",
+        "<plist><array></array></plist>",
+        "<plist><dict><key>PayloadContent</key><string/></dict></plist>",
+        nested,
+      ]
+    ) {
+      expect(await refusal(text)).toBe(DAMAGED);
+    }
+  });
+
+  it("names the problem and what to do next", () => {
+    for (const text of [TOO_LARGE, NOT_A_PROFILE, DAMAGED, NO_DNS_SETTINGS]) {
+      expect(text).toMatch(/^This .+\. Try (a|another) .+\.$/);
+    }
+    expect(UNREADABLE).toBe("Couldn't read this file. Try loading it again.");
+  });
+
+  it("keeps the reason of a refusal it knows", () => {
+    expect(uploadError(new Error(TOO_LARGE))).toBe(TOO_LARGE);
+    expect(uploadError("not an Error")).toBe(UNREADABLE);
+  });
+});
+
+describe("loadProfileFile", () => {
+  it("finds a signed file with the legacy payload on the website", async () => {
+    const file = new File([await Deno.readFile(SIGNED)], "signed.mobileconfig");
+    const loaded = await loadProfileFile(file, true, undefined);
+    expect(loaded?.facts).toEqual({
+      file: "signed.mobileconfig",
+      configs: 1,
+      signature: "unchecked",
+      legacy: true,
+      dot: 1,
+      mullvad: false,
+      leftOut: [],
+    });
+    expect(loaded?.configs).toHaveLength(1);
+  });
+
+  it("finds an unsigned file with declarations", async () => {
+    const xml = buildProfileXml(
+      [config(), config({ name: "Two" })],
+      { systemScope: true, format: "declarations" },
+      stubUuid(),
+    );
+    const loaded = await loadProfileFile(
+      new File([xml], "new.mobileconfig"),
+      true,
+      undefined,
+    );
+    expect(loaded?.facts).toEqual({
+      file: "new.mobileconfig",
+      configs: 2,
+      signature: "none",
+      legacy: false,
+      dot: 2,
+      mullvad: false,
+      leftOut: [],
+    });
+  });
+
+  it("finds a profile on Mullvad's servers", async () => {
+    const xml = await Deno.readTextFile(
+      new URL(
+        "../fixtures/own/mullvad-with-rules.mobileconfig",
+        import.meta.url,
+      ),
+    );
+    const loaded = await loadProfileFile(
+      new File([xml], "mullvad.mobileconfig"),
+      true,
+      undefined,
+    );
+    expect(loaded?.facts.mullvad).toBe(true);
+  });
+
+  it("passes on what the import left out", async () => {
+    const xml = (await profileFile("wifi.mobileconfig").text()).replace(
+      "<key>PayloadContent</key>\n\t<array>",
+      "<key>PayloadContent</key>\n\t<array>\n\t\t<dict><key>PayloadType</key>" +
+        "<string>com.apple.wifi.managed</string></dict>",
+    );
+    const loaded = await loadProfileFile(
+      new File([xml], "wifi.mobileconfig"),
+      true,
+      undefined,
+    );
+    expect(loaded?.facts.leftOut).toEqual([
+      "Skipped payloads that are not DNS settings: com.apple.wifi.managed.",
+    ]);
+  });
+
+  it("leaves the signature of a file the app opened to the app", async () => {
+    const loaded = await loadProfileFile(
+      profileFile("opened.mobileconfig"),
+      false,
+      undefined,
+    );
+    expect(loaded?.facts.signature).toBe("unknown");
+  });
+
+  it("is undefined when the user doesn't open a broken signature", async () => {
+    const file = new File([await Deno.readFile(SIGNED)], "signed.mobileconfig");
+    expect(await loadProfileFile(file, true, () => Promise.resolve(null)))
+      .toBeUndefined();
   });
 });
 
