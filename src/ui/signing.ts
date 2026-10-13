@@ -1,9 +1,9 @@
 import type { SigningIdentity } from "../desktop/bindings.ts";
 import { element } from "./dom.ts";
 import { desktopBindings } from "./desktop.ts";
-import { browserStorage } from "./storage.ts";
+import { browserStorage, type StorageArea } from "./storage.ts";
 
-const SIGN_WITH_KEY = "dns-mobileconfig:sign-with";
+export const SIGN_WITH_KEY = "dns-mobileconfig:sign-with";
 
 export interface Signing {
   selected(): string | undefined;
@@ -16,17 +16,21 @@ const STATUS_TEXT: Readonly<Record<SigningIdentity["status"], string>> = {
     "Verified\u201d.",
 };
 
-function readPreference(): string | undefined {
+export function signWithChosen(
+  storage: StorageArea = browserStorage(),
+): string | undefined {
   try {
-    return browserStorage().getItem(SIGN_WITH_KEY) ?? undefined;
+    return storage.getItem(SIGN_WITH_KEY) ?? undefined;
   } catch {
     return undefined;
   }
 }
 
-function savePreference(id: string | undefined): void {
+export function chooseSignWith(
+  id: string | undefined,
+  storage: StorageArea = browserStorage(),
+): void {
   try {
-    const storage = browserStorage();
     if (id === undefined) storage.removeItem(SIGN_WITH_KEY);
     else storage.setItem(SIGN_WITH_KEY, id);
   } catch {
@@ -114,7 +118,7 @@ export function enableSigning(onChange: () => void): Signing {
       identities = [];
       failed = true;
     }
-    const preferred = restored ? select.value : readPreference();
+    const preferred = restored ? select.value : signWithChosen();
     fillSelect(preferred);
     if (!restored) {
       restored = true;
@@ -126,7 +130,7 @@ export function enableSigning(onChange: () => void): Signing {
   }
 
   function choose(): void {
-    savePreference(selected());
+    chooseSignWith(selected());
     render();
   }
 

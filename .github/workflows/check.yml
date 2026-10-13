@@ -25,7 +25,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             build-essential file libayatana-appindicator3-dev librsvg2-dev \
-            libssl-dev libwebkit2gtk-4.1-dev libxdo-dev webkit2gtk-driver xvfb
+            libssl-dev libwebkit2gtk-4.1-dev libxdo-dev webkit2gtk-driver xdotool \
+            xvfb
 
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2.0.5
         with:
@@ -57,5 +58,11 @@ jobs:
       - name: e2e tests
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum deno task test:e2e
+
+      # The website in headless Chrome for Testing, which WebdriverIO downloads
+      # with its chromedriver.
+      - name: Browser tests
+        if: runner.os == 'Linux'
+        run: deno task test:browser
 
       - run: deno task build

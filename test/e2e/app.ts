@@ -181,6 +181,83 @@ export async function saveAppSettings(settings: object): Promise<void> {
   );
 }
 
+/** xdotool needs X11: CI's xvfb, or `Xwayland :99` without WAYLAND_DISPLAY. */
+export const onX11 = Deno.env.get("WAYLAND_DISPLAY") === undefined &&
+  Deno.env.get("DISPLAY") !== undefined;
+
+export function readAppSettings(): Record<string, unknown> {
+  return JSON.parse(
+    Deno.readTextFileSync(join(HOME, "config", APP_ID, "settings.json")),
+  );
+}
+
+async function pressKeysIn(name: string, keys: string): Promise<void> {
+  const [window] = (await xdotool(
+    "search",
+    "--sync",
+    "--onlyvisible",
+    "--name",
+    name,
+  )).split("\n");
+  // A desktop's window manager wants the window activated; CI's bare xvfb has
+  // none and refuses, and focusing is enough there.
+  await xdotool("windowactivate", "--sync", window!).catch(() => "");
+  await xdotool("windowfocus", "--sync", window!);
+  await xdotool("key", "--delay", "100", keys);
+}
+
+async function xdotool(...args: string[]): Promise<string> {
+  const { success, stdout, stderr } = await new Deno.Command("xdotool", {
+    args,
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+  if (!success) {
+    throw new Error(
+      `xdotool ${args.join(" ")}: ${new TextDecoder().decode(stderr).trim()}`,
+    );
+  }
+  return new TextDecoder().decode(stdout).trim();
+}
+
+/**
+ * Opens Settings the only way the app offers, its menu shortcut, as a real
+ * key press (WebDriver can't reach native menus), runs `use` in it and comes
+ * back to the main window. Settings stays open: on Linux only the main window
+ * has the menu's shortcuts, and after WebDriver closes it the app no longer
+ * opens a new one. A later call reloads it, so it reads the settings again.
+ */
+export async function inSettings(
+  app: App,
+  use: () => Promise<void>,
+): Promise<void> {
+  const main = await app.getWindowHandle();
+  const rect = await app.getWindowRect();
+  const other = async () =>
+    (await app.getWindowHandles()).find((handle) => handle !== main);
+  let settings = await other();
+  if (settings === undefined) {
+    await pressKeysIn("DNS Profile Creator", "ctrl+comma");
+    for (let attempt = 0; attempt < 50 && settings === undefined; attempt++) {
+      await pause(100);
+      settings = await other();
+    }
+    if (settings === undefined) throw new Error("Ctrl+, opened no Settings");
+    await app.switchToWindow(settings);
+  } else {
+    await app.switchToWindow(settings);
+    await app.refresh();
+  }
+  await app.$("#forgetChk:not([disabled])").waitForExist();
+  try {
+    await use();
+  } finally {
+    await app.switchToWindow(main);
+    // A tiling window manager shrinks the main window next to Settings.
+    await app.setWindowRect(rect.x, rect.y, rect.width, rect.height);
+  }
+}
+
 /**
  * Files under the web view's data and cache folders that hold `text`, in
  * UTF-8 or in the UTF-16 WebKit stores page storage in.
@@ -226,10 +303,10 @@ export async function addPreset(
   preset: string,
   adjust: () => Promise<void> = async () => {},
 ): Promise<void> {
-  await app.$("#presetToggle").click();
-  await app.$("#presetMenu").$(`button*=${preset}`).click();
+  await press(app.$("#presetToggle"));
+  await press(app.$("#presetMenu").$(`button*=${preset}`));
   await adjust();
-  await app.$("#btn_addToProfile").click();
+  await press(app.$("#btn_addToProfile"));
   await app.$("#configList").waitForDisplayed();
 }
 
