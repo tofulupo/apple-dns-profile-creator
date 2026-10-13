@@ -1,5 +1,5 @@
 /**
- * The inline script in pages/_layout.html applies it before first paint.
+ * pages/_prepaint.js applies it before first paint.
  * css/app.css does the rest, through `data-pixel`.
  */
 

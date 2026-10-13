@@ -3,7 +3,8 @@
   "license": "BSD-3-Clause",
   "tasks": {
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
-    "build": "deno run --allow-read --allow-write --allow-run --allow-env=INDEXNOW_KEY,TAURI_ENV_PLATFORM,R2_ENDPOINT,R2_ACCOUNT_ID,R2_BUCKET,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY --allow-net=*.r2.cloudflarestorage.com scripts/build.ts",
+    "build": "deno run --env-file=.env --allow-read --allow-write --allow-run --allow-env=TAURI_ENV_PLATFORM,WEB_FONTS_DIR scripts/build.ts",
+    "build:deno-deploy": "deno run --allow-read --allow-write --allow-run --allow-env=INDEXNOW_KEY,TAURI_ENV_PLATFORM,R2_ENDPOINT,R2_ACCOUNT_ID,R2_BUCKET,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY --allow-net=*.r2.cloudflarestorage.com scripts/build.ts --deno-deploy",
     "fonts": "deno run --allow-read --allow-write --allow-run scripts/fonts.ts",
     "preview": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts",
     "desktop": "deno task tauri build",
@@ -44,7 +45,7 @@
     "noImplicitReturns": true
   },
   "deploy": {
-    "build": "deno task build",
+    "build": "deno task build:deno-deploy",
     "runtime": {
       "type": "dynamic",
       "entrypoint": "scripts/server.ts"

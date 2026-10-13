@@ -8,12 +8,12 @@ const YEAR = 60 * 60 * 24 * 365;
 const WEEK = 60 * 60 * 24 * 7;
 
 /**
- * The stylesheet's name is a hash of its content (scripts/build.ts). The
- * fonts are not fingerprinted: a changed font needs a new file name, or
- * returning visitors keep the old one for up to a year.
+ * The stylesheet's and scripts' names are a hash of their content
+ * (scripts/build.ts). The fonts are not fingerprinted: a changed font needs a
+ * new file name, or returning visitors keep the old one for up to a year.
  */
 export function cacheControl(pathname: string): string {
-  if (/^\/app-[0-9a-f]+\.css$/.test(pathname)) {
+  if (/^\/app-[0-9a-f]+\.(?:css|js)$/.test(pathname)) {
     return `public, max-age=${YEAR}, immutable`;
   }
   if (/^\/fonts\/[^/]+\.woff2$/.test(pathname)) {
@@ -91,16 +91,18 @@ async function sha256(text: string): Promise<string> {
   return `'sha256-${base64}'`;
 }
 
-/** connect-src 'self' is for Lighthouse, which reads robots.txt and llms.txt. */
+/**
+ * The pages load their scripts from their own files. An inline script would
+ * need its hash listed here. connect-src 'self' is for Lighthouse, which reads
+ * robots.txt and llms.txt.
+ */
 export async function contentSecurityPolicy(html: string): Promise<string> {
   const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
     .map((match) => match[1]!);
   const hashes = await Promise.all(scripts.map(sha256));
   return [
     "default-src 'none'",
-    `script-src ${
-      hashes.length > 0 ? [...new Set(hashes)].join(" ") : "'none'"
-    }`,
+    `script-src ${["'self'", ...new Set(hashes)].join(" ")}`,
     "style-src 'self'",
     "img-src 'self' data:",
     "font-src 'self'",

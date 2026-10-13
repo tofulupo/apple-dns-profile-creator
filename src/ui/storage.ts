@@ -14,11 +14,11 @@ const EDIT_TARGET_KEY = `${KEY_PREFIX}edit-target`;
 const IMPORT_WARNINGS_KEY = `${KEY_PREFIX}import-warnings`;
 export const NEUTRAL_NAME_KEY = `${KEY_PREFIX}neutral-name`;
 const DECLARATIONS_KEY = `${KEY_PREFIX}declarations`;
-/** Also hardcoded in the layout's inline script; the markup test checks both. */
+/** Also hardcoded in pages/_prepaint.js; the markup test checks both. */
 export const THEME_KEY = `${KEY_PREFIX}theme`;
-/** Also hardcoded in the layout's inline script; the markup test checks both. */
+/** Also hardcoded in pages/_prepaint.js; the markup test checks both. */
 export const PIXEL_KEY = `${KEY_PREFIX}pixel`;
-/** Also hardcoded in the layout's inline script; the markup test checks both. */
+/** Also hardcoded in pages/_prepaint.js; the markup test checks both. */
 export const SETTINGS_KEY = `${KEY_PREFIX}settings:v1`;
 /**
  * In sessionStorage, once the app has put its saved theme and motion into a
@@ -43,7 +43,7 @@ export class StorageUnavailableError extends Error {
 /**
  * On the website, in localStorage while the user keeps their data. Missing
  * means "Forget on close": everything lives in sessionStorage, which goes
- * with the tab. Also read by pages/_prepaint.html.
+ * with the tab. Also read by pages/_prepaint.js.
  */
 export const KEEP_KEY = `${KEY_PREFIX}keep`;
 
@@ -98,7 +98,7 @@ export function adoptEarlierData(
 }
 
 // The app forgets on quit itself (src-tauri/src/app_settings.rs), so it
-// always uses localStorage. The same check is in pages/_prepaint.html.
+// always uses localStorage. The same check is in pages/_prepaint.js.
 function inApp(): boolean {
   return "__TAURI__" in globalThis;
 }

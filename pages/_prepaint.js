@@ -1,4 +1,3 @@
-<script>
 {
   if ("__TAURI__" in window) document.documentElement.dataset.app = "desktop";
   // The website keeps its data in the tab unless the user keeps it (KEEP_KEY in
@@ -15,14 +14,18 @@
     if (sessionStorage.getItem("dns-mobileconfig:pixel") === "on") {
       document.documentElement.dataset.pixel = "";
     }
-  } catch {}
+  } catch {
+    // No storage: no pixel font.
+  }
   // Key and values must match src/ui/settings.ts.
   {
     let motion;
     try {
       motion = JSON.parse(stored("dns-mobileconfig:settings:v1") ?? "null")
         ?.motion;
-    } catch {}
+    } catch {
+      // Bad JSON: follow the system.
+    }
     if (
       motion === "reduce" ||
       (motion !== "full" &&
@@ -39,4 +42,3 @@
     }
   }
 }
-</script>

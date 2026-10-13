@@ -5,12 +5,12 @@ import { dirname, join, resolve } from "@std/path";
 import { PAGES, SITE_URL } from "../../pages/pages.ts";
 import {
   fontPreloads,
-  inlineScript,
   pageHref,
   pageUrl,
   presetHost,
   renderPage,
   renderSettings,
+  scriptTag,
 } from "../../scripts/build.ts";
 import { THEME_KEY } from "../../src/ui/theme.ts";
 import { PIXEL_KEY } from "../../src/ui/pixel.ts";
@@ -22,6 +22,7 @@ if (here === undefined) {
   throw new Error("Markup test must be loaded from a file URL");
 }
 const ROOT = resolve(here, "..", "..");
+const PREPAINT = Deno.readTextFileSync(join(ROOT, "pages", "_prepaint.js"));
 
 function referencedIds(module: string): string[] {
   const entry = Deno.readTextFileSync(join(ROOT, module));
@@ -55,21 +56,18 @@ const rendered = await Promise.all(
     page,
     html: await renderPage(page, {
       stylesheet: "app.css",
-      script: `/* page script: ${page.script} */`,
+      prepaint: "./app-prepaint.js",
+      script: `./app-${page.file}.js`,
       version: "0.0.0-test",
     }),
   })),
 );
 
-describe("inlineScript", () => {
-  it("wraps the code in a classic script element", () => {
-    expect(inlineScript("init()")).toBe("<script>init()</script>");
-  });
-
-  it("refuses code that would end or reparse the element", () => {
-    for (const code of ['"</script>"', '"</SCRIPT "', '"<script>"']) {
-      expect(() => inlineScript(code)).toThrow();
-    }
+describe("scriptTag", () => {
+  it("loads a classic script from its own file", () => {
+    expect(scriptTag("./app-0123abcd.js")).toBe(
+      '<script src="./app-0123abcd.js"></script>',
+    );
   });
 });
 
@@ -97,6 +95,7 @@ describe("fontPreloads", () => {
     if (page === undefined) throw new Error("No pages");
     const html = await renderPage(page, {
       stylesheet: "app.css",
+      prepaint: "",
       script: "",
       version: "0.0.0-test",
       desktop: true,
@@ -121,6 +120,7 @@ describe("the mascot", () => {
     for (const page of PAGES) {
       const html = await renderPage(page, {
         stylesheet: "app.css",
+        prepaint: "",
         script: "",
         version: "0.0.0-test",
         desktop: true,
@@ -170,7 +170,8 @@ describe("the Privacy pill", () => {
     for (const page of PAGES) {
       const html = await renderPage(page, {
         stylesheet: "app.css",
-        script: "",
+        prepaint: "./app-prepaint.js",
+        script: "./app-script.js",
         version: "0.0.0-test",
         desktop: true,
       });
@@ -186,6 +187,7 @@ describe("the font profile panel", () => {
     if (page === undefined) throw new Error("No profile page");
     const html = await renderPage(page, {
       stylesheet: "app.css",
+      prepaint: "",
       script: "",
       version: "0.0.0-test",
       desktop: true,
@@ -205,7 +207,8 @@ describe("the font profile panel", () => {
 
 const settingsHtml = await renderSettings({
   stylesheet: "app.css",
-  script: "/* settings script */",
+  prepaint: "./app-prepaint.js",
+  script: "./app-settings.js",
   version: "0.0.0-test",
 });
 
@@ -220,12 +223,11 @@ describe("the Settings window", () => {
   });
 
   it("applies the theme and reduced motion before first paint", () => {
-    expect(html).toContain(
-      `stored(${JSON.stringify(THEME_KEY)})`,
+    expect(html).toMatch(
+      /<\/title>[\s\S]*<script src="\.\/app-prepaint\.js"><\/script>[\s\S]*<\/head>/,
     );
-    expect(html).toContain(
-      `stored(${JSON.stringify(SETTINGS_KEY)})`,
-    );
+    expect(PREPAINT).toContain(`stored(${JSON.stringify(THEME_KEY)})`);
+    expect(PREPAINT).toContain(`stored(${JSON.stringify(SETTINGS_KEY)})`);
   });
 
   it("offers each theme and motion, as the modules name them", () => {
@@ -274,17 +276,18 @@ for (const { page, html } of rendered) {
       expect(html).toContain(">v0.0.0-test</a>");
     });
 
-    it("runs its page script inline, after all of the page", () => {
-      expect(html).not.toMatch(/<script[^>]*\b(src|type="module")/);
+    it("loads its scripts from its own files, the page script after all of the page", () => {
+      expect(html).not.toMatch(/<script>|<script[^>]*type="module"/);
+      expect(html).toContain('<script src="./app-prepaint.js"></script>');
       expect(html).toMatch(
         new RegExp(
-          `</div>\\s*<script>/\\* page script: ${page.script} \\*/</script>\\s*</body>`,
+          `</div>\\s*<script src="\\./app-${page.file}\\.js"></script>\\s*</body>`,
         ),
       );
     });
 
     it("marks the desktop app before first paint", () => {
-      expect(html).toContain(
+      expect(PREPAINT).toContain(
         'if ("__TAURI__" in window) document.documentElement.dataset.app = "desktop";',
       );
     });
@@ -300,25 +303,21 @@ for (const { page, html } of rendered) {
     });
 
     it("applies a saved theme before first paint with the module's key", () => {
-      expect(html).toContain(
-        `stored(${JSON.stringify(THEME_KEY)})`,
-      );
+      expect(PREPAINT).toContain(`stored(${JSON.stringify(THEME_KEY)})`);
     });
 
     it("reads the tab's storage first before first paint, then the browser's", () => {
-      expect(html).toContain(
+      expect(PREPAINT).toContain(
         "sessionStorage.getItem(key) ?? localStorage.getItem(key)",
       );
     });
 
     it("applies reduced motion before first paint with the module's key", () => {
-      expect(html).toContain(
-        `stored(${JSON.stringify(SETTINGS_KEY)})`,
-      );
+      expect(PREPAINT).toContain(`stored(${JSON.stringify(SETTINGS_KEY)})`);
     });
 
     it("keeps the app's pixel font from page to page with the module's key", () => {
-      expect(html).toContain(
+      expect(PREPAINT).toContain(
         `sessionStorage.getItem(${JSON.stringify(PIXEL_KEY)}) === "on"`,
       );
     });

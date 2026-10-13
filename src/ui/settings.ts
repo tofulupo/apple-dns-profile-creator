@@ -1,5 +1,5 @@
 /**
- * The layout's inline script also applies them before first paint, as
+ * pages/_prepaint.js also applies them before first paint, as
  * `data-motion="reduce"` on the root element.
  */
 

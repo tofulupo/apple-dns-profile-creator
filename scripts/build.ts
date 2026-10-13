@@ -6,9 +6,11 @@ import { appConfig, type DnsPreset, presetFeatures } from "../src/config.ts";
 import { FONT_SUBSET } from "./fonts.ts";
 import {
   BERKELEY_MONO,
+  copyWebFonts,
   downloadFonts,
   r2Config,
   WEB_FONTS,
+  WEB_FONTS_DIR,
 } from "./web_fonts.ts";
 
 const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
@@ -18,7 +20,7 @@ const LAYOUT = "pages/_layout.html";
 const MASCOT = "pages/_mascot.html";
 const FONT_PROFILE = "pages/_font_profile.html";
 const PRIVACY = "pages/_privacy.html";
-const PREPAINT = "pages/_prepaint.html";
+const PREPAINT = "pages/_prepaint.js";
 const SETTINGS = "pages/_settings.html";
 const SETTINGS_SCRIPT = "src/ui/settings_window.ts";
 const LLMS = "pages/llms.txt";
@@ -40,8 +42,10 @@ export function releaseNotesUrl(version: string): string {
   return `${REPOSITORY_URL}/blob/v${version}/CHANGELOG.md`;
 }
 
+/** Paths of the fingerprinted files, as the pages link them. */
 export interface PageAssets {
   readonly stylesheet: string;
+  readonly prepaint: string;
   readonly script: string;
   readonly version: string;
   readonly desktop?: boolean;
@@ -109,11 +113,16 @@ async function bundleScript(entrypoint: string): Promise<string> {
   return new TextDecoder().decode(stdout).trim();
 }
 
-export function inlineScript(code: string): string {
-  if (/<\/?script/i.test(code)) {
-    throw new Error("The page script contains markup that breaks inlining");
-  }
-  return `<script>${code}</script>`;
+export function scriptTag(src: string): string {
+  return `<script src="${escape(src)}"></script>`;
+}
+
+/** Writes `code` to dist/ under a name its content decides. */
+async function writeScript(code: string): Promise<string> {
+  const bytes = new TextEncoder().encode(code);
+  const name = `app-${await fingerprint(bytes)}.js`;
+  await Deno.writeFile(join(DIST, name), bytes);
+  return `./${name}`;
 }
 
 export function svgDataUri(svg: string): string {
@@ -371,16 +380,13 @@ export async function renderPage(
     assets.desktop ? Deno.readTextFile(join(ROOT, file)) : Promise.resolve("");
   const websiteOnly = (file: string) =>
     assets.desktop ? Promise.resolve("") : Deno.readTextFile(join(ROOT, file));
-  const [layout, content, mascot, fontProfile, privacy, prepaint] =
-    await Promise
-      .all([
-        Deno.readTextFile(join(ROOT, LAYOUT)),
-        Deno.readTextFile(join(PAGES_DIR, page.file)),
-        desktopOnly(MASCOT),
-        desktopOnly(FONT_PROFILE),
-        websiteOnly(PRIVACY),
-        Deno.readTextFile(join(ROOT, PREPAINT)),
-      ]);
+  const [layout, content, mascot, fontProfile, privacy] = await Promise.all([
+    Deno.readTextFile(join(ROOT, LAYOUT)),
+    Deno.readTextFile(join(PAGES_DIR, page.file)),
+    desktopOnly(MASCOT),
+    desktopOnly(FONT_PROFILE),
+    websiteOnly(PRIVACY),
+  ]);
   const jsonLd = `<script type="application/ld+json">${
     JSON.stringify(structuredData(assets.version)).replaceAll("<", "\\u003c")
   }</script>`;
@@ -391,8 +397,8 @@ export async function renderPage(
     structuredData: jsonLd,
     stylesheet: escape(assets.stylesheet),
     fontPreloads: fontPreloads(assets.desktop ?? false, assets.fonts),
-    prepaint: prepaint.trim(),
-    script: inlineScript(assets.script),
+    prepaint: scriptTag(assets.prepaint),
+    script: scriptTag(assets.script),
     version: escape(assets.version),
     nav: navigation(page),
     mascot: mascot.trim(),
@@ -409,15 +415,12 @@ export async function renderPage(
 export async function renderSettings(
   assets: Omit<PageAssets, "desktop">,
 ): Promise<string> {
-  const [template, prepaint] = await Promise.all([
-    Deno.readTextFile(join(ROOT, SETTINGS)),
-    Deno.readTextFile(join(ROOT, PREPAINT)),
-  ]);
+  const template = await Deno.readTextFile(join(ROOT, SETTINGS));
   return fill(template, {
     stylesheet: escape(assets.stylesheet),
     fontPreloads: fontPreloads(true, assets.fonts),
-    prepaint: prepaint.trim(),
-    script: inlineScript(assets.script),
+    prepaint: scriptTag(assets.prepaint),
+    script: scriptTag(assets.script),
     version: escape(assets.version),
     releaseNotes: escape(releaseNotesUrl(assets.version)),
   }, SETTINGS);
@@ -524,6 +527,38 @@ async function lastCommitDate(paths: string[]): Promise<string | undefined> {
   }
 }
 
+async function git(args: string[]): Promise<string | undefined> {
+  try {
+    const { success, stdout } = await new Deno.Command("git", {
+      args,
+      cwd: ROOT,
+      stdout: "piped",
+      stderr: "null",
+    }).output();
+    return success ? new TextDecoder().decode(stdout).trim() : undefined;
+  } catch (error) {
+    if (error instanceof Deno.errors.NotFound) return undefined;
+    throw error;
+  }
+}
+
+/**
+ * dist/build.txt: the commit the build comes from, and whether the tree had
+ * uncommitted changes. The deploy compares it with the repository's HEAD.
+ */
+export function renderBuildInfo(
+  commit: string | undefined,
+  clean: boolean,
+): string {
+  return `commit: ${commit ?? "unknown"}\nclean: ${clean ? "yes" : "no"}\n`;
+}
+
+export async function buildInfo(): Promise<string> {
+  const commit = await git(["rev-parse", "HEAD"]);
+  const status = await git(["status", "--porcelain"]);
+  return renderBuildInfo(commit, commit !== undefined && status === "");
+}
+
 export function pageUrl(page: Page): string {
   return new URL(pageHref(page), SITE_URL).href;
 }
@@ -594,12 +629,22 @@ export async function build(): Promise<void> {
   const desktop = Deno.env.get("TAURI_ENV_PLATFORM") !== undefined;
   const fonts = join(DIST, "fonts");
   const shipped = await copyFonts(FONTS, fonts);
+  // Only `deno task build:deno-deploy` passes it, with the permissions for R2
+  // and INDEXNOW_KEY.
+  const denoDeploy = Deno.args.includes("--deno-deploy");
   if (desktop) {
     shipped.push(...await copyFonts(FONT_SUBSET, fonts));
-  } else {
+  } else if (denoDeploy) {
     const config = r2Config((name) => Deno.env.get(name));
     if (config !== undefined) {
       shipped.push(...await downloadFonts(config, WEB_FONTS, fonts));
+    }
+  } else {
+    const dir = Deno.env.get(WEB_FONTS_DIR)?.trim();
+    if (dir !== undefined && dir !== "") {
+      shipped.push(
+        ...await copyWebFonts(resolve(ROOT, dir), WEB_FONTS, fonts),
+      );
     }
   }
 
@@ -610,12 +655,16 @@ export async function build(): Promise<void> {
   await Deno.writeTextFile(join(DIST, stylesheet), css);
 
   const version = desktop ? await readVersion() : SITE_VERSION;
+  const prepaint = await writeScript(
+    await Deno.readTextFile(join(ROOT, PREPAINT)),
+  );
   for (const page of PAGES) {
     await Deno.writeTextFile(
       join(DIST, page.file),
       await renderPage(page, {
         stylesheet: `./${stylesheet}`,
-        script: await bundleScript(page.script),
+        prepaint,
+        script: await writeScript(await bundleScript(page.script)),
         version,
         desktop,
         fonts: shipped,
@@ -628,7 +677,8 @@ export async function build(): Promise<void> {
       join(DIST, "settings.html"),
       await renderSettings({
         stylesheet: `./${stylesheet}`,
-        script: await bundleScript(SETTINGS_SCRIPT),
+        prepaint,
+        script: await writeScript(await bundleScript(SETTINGS_SCRIPT)),
         version,
         fonts: shipped,
       }),
@@ -645,8 +695,11 @@ export async function build(): Promise<void> {
   await Deno.writeTextFile(join(DIST, "sitemap.xml"), await sitemap());
   await Deno.writeTextFile(join(DIST, "robots.txt"), renderRobots());
   await Deno.writeTextFile(join(DIST, "llms.txt"), await renderLlms());
+  if (!desktop) {
+    await Deno.writeTextFile(join(DIST, "build.txt"), await buildInfo());
+  }
 
-  const key = Deno.env.get("INDEXNOW_KEY");
+  const key = denoDeploy ? Deno.env.get("INDEXNOW_KEY") : undefined;
   if (key !== undefined && key !== "") {
     const file = indexNowKeyFile(key.trim());
     await Deno.writeTextFile(join(DIST, file.name), file.content);

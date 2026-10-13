@@ -1,5 +1,5 @@
 /**
- * The inline script in `pages/_prepaint.html` also applies `data-theme`,
+ * `pages/_prepaint.js` also applies `data-theme`,
  * reading the same storage key.
  */
 

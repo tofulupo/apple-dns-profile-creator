@@ -5,7 +5,13 @@ import { walkSync } from "@std/fs/walk";
 import { parse } from "@std/semver";
 
 import { SITE_URL, SITE_VERSION } from "../pages/pages.ts";
-import { NAMED_CRAWLERS, renderLlms, renderRobots } from "../scripts/build.ts";
+import {
+  buildInfo,
+  NAMED_CRAWLERS,
+  renderBuildInfo,
+  renderLlms,
+  renderRobots,
+} from "../scripts/build.ts";
 
 const here = import.meta.dirname;
 if (here === undefined) throw new Error("Must be loaded from a file URL");
@@ -23,6 +29,32 @@ describe("SITE_URL", () => {
 describe("SITE_VERSION", () => {
   it("is a version with an odd minor number", () => {
     expect(parse(SITE_VERSION).minor % 2).toBe(1);
+  });
+});
+
+describe("build.txt", () => {
+  it("names the commit and whether the tree was clean, one line each", () => {
+    expect(renderBuildInfo("5ccd82c", true)).toBe(
+      "commit: 5ccd82c\nclean: yes\n",
+    );
+    expect(renderBuildInfo("5ccd82c", false)).toBe(
+      "commit: 5ccd82c\nclean: no\n",
+    );
+    expect(renderBuildInfo(undefined, false)).toBe(
+      "commit: unknown\nclean: no\n",
+    );
+  });
+
+  it("reads the repository's HEAD", async () => {
+    const head = new TextDecoder().decode(
+      (await new Deno.Command("git", {
+        args: ["rev-parse", "HEAD"],
+        stdout: "piped",
+      }).output()).stdout,
+    ).trim();
+    expect(await buildInfo()).toMatch(
+      new RegExp(`^commit: ${head}\nclean: (yes|no)\n$`),
+    );
   });
 });
 

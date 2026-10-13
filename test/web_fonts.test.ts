@@ -6,6 +6,7 @@ import { stub } from "@std/testing/mock";
 
 import {
   BERKELEY_MONO,
+  copyWebFonts,
   downloadFonts,
   isWoff2,
   objectUrl,
@@ -107,6 +108,62 @@ describe("the website's fonts", () => {
       "Soehne-Halbfett.woff2",
       "Soehne-Kraeftig.woff2",
     ]);
+  });
+});
+
+describe("copyWebFonts", () => {
+  let from: string;
+  let to: string;
+
+  beforeEach(async () => {
+    const root = await Deno.makeTempDir({ prefix: "dns-fonts-local-" });
+    from = join(root, "web");
+    to = join(root, "dist", "fonts");
+    await Deno.mkdir(from);
+  });
+
+  afterEach(async () => {
+    await Deno.remove(join(from, ".."), { recursive: true });
+  });
+
+  it("copies every web font from the folder into the build", async () => {
+    for (const name of WEB_FONTS) {
+      await Deno.writeTextFile(join(from, name), `wOF2 ${name}`);
+    }
+    expect(await copyWebFonts(from, WEB_FONTS, to)).toEqual(
+      [...WEB_FONTS].sort(),
+    );
+    expect(await Deno.readTextFile(join(to, BERKELEY_MONO))).toBe(
+      `wOF2 ${BERKELEY_MONO}`,
+    );
+  });
+
+  it("fails the build and copies nothing when one is missing", async () => {
+    await Deno.writeTextFile(join(from, BERKELEY_MONO), "wOF2 font");
+    await expect(copyWebFonts(from, WEB_FONTS, to)).rejects.toThrow(
+      "is missing",
+    );
+    await expect(Deno.stat(to)).rejects.toThrow();
+  });
+
+  it("fails the build when a file is not a font", async () => {
+    await Deno.writeTextFile(join(from, BERKELEY_MONO), "<html>");
+    await expect(copyWebFonts(from, [BERKELEY_MONO], to)).rejects.toThrow(
+      "not a WOFF2",
+    );
+  });
+});
+
+describe("the website build", () => {
+  it("reaches no network; only the Deno Deploy build may reach R2", async () => {
+    const { tasks } = JSON.parse(
+      await Deno.readTextFile(new URL("../deno.json", import.meta.url)),
+    ) as { tasks: Record<string, string> };
+    expect(tasks["build"]).not.toMatch(/--allow-net|-A\b|--allow-all/);
+    expect(tasks["build"]).not.toMatch(/R2_|INDEXNOW_KEY/);
+    expect(tasks["build:deno-deploy"]).toMatch(
+      /--allow-net=\*\.r2\.cloudflarestorage\.com .*--deno-deploy$/,
+    );
   });
 });
 

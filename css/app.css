@@ -157,7 +157,7 @@
   overscroll-behavior-y: none;
 }
 
-/* Set before first paint by the inline script in pages/_prepaint.html. */
+/* Set before first paint by pages/_prepaint.js. */
 :root[data-theme="light"] {
   color-scheme: light;
 }

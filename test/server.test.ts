@@ -26,10 +26,10 @@ async function hash(code: string): Promise<string> {
 }
 
 describe("cacheControl", () => {
-  it("keeps the fingerprinted stylesheet for good", () => {
-    expect(cacheControl("/app-6a0f56fb.css")).toBe(
-      "public, max-age=31536000, immutable",
-    );
+  it("keeps the fingerprinted stylesheet and scripts for good", () => {
+    for (const path of ["/app-6a0f56fb.css", "/app-1b2c3d4e.js"]) {
+      expect(cacheControl(path)).toBe("public, max-age=31536000, immutable");
+    }
   });
 
   it("keeps fonts for a year and icons for a week, without immutable", () => {
@@ -49,10 +49,10 @@ describe("cacheControl", () => {
 });
 
 describe("contentSecurityPolicy", () => {
-  it("allows exactly the page's inline scripts, by hash", async () => {
+  it("allows the site's own script files, and any inline script by hash", async () => {
     const csp = await contentSecurityPolicy(HTML);
     expect(csp).toContain(
-      `script-src ${await hash(THEME)} ${await hash(PAGE)};`,
+      `script-src 'self' ${await hash(THEME)} ${await hash(PAGE)};`,
     );
     expect(csp).toContain("default-src 'none'");
     expect(csp).toContain("frame-ancestors 'none'");
@@ -62,9 +62,9 @@ describe("contentSecurityPolicy", () => {
     expect(await contentSecurityPolicy(HTML)).toContain("connect-src 'self'");
   });
 
-  it("allows no script where the page has none", async () => {
+  it("allows only the site's own script files where the page has no inline script", async () => {
     expect(await contentSecurityPolicy("<p>hi</p>")).toContain(
-      "script-src 'none';",
+      "script-src 'self';",
     );
   });
 });
