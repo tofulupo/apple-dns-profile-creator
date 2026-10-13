@@ -3,8 +3,8 @@ import { expect } from "@std/expect";
 
 import { TARGETS } from "../../scripts/desktop_release.ts";
 import {
-  files,
   linesMatching,
+  rustCode,
   rustDependencies,
   tauriConfig,
 } from "../helpers/scan.ts";
@@ -18,6 +18,9 @@ const SERVERS = [
   "tiny_http",
   "warp",
 ];
+
+const SOCKET =
+  /TcpListener|TcpStream|UdpSocket|UnixListener|std::net|tokio::net|\.bind\(|\.listen\(/;
 
 describe("nothing listens on the network", () => {
   it("configures no server plugin", () => {
@@ -35,11 +38,12 @@ describe("nothing listens on the network", () => {
   }
 
   it("has no app code that opens a socket", () => {
-    expect(
-      linesMatching(
-        files("src-tauri/src", [".rs"]),
-        /TcpListener|TcpStream|UdpSocket|UnixListener|std::net|tokio::net|\.bind\(|\.listen\(/,
-      ),
-    ).toEqual([]);
+    expect(linesMatching(rustCode(), SOCKET)).toEqual([]);
+  });
+
+  it("would notice a socket", () => {
+    expect(SOCKET.test('let listener = TcpListener::bind("127.0.0.1:0")?;'))
+      .toBe(true);
+    expect(SOCKET.test("use std::net::UdpSocket;")).toBe(true);
   });
 });

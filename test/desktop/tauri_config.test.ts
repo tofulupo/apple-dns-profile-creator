@@ -28,7 +28,10 @@ interface TauriConfig {
         readonly y: number;
       };
     }[];
-    readonly security: { readonly csp: string | null };
+    readonly security: {
+      readonly csp: string | null;
+      readonly capabilities?: readonly string[];
+    };
   };
   readonly bundle: {
     readonly macOS: {
@@ -228,6 +231,19 @@ describe("the app's commands", () => {
           .map((name) => `allow-${name?.replaceAll("_", "-")}`),
       ].sort(),
     );
+  });
+
+  // Without the list, Tauri turns on every file in capabilities/.
+  it("are each listed in tauri.conf.json, so a new file isn't on unseen", () => {
+    const files = [...Deno.readDirSync(join(SRC_TAURI, "capabilities"))]
+      .filter((entry) => entry.name.endsWith(".json"))
+      .map((entry) =>
+        (JSON.parse(read(`capabilities/${entry.name}`)) as {
+          readonly identifier: string;
+        }).identifier
+      );
+    expect(config.app.security.capabilities).toEqual(["default", "settings"]);
+    expect([...files].sort()).toEqual([...config.app.security.capabilities!]);
   });
 
   it("grant Settings only its own settings, events and title bar", () => {

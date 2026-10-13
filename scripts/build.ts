@@ -24,6 +24,15 @@ const PREPAINT = "pages/_prepaint.js";
 const SETTINGS = "pages/_settings.html";
 const NOT_FOUND = "pages/_404.html";
 const SETTINGS_SCRIPT = "src/ui/settings_window.ts";
+/**
+ * Every script the pages run. test/helpers/scan.ts scans these and all they
+ * import, so the build bundles nothing else.
+ */
+export const PAGE_ENTRYPOINTS: readonly string[] = [
+  PREPAINT,
+  ...PAGES.map((page) => page.script),
+  SETTINGS_SCRIPT,
+];
 const LLMS = "pages/llms.txt";
 const STYLESHEET = "css/app.css";
 /**
@@ -96,6 +105,9 @@ async function bundle(
 }
 
 async function bundleScript(entrypoint: string): Promise<string> {
+  if (!PAGE_ENTRYPOINTS.includes(entrypoint)) {
+    throw new Error(`${entrypoint} is not in PAGE_ENTRYPOINTS`);
+  }
   const { success, stdout } = await new Deno.Command(Deno.execPath(), {
     args: [
       "bundle",

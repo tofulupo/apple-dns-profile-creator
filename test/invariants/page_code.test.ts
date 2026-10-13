@@ -26,6 +26,16 @@ describe("the page can't run code it didn't ship with", () => {
     expect(tauriConfig().app.security.freezePrototype).toBe(true);
   });
 
+  it("builds no web inspector into the release app", () => {
+    const devtools = /\bdevtools\b/;
+    expect(
+      read("src-tauri/Cargo.toml").split("\n")
+        .filter((line) => devtools.test(line) && !line.trim().startsWith("#")),
+    ).toEqual([]);
+    expect(devtools.test('tauri = { version = "2", features = ["devtools"] }'))
+      .toBe(true);
+  });
+
   it("lets Tauri add the hashes of the app's own scripts to the policy", () => {
     expect(read("src-tauri/tauri.conf.json")).not.toContain(
       "dangerousDisableAssetCspModification",

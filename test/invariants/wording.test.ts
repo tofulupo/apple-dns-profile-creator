@@ -1,7 +1,7 @@
 import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { files, read } from "../helpers/scan.ts";
+import { files, pageCode, read, rustCode } from "../helpers/scan.ts";
 
 const SIGNING = /\bsign(s|ed|ing|ature|atures)?\b/i;
 const OVERCLAIM =
@@ -65,7 +65,15 @@ describe("a signature is never called more than it is", () => {
   });
 
   it("is never called safe, secure or authentic in the app's texts", () => {
-    const code = [...files("src", [".ts"]), ...files("src-tauri/src", [".rs"])];
+    const code = [
+      ...pageCode().filter((path) => /\.(ts|js)$/.test(path)),
+      ...rustCode(),
+    ];
     expect(overclaims(code.flatMap(strings))).toEqual([]);
+  });
+
+  it("would notice a signature called more than it is", () => {
+    expect(overclaims([{ where: "x", text: "A signed profile is safe." }]))
+      .toHaveLength(1);
   });
 });

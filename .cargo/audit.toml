@@ -1,0 +1,10 @@
+# For `cargo audit --file src-tauri/Cargo.lock`, run from the repo root.
+# Each ignored advisory names its crate after the ID: test/invariants/
+# audit_ignores.test.ts checks that none of them is built into the Mac app.
+[advisories]
+ignore = [
+  # glib: Tauri's Linux GTK menus (gtk-rs 0.18), Linux test builds only.
+  "RUSTSEC-2024-0429", # glib
+  # proc-macro-error: glib-macros 0.18 at build time, Linux only.
+  "RUSTSEC-2024-0370", # proc-macro-error
+]
