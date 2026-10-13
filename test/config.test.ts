@@ -3,16 +3,63 @@ import { expect } from "@std/expect";
 
 import {
   appConfig,
+  keepsTypedName,
   PRESET_FEATURE_LABELS,
   presetFeatures,
   presetOf,
+  withPreset,
 } from "../src/config.ts";
+import { parseProfileXml } from "../src/lib/import.ts";
 import {
   orderServerAddresses,
   splitServerAddresses,
 } from "../src/lib/addresses.ts";
 import { isIPv4, isIPv6, serverError } from "../src/lib/validate.ts";
 import { countryName, flagFile } from "../scripts/build.ts";
+
+const MULLVAD_WITH_RULES = Deno.readTextFileSync(
+  new URL("./fixtures/own/mullvad-with-rules.mobileconfig", import.meta.url),
+);
+
+describe("picking a preset for a loaded profile", () => {
+  const quad9 = appConfig.presets.find((preset) => preset.name === "Quad9")!;
+
+  it("changes only name, server and addresses, and keeps every rule", () => {
+    const [mullvad] = parseProfileXml(MULLVAD_WITH_RULES);
+    if (mullvad === undefined) throw new Error("No configuration");
+    expect(mullvad.excludedWifi).toEqual(["Home Fritzbox", "Office Guest"]);
+
+    const { name, protocol, serverUrl, serverAddresses, ...rules } = withPreset(
+      mullvad,
+      quad9,
+      false,
+    );
+    expect({ name, protocol, serverUrl, serverAddresses }).toEqual({
+      name: "Quad9",
+      protocol: quad9.protocol,
+      serverUrl: quad9.serverUrl,
+      serverAddresses: quad9.serverAddresses,
+    });
+    const {
+      name: _name,
+      protocol: _protocol,
+      serverUrl: _serverUrl,
+      serverAddresses: _addresses,
+      ...before
+    } = mullvad;
+    expect(rules).toEqual(before);
+  });
+
+  it("keeps a name the user typed, not one from the file or a preset", () => {
+    const fromFile = "Mullvad Encrypted DNS with all blocking enabled (HTTPS)";
+    expect(keepsTypedName(fromFile, fromFile)).toBe(false);
+    expect(keepsTypedName(` ${fromFile} `, fromFile)).toBe(false);
+    expect(keepsTypedName("Family phones", fromFile)).toBe(true);
+    expect(keepsTypedName("Family phones", undefined)).toBe(true);
+    expect(keepsTypedName("HaGeZi", undefined)).toBe(false);
+    expect(keepsTypedName("  ", undefined)).toBe(false);
+  });
+});
 
 describe("presets", () => {
   it("have unique names", () => {

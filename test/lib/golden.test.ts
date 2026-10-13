@@ -2,6 +2,7 @@ import { describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join } from "@std/path";
 
+import { appConfig, withPreset } from "../../src/config.ts";
 import { parseProfileXml } from "../../src/lib/import.ts";
 import { buildProfileXml } from "../../src/lib/profile.ts";
 import { fullSurfaceConfigs } from "../helpers/configs.ts";
@@ -53,6 +54,24 @@ describe("generated profiles are unchanged", () => {
       ),
     );
     expect(xml).toBe(fixture);
+  });
+
+  it("reproduces a Mullvad profile with its rules, moved to Quad9", () => {
+    const quad9 = appConfig.presets.find((preset) => preset.name === "Quad9")!;
+    const mullvad = Deno.readTextFileSync(
+      join(here, "..", "fixtures", "own", "mullvad-with-rules.mobileconfig"),
+    );
+    const xml = buildProfileXml(
+      parseProfileXml(mullvad).map((config) =>
+        withPreset(config, quad9, false)
+      ),
+      { systemScope: false, identifierPrefix: "local.encrypted-dns." },
+      stubUuid(),
+    );
+    const golden = Deno.readTextFileSync(
+      join(GOLDEN_DIR, "mullvad-with-rules-quad9.mobileconfig"),
+    );
+    expect(xml).toBe(golden);
   });
 
   it("reproduces full-surface", () => {

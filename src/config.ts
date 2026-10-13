@@ -97,6 +97,33 @@ export function presetFeatures(preset: DnsPreset): string[] {
     .map((feature) => PRESET_FEATURE_LABELS[feature]);
 }
 
+/**
+ * Whether picking a preset keeps the name in the form: only one the user
+ * typed, not a preset's name or a name still as the loaded file had it.
+ */
+export function keepsTypedName(
+  name: string,
+  fromFile: string | undefined,
+): boolean {
+  const typed = name.trim();
+  return typed !== "" && typed !== fromFile?.trim() &&
+    !appConfig.presets.some((preset) => preset.name === typed);
+}
+
+export function withPreset(
+  config: DnsConfig,
+  preset: DnsPreset,
+  keepName: boolean,
+): DnsConfig {
+  return {
+    ...config,
+    name: keepName ? config.name : preset.name,
+    protocol: preset.protocol,
+    serverUrl: preset.serverUrl,
+    serverAddresses: preset.serverAddresses ?? [],
+  };
+}
+
 export function presetOf(
   config: Pick<DnsConfig, "protocol" | "serverUrl">,
 ): DnsPreset | undefined {

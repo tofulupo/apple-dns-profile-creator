@@ -1,4 +1,9 @@
-import { appConfig, type DnsPreset } from "../config.ts";
+import {
+  appConfig,
+  type DnsPreset,
+  keepsTypedName,
+  withPreset,
+} from "../config.ts";
 import {
   orderServerAddresses,
   splitServerAddresses,
@@ -548,9 +553,10 @@ function syncPresets(): void {
 
 async function applyPreset(preset: DnsPreset): Promise<boolean> {
   const name = input("provName");
-  const typedName = name.value.trim();
-  const keepName = typedName !== "" &&
-    !appConfig.presets.some((other) => other.name === typedName);
+  const keepName = keepsTypedName(
+    name.value,
+    editingLoaded ? editing?.name : undefined,
+  );
   const hasAddresses = formAddresses().length > 0;
   const blank = input("serverUrl").value.trim() === "" && !hasAddresses;
   const untouched = blank || appConfig.presets.some(matchesPreset);
@@ -566,16 +572,12 @@ async function applyPreset(preset: DnsPreset): Promise<boolean> {
     return false;
   }
 
-  if (!keepName) name.value = preset.name;
-  protocol = preset.protocol;
-  input("serverUrl").value = preset.serverUrl;
-  showAddressNotice(writeAddresses(preset.serverAddresses ?? []));
+  const next = withPreset(readForm(), preset, keepName);
+  name.value = next.name;
+  protocol = next.protocol;
+  input("serverUrl").value = next.serverUrl;
+  showAddressNotice(writeAddresses(next.serverAddresses));
   setFieldError(nameField, null);
-  if (editingLoaded) {
-    editing = undefined;
-    editingLoaded = false;
-    setSubmitLabel(submitLabel);
-  }
   applyProtocol();
   return true;
 }

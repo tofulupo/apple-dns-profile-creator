@@ -19,6 +19,15 @@ License: **The Unlicense** (public domain).
 | `360-default-https` | non-ASCII content (encoding round-trip) |
 | `template-on-demand-default-https` | **the only upstream file with `OnDemandRules`** |
 
+## `own/` - committed
+
+Built with this project's own `buildProfileXml`, for cases no upstream file
+covers.
+
+| Fixture | Covers |
+| --- | --- |
+| `mullvad-with-rules` | Mullvad's DoH server with Wi-Fi exceptions, a domain rule, failover and Ethernet off; `test/golden/mullvad-with-rules-quad9` is it after picking Quad9 |
+
 ## `upstream/mullvad/` - gitignored, fetch on demand
 
 Source: <https://github.com/mullvad/encrypted-dns-profiles>
