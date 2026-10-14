@@ -36,8 +36,9 @@ export const PAGE_ENTRYPOINTS: readonly string[] = [
 const LLMS = "pages/llms.txt";
 const STYLESHEET = "css/app.css";
 /**
- * Committed with their licences: Lilex, and Geist's licence for Geist Pixel.
- * The website's fonts are licensed and come from scripts/web_fonts.ts.
+ * The app's, committed with their licences: Lilex, and Geist's licence for
+ * Geist Pixel. The website's fonts are licensed and come from
+ * scripts/web_fonts.ts.
  */
 const FONTS = join(ROOT, "fonts");
 /**
@@ -661,7 +662,7 @@ export async function build(): Promise<void> {
   // Set by the Tauri CLI for beforeBuildCommand and beforeDevCommand.
   const desktop = Deno.env.get("TAURI_ENV_PLATFORM") !== undefined;
   const fonts = join(DIST, "fonts");
-  const shipped = await copyFonts(FONTS, fonts);
+  const shipped = desktop ? await copyFonts(FONTS, fonts) : [];
   // Only `deno task build:deno-deploy` passes it, with the permissions for R2
   // and INDEXNOW_KEY.
   const denoDeploy = Deno.args.includes("--deno-deploy");
