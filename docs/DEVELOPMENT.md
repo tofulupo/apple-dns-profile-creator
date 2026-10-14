@@ -154,10 +154,13 @@ pages/           HTML sources
   pages.ts         page table: nav order, descriptions, entry modules,
                    SITE_URL (the deployed address)
   _layout.html     shared shell: head, header, tabs
-  _prepaint.js     theme and motion before the first paint
+  _prepaint.js     theme and motion before the first paint, and data-js,
+                   without which CSS hides what needs a script
   index.html       <main> content of the tool page
   finalize.html    <main> content of the profile page
   _404.html        the website's 404 page
+  _noscript.html   the website's notice for browsers that block scripts
+  _ready_made.html the website's links to the ready-made preset profiles
   _settings.html   the desktop app's Settings window
   llms.txt         template for dist/llms.txt; {{ site }} becomes SITE_URL
 
@@ -167,6 +170,8 @@ isolation/       the app's isolation pattern: checks every call into Rust
 scripts/         build, servers, checks and releases
   build.ts         render pages into the layout, deno bundle -> dist/,
                    sitemap.xml, robots.txt, llms.txt and build.txt
+  preset_profiles.ts  the presets as unsigned profiles in dist/profiles/,
+                   the same on every build
   serve.ts         static file server, --watch rebuilds
   headers.ts       the website's headers: security headers, CSP, caching
   server.ts        dist/ with those headers and compression, for Deno

@@ -2,7 +2,11 @@ import { afterAll, beforeAll, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 import { join } from "@std/path";
 
-import { cacheControl, SECURITY_HEADERS } from "../scripts/headers.ts";
+import {
+  cacheControl,
+  PROFILE_CONTENT_TYPE,
+  SECURITY_HEADERS,
+} from "../scripts/headers.ts";
 import { createHandler } from "../scripts/server.ts";
 
 const HTML = `<!doctype html><html><head>
@@ -31,6 +35,11 @@ describe("createHandler", () => {
     await Deno.mkdir(join(root, "fonts"));
     await Deno.writeFile(join(root, "fonts", "Font.woff2"), new Uint8Array(8));
     await Deno.writeTextFile(join(root, "site.webmanifest"), "{}");
+    await Deno.mkdir(join(root, "profiles"));
+    await Deno.writeTextFile(
+      join(root, "profiles", "quad9.mobileconfig"),
+      "<plist/>",
+    );
     handler = createHandler(root);
   });
 
@@ -55,6 +64,15 @@ describe("createHandler", () => {
       expect(response.status).toBe(200);
       expectHeaders(response, path);
     }
+  });
+
+  it("serves profiles as a type iOS and macOS offer to install", async () => {
+    const path = "/profiles/quad9.mobileconfig";
+    const response = await get(path);
+    await response.body?.cancel();
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe(PROFILE_CONTENT_TYPE);
+    expectHeaders(response, path);
   });
 
   it("answers a missing path with the 404 page and the same headers", async () => {

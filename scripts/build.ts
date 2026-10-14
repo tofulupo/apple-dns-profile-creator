@@ -4,6 +4,7 @@ import { dirname, fromFileUrl, join, resolve } from "@std/path";
 import { type Page, PAGES, SITE_URL, SITE_VERSION } from "../pages/pages.ts";
 import { appConfig, type DnsPreset, presetFeatures } from "../src/config.ts";
 import { FONT_SUBSET } from "./fonts.ts";
+import { presetFile, presetProfiles, PROFILES_DIR } from "./preset_profiles.ts";
 import {
   BERKELEY_MONO,
   copyWebFonts,
@@ -20,6 +21,8 @@ const LAYOUT = "pages/_layout.html";
 const MASCOT = "pages/_mascot.html";
 const FONT_PROFILE = "pages/_font_profile.html";
 const PRIVACY = "pages/_privacy.html";
+const NOSCRIPT = "pages/_noscript.html";
+const READY_MADE = "pages/_ready_made.html";
 const PREPAINT = "pages/_prepaint.js";
 const SETTINGS = "pages/_settings.html";
 const NOT_FOUND = "pages/_404.html";
@@ -339,35 +342,51 @@ function presetMark(preset: DnsPreset): string {
   }" width="20" height="15">`;
 }
 
+function presetBody(preset: DnsPreset): string {
+  const country = presetCountry(preset);
+  const features = presetFeatures(preset);
+  return presetMark(preset) +
+    `<span class="preset__head">` +
+    `<span class="preset__name">${escape(preset.name)}${
+      country === undefined
+        ? ""
+        : `<span class="visually-hidden">, ${escape(country)}</span>`
+    }</span>` +
+    (features.length === 0
+      ? ""
+      : `<span class="preset__features">${
+        features.map((feature) =>
+          `<span class="preset__feature">${escape(feature)}</span>`
+        ).join("")
+      }</span>`) +
+    `</span>` +
+    `<span class="preset__server"><span class="preset__protocol">${
+      preset.protocol === "HTTPS" ? "DoH" : "DoT"
+    }</span><span class="preset__host">${
+      escape(presetHost(preset))
+    }</span></span>`;
+}
+
 /** In `appConfig.presets` order: `tool.ts` attaches the handlers by position. */
 export function presetOptions(): string {
-  return appConfig.presets.map((preset) => {
-    const country = presetCountry(preset);
-    const features = presetFeatures(preset);
-    return `<li><button type="button" class="preset" aria-pressed="false">` +
-      presetMark(preset) +
-      `<span class="preset__head">` +
-      `<span class="preset__name">${escape(preset.name)}${
-        country === undefined
-          ? ""
-          : `<span class="visually-hidden">, ${escape(country)}</span>`
-      }</span>` +
-      (features.length === 0
-        ? ""
-        : `<span class="preset__features">${
-          features.map((feature) =>
-            `<span class="preset__feature">${escape(feature)}</span>`
-          ).join("")
-        }</span>`) +
-      `</span>` +
-      `<span class="preset__server"><span class="preset__protocol">${
-        preset.protocol === "HTTPS" ? "DoH" : "DoT"
-      }</span><span class="preset__host">${
-        escape(presetHost(preset))
-      }</span></span>` +
-      `<span class="icon icon--check preset__check" aria-hidden="true"></span>` +
-      `</button></li>`;
-  }).join("\n");
+  return appConfig.presets.map((preset) =>
+    `<li><button type="button" class="preset" aria-pressed="false">` +
+    presetBody(preset) +
+    `<span class="icon icon--check preset__check" aria-hidden="true"></span>` +
+    `</button></li>`
+  ).join("\n");
+}
+
+/** Links to the files `build()` writes into dist/profiles/. */
+export function readyMadeItems(): string {
+  return appConfig.presets.map((preset) =>
+    `<li><a class="preset" href="${PROFILES_DIR}/${
+      escape(presetFile(preset))
+    }" download>` +
+    presetBody(preset) +
+    `<span class="icon icon--download preset__get" aria-hidden="true"></span>` +
+    `</a></li>`
+  ).join("\n");
 }
 
 export function structuredData(version: string): Record<string, unknown> {
@@ -395,13 +414,24 @@ export async function renderPage(
     assets.desktop ? Deno.readTextFile(join(ROOT, file)) : Promise.resolve("");
   const websiteOnly = (file: string) =>
     assets.desktop ? Promise.resolve("") : Deno.readTextFile(join(ROOT, file));
-  const [layout, content, mascot, fontProfile, privacy] = await Promise.all([
+  const [
+    layout,
+    content,
+    mascot,
+    fontProfile,
+    privacy,
+    noscript,
+    readyMade,
+  ] = await Promise.all([
     Deno.readTextFile(join(ROOT, LAYOUT)),
     Deno.readTextFile(join(PAGES_DIR, page.file)),
     Deno.readTextFile(join(ROOT, MASCOT)),
     desktopOnly(FONT_PROFILE),
     websiteOnly(PRIVACY),
+    websiteOnly(NOSCRIPT),
+    websiteOnly(READY_MADE),
   ]);
+  const onToolPage = page.file === "index.html";
   const jsonLd = `<script type="application/ld+json">${
     JSON.stringify(structuredData(assets.version)).replaceAll("<", "\\u003c")
   }</script>`;
@@ -421,7 +451,20 @@ export async function renderPage(
     versionEnd: assets.desktop ? "" : versionEnd(assets.version),
     content: fill(
       content.trim(),
-      { presets: presetOptions(), fontProfile: fontProfile.trim() },
+      {
+        presets: presetOptions(),
+        fontProfile: fontProfile.trim(),
+        noscript: fill(noscript.trim(), {
+          fallback: onToolPage
+            ? "download a ready-made profile below"
+            : `download a ready-made profile on the <a href="./#ready-made">Tool page</a>`,
+        }, NOSCRIPT),
+        readyMade: fill(
+          readyMade.trim(),
+          { items: readyMadeItems() },
+          READY_MADE,
+        ),
+      },
       page.file,
     ),
   }, LAYOUT);
@@ -707,6 +750,10 @@ export async function build(): Promise<void> {
   }
 
   if (!desktop) {
+    await Deno.mkdir(join(DIST, PROFILES_DIR), { recursive: true });
+    for (const { file, xml } of await presetProfiles()) {
+      await Deno.writeTextFile(join(DIST, PROFILES_DIR, file), xml);
+    }
     await Deno.writeTextFile(
       join(DIST, "404.html"),
       await renderNotFound({

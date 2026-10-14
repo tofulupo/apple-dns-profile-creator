@@ -1,4 +1,5 @@
 {
+  document.documentElement.dataset.js = "";
   if ("__TAURI__" in window) document.documentElement.dataset.app = "desktop";
   // The website keeps its data in the tab unless the user keeps it (KEEP_KEY in
   // src/ui/storage.ts); one of the two holds it. The app uses localStorage.

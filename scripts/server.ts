@@ -7,7 +7,11 @@
 import { serveDir } from "@std/http/file-server";
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
 
-import { cacheControl, SECURITY_HEADERS } from "./headers.ts";
+import {
+  cacheControl,
+  PROFILE_CONTENT_TYPE,
+  SECURITY_HEADERS,
+} from "./headers.ts";
 
 const DIST = join(resolve(dirname(fromFileUrl(import.meta.url)), ".."), "dist");
 
@@ -55,6 +59,9 @@ export function createHandler(
       headers.set(name, value);
     }
     headers.set("Cache-Control", cacheControl(pathname, served.status));
+    if (served.ok && pathname.endsWith(".mobileconfig")) {
+      headers.set("Content-Type", PROFILE_CONTENT_TYPE);
+    }
     // Deno.serve compresses only for clients that ask, and adds Vary only when
     // it does. Without Vary every time, an edge cache that stored the plain
     // copy for one client serves it to all.

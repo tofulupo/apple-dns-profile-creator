@@ -94,6 +94,9 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
   ].join(", "),
 };
 
+/** iOS and macOS offer to install a profile served with this type. */
+export const PROFILE_CONTENT_TYPE = "application/x-apple-aspen-config";
+
 /** Sent by nginx on top of the expected headers, and allowed. */
 export const EXTRA_HEADERS: readonly string[] = ["Alt-Svc", "QUIC-Status"];
 

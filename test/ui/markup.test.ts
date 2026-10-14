@@ -17,6 +17,7 @@ import { THEME_KEY } from "../../src/ui/theme.ts";
 import { PIXEL_KEY } from "../../src/ui/pixel.ts";
 import { SETTINGS_KEY } from "../../src/ui/settings.ts";
 import { appConfig, presetFeatures } from "../../src/config.ts";
+import { presetFile } from "../../scripts/preset_profiles.ts";
 
 const here = import.meta.dirname;
 if (here === undefined) {
@@ -176,6 +177,60 @@ describe("the Privacy pill", () => {
       });
       expect(html).not.toContain("keepPill");
       expect(html).not.toContain("page-end");
+    }
+  });
+});
+
+describe("the page without JavaScript", () => {
+  const desktopPages = () =>
+    Promise.all(PAGES.map((page) =>
+      renderPage(page, {
+        stylesheet: "app.css",
+        prepaint: "./app-prepaint.js",
+        script: "./app-script.js",
+        version: "0.0.0-test",
+        desktop: true,
+      })
+    ));
+
+  it("says on every website page why nothing works", () => {
+    for (const { html } of rendered) {
+      expect(html).toMatch(
+        /<noscript>[\s\S]*This page needs JavaScript\.[\s\S]*<\/noscript>/,
+      );
+    }
+  });
+
+  it("marks the page once the prepaint script runs, so CSS can hide the rest", () => {
+    expect(PREPAINT).toContain("document.documentElement.dataset.js =");
+  });
+
+  it("links a ready-made profile for every preset on the Tool page only", () => {
+    for (const { page, html } of rendered) {
+      const links = [
+        ...html.matchAll(
+          /<a class="preset" href="profiles\/([^"]+)" download>/g,
+        ),
+      ].map((match) => match[1]);
+      expect(links).toEqual(
+        page.file === "index.html"
+          ? appConfig.presets.map((preset) => presetFile(preset))
+          : [],
+      );
+    }
+  });
+
+  it("points the Profile page at the Tool page's ready-made profiles", () => {
+    const profile = rendered.find(({ page }) => page.file === "finalize.html");
+    expect(profile?.html).toContain('href="./#ready-made"');
+    const tool = rendered.find(({ page }) => page.file === "index.html");
+    expect(tool?.html).toContain('id="ready-made"');
+  });
+
+  it("is left out of the desktop app, which always runs its scripts", async () => {
+    for (const html of await desktopPages()) {
+      expect(html).not.toContain("<noscript>");
+      expect(html).not.toContain("ready-made");
     }
   });
 });
@@ -429,11 +484,12 @@ for (const { page, html } of rendered) {
         );
       });
 
-      // css/app.css puts the tabs between these two on wide screens, through
-      // `.page:has(> main > #mainForm)` and a three-row subgrid in <main>.
-      it("has the upload zone and the form as <main>'s only children", () => {
+      // css/app.css puts the tabs between the upload zone and the form on wide
+      // screens, through `.page:has(> main > #mainForm)` and a four-row
+      // subgrid in <main>.
+      it("has the notice, upload zone, form and ready-made profiles as <main>'s only children", () => {
         expect(html).toMatch(
-          /<main>\s*<div class="field zone-field" id="field-fileupload">[\s\S]*<\/div>\s*<form id="mainForm"[\s\S]*<\/form>\s*<\/main>/,
+          /<main>\s*<noscript>[\s\S]*<\/noscript>\s*<div class="field zone-field" id="field-fileupload">[\s\S]*<\/div>\s*<form id="mainForm"[\s\S]*<\/form>\s*<section class="panel ready-made"[\s\S]*<\/section>\s*<\/main>/,
         );
       });
 
