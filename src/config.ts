@@ -54,7 +54,7 @@ export const appConfig: AppConfig = {
       name: "HaGeZi",
       protocol: "HTTPS",
       serverUrl: "https://juuri.hagezi.org/dns-query",
-      features: ["no-logs", "ads"],
+      features: ["no-logs", "dnssec", "ads"],
       country: "FI",
     },
     {
@@ -62,7 +62,7 @@ export const appConfig: AppConfig = {
       protocol: "HTTPS",
       serverUrl: "https://dns.njal.la/dns-query",
       serverAddresses: ["95.215.19.53", "2001:67c:2354:2::53"],
-      features: ["no-logs"],
+      features: ["no-logs", "dnssec"],
       country: "SE",
     },
     {
@@ -78,7 +78,7 @@ export const appConfig: AppConfig = {
       serverUrl: "https://resolv.flokinet.net/dns-query",
       serverAddresses: ["37.156.68.20", "2a06:1700:100:20::1"],
       country: "IS",
-      features: ["no-logs"],
+      features: ["no-logs", "dnssec"],
     },
     {
       name: "DNS Bunker",
