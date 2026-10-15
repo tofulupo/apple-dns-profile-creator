@@ -207,7 +207,7 @@ public/          copied verbatim into the build, names unchanged
 
 > [!NOTE]
 > `dnssettings.ts` and `ondemand.ts` are split out because Apple defines both
-> structures identically for the `.mobileconfig` payload and for the **iOS 27**
+> structures identically for the `.mobileconfig` payload and for the **iOS 26**
 > `com.apple.configuration.network.dns-settings` declaration.
 
 ## Pages

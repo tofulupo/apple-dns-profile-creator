@@ -69,7 +69,7 @@ const PARADIGMS: Readonly<
   declarations: {
     label: "Declarative",
     modifier: "badge--declarative",
-    explanation: "Uses DNS declarations, for iOS 27 and macOS 27 and later",
+    explanation: "Uses DNS declarations, for iOS 26 and macOS 26 and later",
   },
 };
 

@@ -14,7 +14,7 @@ export const DEFAULT_IDENTIFIER_PREFIX = "local.encrypted-dns.";
 export const DNS_PAYLOAD_TYPE = "com.apple.dnsSettings.managed";
 const PAYLOAD_IDENTIFIER_PREFIX = `${DNS_PAYLOAD_TYPE}.`;
 
-/** Applies the DNS settings declaration from iOS 27, macOS 27, visionOS 27. */
+/** Applies the DNS settings declaration from iOS 26, macOS 26, visionOS 26. */
 export const DECLARATIONS_PAYLOAD_TYPE = "com.apple.declarations";
 
 export const DNS_DECLARATION_TYPE =

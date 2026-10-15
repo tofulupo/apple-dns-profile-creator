@@ -90,7 +90,7 @@ describe("notesFor", () => {
       tone: "info",
       label: "Format",
       value: "Legacy payload",
-      text: "Deprecated by Apple, still works on OS 27+.",
+      text: "Deprecated by Apple in OS 27, still works.",
       action: {
         id: "use-declarations",
         label: "Use Declaration format",

@@ -32,7 +32,7 @@ export interface ConfigSource {
 
 /**
  * `payload` is read by every version but deprecated in iOS 27 and macOS 27.
- * `declarations` only applies on iOS 27, macOS 27 and visionOS 27 and later.
+ * `declarations` only applies on iOS 26, macOS 26 and visionOS 26 and later.
  */
 export type ProfileFormat = "payload" | "declarations";
 
