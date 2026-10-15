@@ -28,7 +28,7 @@
   },
   "imports": {
     "@std/semver": "jsr:@std/semver@^1.0.8",
-    "@tauri-apps/cli": "npm:@tauri-apps/cli@^2.12.1",
+    "@tauri-apps/cli": "npm:@tauri-apps/cli@^2.12.2",
     "@std/expect": "jsr:@std/expect@^1.0.20",
     "@std/fs": "jsr:@std/fs@^1.0.24",
     "@std/http": "jsr:@std/http@^1.1.4",
