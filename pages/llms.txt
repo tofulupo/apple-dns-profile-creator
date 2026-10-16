@@ -44,7 +44,10 @@ or use the macOS desktop app.
 ## Docs
 
 - [Project Documentation](https://github.com/tofulupo/apple-dns-profile-creator#readme):
-  Architecture overview, ways to run the tool, and developer setup.
+  What the tool does and can't do, privacy, and how to build it.
+- [How-tos](https://github.com/tofulupo/apple-dns-profile-creator/wiki):
+  Installing and removing, signing, domain rules, several configurations, file
+  names, and moving from Mullvad's DNS.
 
 ## Optional
 

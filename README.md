@@ -10,11 +10,20 @@
 [![Donate using Liberapay](https://liberapay.com/assets/widgets/donate.svg)](https://liberapay.com/tofulupo/donate)
 
 Builds encrypted DNS (DoH and DoT) profiles for iPhone, iPad and Mac, and opens,
-compares and signs the ones you already have. It is a website and a macOS app.
-Nothing is uploaded, and there are no accounts.
+compares and signs the ones you already have. It is a website, with its own
+layout for phones and one for the desktop, and a dedicated macOS app. Nothing is
+uploaded, and there are no accounts.
 
 **[Try it out](https://mobileconfig.io)**: no install, no sign-up, nothing
 leaves your device ([privacy](#privacy)).
+
+[![Helium Browser](https://img.shields.io/badge/Helium%20Browser-3450D1?logo=heliumbrowser)](https://helium.computer/)
+[![LibreWolf](https://img.shields.io/badge/LibreWolf-00ACFF?logo=librewolf&logoColor=white)](https://librewolf.net/)
+[![Orion](docs/badges/orion.svg)](https://orionbrowser.com/)
+
+Tested with these three, which are also my recommendation if privacy matters to
+you: Helium is Chromium without Google, LibreWolf is Firefox without telemetry,
+and Orion is WebKit, like Safari, without telemetry.
 
 Apple has supported DNS over HTTPS and DNS over TLS since iOS 14 and macOS 11,
 but has no screen for it. A configuration profile turns it on without an extra
@@ -24,32 +33,36 @@ app, and this tool builds those profiles.
 
 ## What it does
 
+<!-- rumdl-disable MD033 -->
+<img src="docs/screenshots/iphone_tool.png" align="right" width="220" alt="The tool page on an iPhone, half dark, half light">
+<!-- rumdl-enable MD033 -->
+
 - Start from one of six presets, or enter any DoH URL or DoT host with up to two
   IPv4 and two IPv6 addresses. Your own resolver works too. The presets show the
   country a provider runs in and what it says about logs, DNSSEC and blocking.
 - Turn encrypted DNS off for named Wi-Fi networks or domains, or use it only for
   named domains
-  ([details](#skip-encrypted-dns-for-vs-use-encrypted-dns-only-for)).
+  ([details](https://github.com/tofulupo/apple-dns-profile-creator/wiki/Domain-rules)).
 - Pick Wi-Fi, cellular and Ethernet one by one. With Failover on, the device
   falls back to the network's own DNS when the encrypted server doesn't answer
   (OS 26 and later).
 - Put several configurations in one profile. The device uses one at a time
-  ([details](#several-configurations-in-one-profile)).
+  ([details](https://github.com/tofulupo/apple-dns-profile-creator/wiki/Several-configurations)).
 - Open a profile you already have, signed or not, and see what is in it. Pick
-  another resolver for it and keep its rules. Compare two cards side by side.
+  another resolver for it and keep its rules
+  ([moving from Mullvad](https://github.com/tofulupo/apple-dns-profile-creator/wiki/Moving-from-Mullvad)).
+  Compare two cards side by side.
 - Desktop app only: sign with a certificate from your Keychain, and send a
   profile to an iPhone with AirDrop from the Share button.
 
-![The presets menu on the tool page](docs/screenshots/tool_presets.png)
-
-![Two cards compared, showing only what differs](docs/screenshots/compare.png)
+![Two cards compared in the macOS app, showing only what differs, half in dark and half in light mode](docs/screenshots/compare.png)
 
 ## Who it's for
 
 **Setting it up for yourself or for someone else.** Pick a preset, leave the
 rest alone, download. The app has no account and doesn't need an internet
 connection. Installing is the part that takes a few taps on the device, see
-[Installing and removing](#installing-and-removing).
+[Installing and removing](https://github.com/tofulupo/apple-dns-profile-creator/wiki/Installing-and-removing).
 
 **A household with its own resolver.** Enter your DoH URL or DoT host and add
 your home network under Wi-Fi exceptions. Devices then use the network's DNS at
@@ -92,52 +105,6 @@ off in Settings. Every feature works from a source checkout, so you can
 - There is no command line tool, no MDM deployment and no Windows or Linux app.
   The website opens in any browser, but only Apple devices install the profiles.
 
-## Installing and removing
-
-The app doesn't install profiles. The device does, and asks first.
-
-- iPhone or iPad: AirDrop the profile from the desktop app, or open the website
-  in Safari and download. Then open Settings and tap Profile Downloaded, then
-  Install. With several configurations, pick the one to use under Settings ›
-  General › VPN & Device Management › DNS.
-- Mac: Download profile saves to `~/Downloads` and offers to open the file,
-  which hands it to System Settings.
-- To remove a profile, remove it in the same place you installed it.
-
-## Moving from Mullvad's DNS
-
-Mullvad shuts down its public encrypted DNS on 2 November 2026, and its iOS and
-macOS DoH profiles stop working then
-([Mullvad's announcement](https://mullvad.net/en/blog/shutting-down-our-public-encrypted-dns-servers-and-sponsoring-quad9-instead)).
-Mullvad points to Quad9.
-
-If you installed Mullvad's profile as it came, Quad9's own profile replaces it.
-This tool helps if you changed yours: Wi-Fi networks without encrypted DNS,
-domain rules, interfaces or failover.
-
-1. Drop your Mullvad profile on the Tool page. A note says when it stops.
-2. Under Presets, pick Quad9 or another resolver, or enter a DoH URL. The name,
-   server and addresses change, and your rules stay.
-3. Save changes, then download on the Profile page.
-4. Install the new profile, and remove the Mullvad one under Settings › General
-   › VPN & Device Management.
-
-What is different from Mullvad's profile:
-
-- Mullvad signed its profile. The one from the website isn't signed, so the
-  device shows "Not Signed" when installing. It works the same.
-- The desktop app can sign it, but only with a signing certificate that has its
-  private key in your Keychain
-  ([Signing with the Keychain](#signing-with-the-keychain)). You can
-  [make a self-signed one](#create-a-self-signed-signing-certificate); devices
-  then show "Not Verified" unless they trust it.
-- The new profile has its own ID, so the device keeps the old one until you
-  remove it.
-- The website can't check Mullvad's signature and says "Not checked". The
-  desktop app checks it.
-
-![The Mullvad note after loading a profile](docs/screenshots/mullvad_note.png)
-
 ## Get the app
 
 The desktop app needs macOS 15.8 or newer and is about 6 MB. Build the app from
@@ -148,14 +115,9 @@ its tag, as described under [Build it yourself](#build-it-yourself).
 The app is built with [Tauri 2](https://tauri.app) and uses the system's own
 webview. The pages load from inside the app; nothing listens on the network.
 
-**Download profile** saves straight to `~/Downloads`, never over an existing
-file (`encrypted-dns-2.mobileconfig` and so on), then offers to open it, which
-hands it to System Settings for installation. The window remembers its size,
-stored in `~/Library/Application Support/local.encrypted-dns.tool/`. The icon
-follows light and dark mode on macOS 26 and later.
-
 Only macOS is built for now: a `.mobileconfig` can only be installed on Apple
-devices.
+devices. Saving, Settings and where the app keeps its files:
+[The desktop app](https://github.com/tofulupo/apple-dns-profile-creator/wiki/The-desktop-app).
 
 ## Privacy
 
@@ -188,96 +150,8 @@ a Keychain certificate. An unsigned profile installs identically; iOS and macOS
 just label it "Not Signed" during installation. Signing changes that label and
 adds tamper protection, nothing else.
 
-### Signing with the Keychain
-
-In the desktop app the Download panel offers **Signed with Keychain**: pick a
-certificate that has its private key in your Keychain, and the profile is saved
-with `-signed` in its name, like `encrypted-dns-signed.mobileconfig` (see
-[File names](#file-names)). The app signs it with macOS's Security framework,
-and the key never leaves the Keychain. Expired and not yet valid certificates
-are not listed. Opening a signed profile checks its signature, and the app asks
-before loading one that was changed after signing.
-
-![The Download panel in the desktop app, signing with a Keychain certificate](docs/screenshots/desktop_signed_profile.png)
-
-Devices show a signed profile as "Verified" only if they trust the certificate's
-issuer. A self-signed certificate shows as "Not Verified" unless it is installed
-and trusted on each device.
-
-### Create a self-signed signing certificate
-
-- Open Keychain Access (in /Applications/Utilities/)
-- In the menu bar: Keychain Access → Certificate Assistant → Create
-  Certificate...
-- Fill in:
-  - Name: e.g. MDM Signing Cert (remember this, you'll use it as the signing
-    identity)
-  - Identity Type: Self-Signed Root
-  - Certificate Type: Code Signing
-  - Check "Let me override defaults" if you want to extend the validity period
-    (default is ~1 year; 10 years is common for this)
-- Click Continue through the prompts (you can skip entering an email address)
-- When done, the certificate is created directly in your login keychain, no
-  separate import needed
-
-## Details
-
-### Skip encrypted DNS for vs. use encrypted DNS only for
-
-The **Domains** row under **Behavior & rules** has two fields that both take a
-list of domains. They are opposites rather than duplicates, and neither blocks
-anything: the domains they leave out go to the network's own DNS.
-
-| Field                          | Effect                                                                |
-| ------------------------------ | --------------------------------------------------------------------- |
-| **Skip encrypted DNS for**     | A deny list. Encrypted DNS is used everywhere _except_ these domains. |
-| **Use encrypted DNS only for** | An allow list. Encrypted DNS is used _only_ for these domains.        |
-
-Leaving both empty - **the default** - sends every query through the encrypted
-resolver, which is usually what you want.
-
-> [!NOTE]
-> "Use encrypted DNS only for" is for split DNS, where an internal resolver
-> should answer for one zone and the network's own resolver for everything else.
-> A single leading `*` is allowed, so `*.example.com` and `example.com` both
-> match `mail.example.com`.
-
-Under the hood they are different mechanisms: exclusions become `OnDemandRules`
-that switch the resolver off, while the limit becomes `SupplementalMatchDomains`
-inside `DNSSettings`. Setting both is legal but rarely useful.
-
-### Several configurations in one profile
-
-Each card on the profile page becomes its own DNS configuration in the
-downloaded profile, in the order of the cards. Cards with identical settings are
-written once.
-
-On an iPhone the configurations show up under **Settings › General › VPN &
-Device Management › DNS**, next to **Automatic**. iOS adds a number when two
-have the same name, like "DNS Bunker" and "DNS Bunker 1". The phone uses one
-configuration at a time: the one you pick, or Automatic. Tested on iOS 27.0.1
-with the declaration format.
-
-A picked configuration whose server doesn't answer stops every lookup, and the
-phone doesn't switch to another one. Whether Automatic skips such a server
-hasn't been tested yet, so don't count on it as a backup.
-
-The **Failover** switch is something else: when the encrypted server fails, it
-falls back to the network's own DNS, not to another configuration.
-
-We haven't checked the Mac yet.
-
-### File names
-
-A profile with one configuration is named after it, in lowercase letters, digits
-and hyphens: "DNS Bunker" downloads as `dns-bunker.mobileconfig`, signed as
-`dns-bunker-signed.mobileconfig`. Accents are dropped and long names are cut at
-40 characters. A profile with several configurations, or a name with no letters
-or digits left, is `encrypted-dns.mobileconfig`.
-
-The file name shows up in share sheets and folder listings, so it tells anyone
-who sees the file which provider you use. **Neutral file name** in the Download
-panel keeps `encrypted-dns.mobileconfig` for every profile.
+Signing with the Keychain and making a self-signed certificate:
+[Signing profiles](https://github.com/tofulupo/apple-dns-profile-creator/wiki/Signing-profiles).
 
 ## Build it yourself
 
@@ -304,7 +178,13 @@ To see which commit mobileconfig.io runs, read its
 [`build.txt`](https://mobileconfig.io/build.txt), or let
 `deno task check:live --commit <sha>` compare it with yours.
 
-Working on the code: see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+## Documentation
+
+- [How-tos in the wiki](https://github.com/tofulupo/apple-dns-profile-creator/wiki):
+  installing, signing, domain rules, several configurations, file names, moving
+  from Mullvad
+- Working on the code: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)
+- Reporting a security problem: [SECURITY.md](SECURITY.md)
 
 ## History and thanks
 
