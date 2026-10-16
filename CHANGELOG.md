@@ -8,6 +8,73 @@ app shares its version number with the website: app releases have even major and
 minor numbers, like 4.0.0. A release candidate carries an `-rc` suffix and comes
 before the final release.
 
+## [4.0.0-rc.3] - 2026-10-16
+
+The third release candidate of the desktop app, for testing before 4.0.0. A
+loaded file shows notes on what's in it, comparing two cards starts with what
+differs, and a profile on one of Mullvad's servers can move to another resolver
+and keep its rules. Calls from the page into the app pass a second check. It
+comes as signed and notarized DMGs for Apple silicon and Intel.
+
+### Added
+
+- The DMG opens on a background with the mascot peeking over a window that says
+  "Your device. Your profile. Your rules.", and `>>>` from the app to
+  Applications.
+- Notes on a loaded file, as tiles in the load card on the Tool page and above
+  the imported cards on the Profile page: the signature ("Not checked" or "Not
+  signed"), the format ("Legacy payload" or "Declarations"), DNS over TLS,
+  settings that weren't carried over, and "Already in profile" when nothing was
+  added. They go away once all cards from that file are deleted.
+- A legacy profile's Format note says "Deprecated by Apple in OS 27, still
+  works." and has a "Use Declaration format" button, with Undo. The download
+  then replaces the legacy payload (OS 26+).
+- A note on files that use one of Mullvad's servers: "Stops on 2 November 2026",
+  and "Stopped on 2 November 2026" from that day. It says to pick another
+  resolver, like Quad9, and that your rules stay.
+
+### Changed
+
+- Comparing two cards opens on the differences, with "All" one click away. Each
+  field says "Same" or "Different", and what differs as a sentence, like
+  "Cellular only in A" or "Same addresses, different order".
+- The comparison is a table with each profile's name, file, Profile ID and
+  SHA-256 above its column. The values start where the text in their card does,
+  and a field that differs is a rounded block under each card. The SHA-256 is in
+  the accent color when both sides are the same file.
+- Differences are marked in amber instead of blue. An entry only one side has is
+  an amber chip, and one the other side lacks is dashed. Resolvers are paired by
+  family and position, so you see which address replaced which.
+- A card that was never saved shows the format a download would give it, Legacy
+  or Declarative.
+- Shorter texts in Settings ("Forget on quit", "Deletes cards and signing
+  choices."), under the Download switches, and in the dialog for a profile with
+  a broken signature.
+- Errors for a refused file use plainer words and say what to try next.
+- The HaGeZi, njal.la and FlokiNET presets list DNSSEC.
+- Tauri 2.12.4.
+
+### Fixed
+
+- Picking a preset for a loaded profile changes only its name, server and
+  addresses. Wi-Fi names, domains and the other rules stay.
+- A name you typed stays when you pick a preset. A name that is still the one
+  from the file is replaced by the preset's name.
+- The Declarative tag on a card says the format is for iOS 26 and macOS 26 and
+  later. It said 27.
+
+### Security
+
+- Calls from the page into the app pass Tauri's isolation pattern first. Only
+  the app's own commands, with the expected arguments and within size limits,
+  get through. The checks in Rust still decide. The pattern encrypts these calls
+  with AES-GCM, which adds a few dependencies.
+- The app loads only the `default` and `settings` capabilities, listed in
+  `tauri.conf.json`.
+- `cargo audit` on 2026-10-16 found no vulnerabilities in the app's
+  dependencies. Two advisories for Tauri's Linux menus (RUSTSEC-2024-0429,
+  RUSTSEC-2024-0370) are ignored, since they aren't built into the macOS app.
+
 ## [4.0.0-rc.2] - 2026-10-10
 
 The second release candidate of the desktop app, for testing before 4.0.0. Most
@@ -304,5 +371,6 @@ comes without a DMG: build it from the `v4.0.0-rc.1` tag with
   Settings window can only ask the app to change the theme, so it can't save,
   sign or share.
 
+[4.0.0-rc.3]: https://github.com/tofulupo/apple-dns-profile-creator/compare/v4.0.0-rc.2...v4.0.0-rc.3
 [4.0.0-rc.2]: https://github.com/tofulupo/apple-dns-profile-creator/compare/v4.0.0-rc.1...v4.0.0-rc.2
 [4.0.0-rc.1]: https://github.com/tofulupo/apple-dns-profile-creator/compare/deno-desktop...v4.0.0-rc.1
