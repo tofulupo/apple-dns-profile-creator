@@ -59,6 +59,12 @@ jobs:
         if: runner.os == 'Linux'
         run: xvfb-run --auto-servernum deno task test:e2e
 
+      # Ubuntu 24.04's AppArmor blocks the user namespaces Chrome's sandbox needs,
+      # and Chrome exits at start.
+      - name: Allow Chrome's sandbox
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
       # The website in headless Chrome for Testing, which WebdriverIO downloads
       # with its chromedriver.
       - name: Browser tests
