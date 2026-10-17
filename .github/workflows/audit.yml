@@ -1,0 +1,31 @@
+name: audit
+
+# New advisories for crates already in Cargo.lock, between pushes. check.yml
+# runs the same audit on every push.
+on:
+  schedule:
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: src-tauri
+
+      # Ignored advisories: .cargo/audit.toml, read from the repo root.
+      - name: cargo audit
+        run: |
+          cargo install cargo-audit --version 0.22.2 --locked
+          cargo audit --file src-tauri/Cargo.lock
