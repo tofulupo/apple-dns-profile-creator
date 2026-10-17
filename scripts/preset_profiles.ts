@@ -17,6 +17,13 @@ export const PROFILES_DIR = "profiles";
 export const SIGNED_PROFILES = join(ROOT, "public", PROFILES_DIR);
 const UNSIGNED_PROFILES = join(ROOT, "build", PROFILES_DIR);
 
+/**
+ * SHA-256 of the certificate the files in public/profiles/ are signed with:
+ * Developer ID Application: Marcel Wolf (YLNKL7A62Q), valid until 2031-09-17.
+ */
+export const SIGNING_CERTIFICATE_SHA256 =
+  "96049a597ccd0bbb6c69bded98cf976ae35e8f77892fd20347ee2f33b8fe7563";
+
 /** A one-configuration profile in the declaration format draws eight. */
 const UUIDS_PER_PROFILE = 8;
 

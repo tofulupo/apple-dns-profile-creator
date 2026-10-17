@@ -14,6 +14,7 @@ import {
   presetProfiles,
   presetUuids,
   SIGNED_PROFILES,
+  SIGNING_CERTIFICATE_SHA256,
 } from "../scripts/preset_profiles.ts";
 
 const UUID =
@@ -22,6 +23,22 @@ const UUID =
 const SEQUENCE = 0x30;
 const RESIGN =
   'run `deno task profiles "<certificate>"` on a Mac and commit public/profiles/';
+
+/** SHA-256 of every DER SEQUENCE with a two-byte length, certificates among them. */
+async function sequenceDigests(bytes: Uint8Array): Promise<Set<string>> {
+  const digests = new Set<string>();
+  for (let at = 0; at + 4 <= bytes.length; at++) {
+    if (bytes[at] !== SEQUENCE || bytes[at + 1] !== 0x82) continue;
+    const end = at + 4 + (bytes[at + 2]! << 8 | bytes[at + 3]!);
+    if (end > bytes.length) continue;
+    const digest = await crypto.subtle.digest("SHA-256", bytes.slice(at, end));
+    digests.add(
+      Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0"))
+        .join(""),
+    );
+  }
+  return digests;
+}
 
 function signedFiles(): string[] {
   try {
@@ -111,6 +128,19 @@ describe("the signed profiles in public/profiles/", () => {
         signed: true,
         fix: RESIGN,
       });
+    }
+  });
+
+  it("carry the pinned signing certificate", async () => {
+    for (const file of signedFiles()) {
+      const digests = await sequenceDigests(
+        Deno.readFileSync(join(SIGNED_PROFILES, file)),
+      );
+      expect({
+        file,
+        pinned: digests.has(SIGNING_CERTIFICATE_SHA256),
+        fix: RESIGN,
+      }).toEqual({ file, pinned: true, fix: RESIGN });
     }
   });
 
