@@ -1,14 +1,24 @@
+import { emptyDir } from "@std/fs";
+import { dirname, fromFileUrl, join, resolve } from "@std/path";
+
 import { appConfig, type DnsPreset } from "../src/config.ts";
 import { profileFilename } from "../src/lib/filename.ts";
 import { buildProfileXml } from "../src/lib/profile.ts";
 import type { DnsConfig, UuidFactory } from "../src/lib/types.ts";
 import { uuidFromBytes } from "../src/lib/uuid.ts";
 
-/** Under dist/. The Ansible deploy signs the files here in place. */
-export const PROFILES_DIR = "profiles";
+const ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 
-/** A one-configuration profile in the payload format draws four. */
-const UUIDS_PER_PROFILE = 4;
+/**
+ * Under public/, signed and committed by `deno task profiles` on a Mac. The
+ * build copies them to dist/ like the rest of public/.
+ */
+export const PROFILES_DIR = "profiles";
+export const SIGNED_PROFILES = join(ROOT, "public", PROFILES_DIR);
+const UNSIGNED_PROFILES = join(ROOT, "build", PROFILES_DIR);
+
+/** A one-configuration profile in the declaration format draws eight. */
+const UUIDS_PER_PROFILE = 8;
 
 export interface PresetProfile {
   readonly preset: DnsPreset;
@@ -41,8 +51,8 @@ export function presetFile(preset: DnsPreset): string {
 }
 
 /**
- * The same UUIDs for a preset on every build, so a new download replaces the
- * profile installed from an older one.
+ * The same UUIDs for a preset every time, so a profile signed again after a
+ * preset change replaces the installed one.
  */
 export async function presetUuids(preset: DnsPreset): Promise<UuidFactory> {
   const uuids: string[] = [];
@@ -63,18 +73,48 @@ export async function presetUuids(preset: DnsPreset): Promise<UuidFactory> {
 }
 
 export async function presetProfiles(): Promise<PresetProfile[]> {
-  return await Promise.all(appConfig.presets.map(async (preset) => {
-    return {
-      preset,
-      file: presetFile(preset),
-      xml: buildProfileXml(
-        [presetConfig(preset)],
-        {
-          systemScope: appConfig.systemScopeByDefault,
-          identifierPrefix: appConfig.identifierPrefix,
-        },
-        await presetUuids(preset),
-      ),
-    };
-  }));
+  return await Promise.all(appConfig.presets.map(async (preset) => ({
+    preset,
+    file: presetFile(preset),
+    xml: buildProfileXml(
+      [presetConfig(preset)],
+      {
+        systemScope: true,
+        identifierPrefix: appConfig.identifierPrefix,
+        format: "declarations",
+      },
+      await presetUuids(preset),
+    ),
+  })));
+}
+
+if (import.meta.main) {
+  const identity = Deno.args[0]?.trim();
+  if (identity === undefined || identity === "") {
+    console.error(
+      'Usage: deno task profiles "<certificate name or SHA-1>"\n' +
+        "Signs with a certificate from the Keychain, on macOS.",
+    );
+    Deno.exit(1);
+  }
+  await emptyDir(UNSIGNED_PROFILES);
+  for (const { file, xml } of await presetProfiles()) {
+    await Deno.writeTextFile(join(UNSIGNED_PROFILES, file), xml);
+  }
+  const { success } = await new Deno.Command("cargo", {
+    args: [
+      "run",
+      "--quiet",
+      "--manifest-path",
+      "src-tauri/Cargo.toml",
+      "--example",
+      "sign_profiles",
+      "--",
+      UNSIGNED_PROFILES,
+      SIGNED_PROFILES,
+      identity,
+    ],
+    cwd: ROOT,
+  }).output();
+  if (!success) Deno.exit(1);
 }

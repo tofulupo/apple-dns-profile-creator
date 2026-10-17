@@ -34,6 +34,23 @@ pub(crate) const MAIN_WINDOW: &str = "main";
 /// Defined in tauri.conf.json.
 pub(crate) const SETTINGS_WINDOW: &str = "settings";
 
+/// For examples/sign_profiles.rs: the Keychain's signing certificates, as
+/// (SHA-1 fingerprint, name).
+pub fn keychain_identities() -> Result<Vec<(String, String)>, String> {
+    Ok(signing::keychain()
+        .list()?
+        .into_iter()
+        .map(|identity| (identity.id, identity.name))
+        .collect())
+}
+
+/// For examples/sign_profiles.rs: signs as the app's Sign button does.
+pub fn sign_with_keychain(xml: &str, id: &str) -> Result<Vec<u8>, String> {
+    signing::keychain()
+        .sign(xml, id)
+        .map(|signature| signature.signed)
+}
+
 /// Shows a window anyway if its page fails before calling `page_ready`.
 const SHOW_ANYWAY_AFTER: Duration = Duration::from_secs(3);
 

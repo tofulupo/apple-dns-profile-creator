@@ -4,7 +4,7 @@ import { dirname, fromFileUrl, join, resolve } from "@std/path";
 import { type Page, PAGES, SITE_URL, SITE_VERSION } from "../pages/pages.ts";
 import { appConfig, type DnsPreset, presetFeatures } from "../src/config.ts";
 import { FONT_SUBSET } from "./fonts.ts";
-import { presetFile, presetProfiles, PROFILES_DIR } from "./preset_profiles.ts";
+import { presetFile, PROFILES_DIR } from "./preset_profiles.ts";
 import {
   BERKELEY_MONO,
   copyWebFonts,
@@ -377,7 +377,7 @@ export function presetOptions(): string {
   ).join("\n");
 }
 
-/** Links to the files `build()` writes into dist/profiles/. */
+/** Links to the signed files in public/profiles/. */
 export function readyMadeItems(): string {
   return appConfig.presets.map((preset) =>
     `<li><a class="preset" href="${PROFILES_DIR}/${
@@ -750,10 +750,6 @@ export async function build(): Promise<void> {
   }
 
   if (!desktop) {
-    await Deno.mkdir(join(DIST, PROFILES_DIR), { recursive: true });
-    for (const { file, xml } of await presetProfiles()) {
-      await Deno.writeTextFile(join(DIST, PROFILES_DIR, file), xml);
-    }
     await Deno.writeTextFile(
       join(DIST, "404.html"),
       await renderNotFound({
@@ -779,6 +775,7 @@ export async function build(): Promise<void> {
 
   for await (const entry of Deno.readDir(join(ROOT, "public"))) {
     if (entry.name.startsWith(".")) continue;
+    if (desktop && entry.name === PROFILES_DIR) continue;
     await copy(join(ROOT, "public", entry.name), join(DIST, entry.name), {
       overwrite: true,
     });

@@ -15,6 +15,7 @@ deno task preview          # build once, then serve
 deno task desktop          # build, then package the macOS app with Tauri
 deno task desktop:dev      # build, then run the app without packaging it
 deno task desktop:icon     # regenerate the app's icon files after editing the icon
+deno task profiles "<certificate name or SHA-1>"  # on a Mac, after a preset changes
 
 deno task check            # type-check + lint + fmt --check + Markdown lint + all tests
 deno task lint:md          # Markdown lint only (rumdl, settings in .rumdl.toml)
@@ -170,8 +171,9 @@ isolation/       the app's isolation pattern: checks every call into Rust
 scripts/         build, servers, checks and releases
   build.ts         render pages into the layout, deno bundle -> dist/,
                    sitemap.xml, robots.txt, llms.txt and build.txt
-  preset_profiles.ts  the presets as unsigned profiles in dist/profiles/,
-                   the same on every build
+  preset_profiles.ts  deno task profiles: the presets as profiles in the
+                   declaration format, signed into public/profiles/ by
+                   src-tauri/examples/sign_profiles.rs (macOS, Keychain)
   serve.ts         static file server, --watch rebuilds
   headers.ts       the website's headers: security headers, CSP, caching
   server.ts        dist/ with those headers and compression, for Deno

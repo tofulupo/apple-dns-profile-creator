@@ -18,6 +18,7 @@ const NEVER_SHIPPED = [
   /^\.github\//,
   /^pages\/pages\.ts$/,
   /^src-tauri\/build\.rs$/,
+  /^src-tauri\/examples\//,
 ];
 
 describe("the guards see all the code that ships", () => {
