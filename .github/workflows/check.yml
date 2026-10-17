@@ -44,6 +44,16 @@ jobs:
         with:
           workspaces: src-tauri
 
+      - name: Cargo.lock matches Cargo.toml
+        run: cargo fetch --locked --manifest-path src-tauri/Cargo.toml
+
+      # Ignored advisories: .cargo/audit.toml, read from the repo root.
+      - name: cargo audit
+        if: runner.os == 'Linux'
+        run: |
+          cargo install cargo-audit --version 0.22.2 --locked
+          cargo audit --file src-tauri/Cargo.lock
+
       - name: Install tauri-driver
         if: runner.os == 'Linux'
         run: cargo install tauri-driver --version 2.1.0 --locked
