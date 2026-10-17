@@ -568,6 +568,11 @@ async function importFile(file: File, dropped = false): Promise<void> {
 
   setFieldError(emptyState, null);
   if (!persist(() => store.add(...configs))) return;
+  const declarations = input("declarationsChk");
+  if (!facts.legacy && !declarations.checked) {
+    declarations.checked = true;
+    declarations.dispatchEvent(new Event("change"));
+  }
   showImportNotes(facts);
   render();
 }

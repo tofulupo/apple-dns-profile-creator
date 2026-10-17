@@ -1,25 +1,11 @@
 import { beforeEach, describe, it } from "@std/testing/bdd";
 import { expect } from "@std/expect";
 
-import { type Browser, cardNames, SITE, useSite } from "./site.ts";
+import { type Browser, cardNames, loadFile, SITE, useSite } from "./site.ts";
 
 const MULLVAD_WITH_RULES = Deno.readTextFileSync(
   new URL("../fixtures/own/mullvad-with-rules.mobileconfig", import.meta.url),
 );
-
-async function loadFile(browser: Browser, name: string, text: string) {
-  await browser.execute(
-    (name, text) => {
-      const input = document.getElementById("fileupload") as HTMLInputElement;
-      const transfer = new DataTransfer();
-      transfer.items.add(new File([text], name));
-      input.files = transfer.files;
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-    },
-    name,
-    text,
-  );
-}
 
 /** Picks the preset and confirms its question, returning the question. */
 async function pickPreset(browser: Browser, preset: string): Promise<string> {

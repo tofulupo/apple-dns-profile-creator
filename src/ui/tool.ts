@@ -57,6 +57,7 @@ import {
   chooseDeclarations,
   createConfigStore,
   declarationsChosen,
+  keepFormatOf,
   persist,
 } from "./storage.ts";
 import { enableThemeSwitch } from "./theme.ts";
@@ -732,6 +733,7 @@ async function handleUpload(file: File, dropped = false): Promise<boolean> {
   }
 
   setFieldError(uploadField, null);
+  keepFormatOf(facts);
 
   const [only] = configs;
   if (configs.length === 1 && only !== undefined) {

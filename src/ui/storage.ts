@@ -166,6 +166,14 @@ export function chooseDeclarations(
   }
 }
 
+/** Turns the Declaration format switch on for a file in that format. */
+export function keepFormatOf(
+  facts: Pick<FileFacts, "legacy">,
+  storage: StorageArea = browserStorage(),
+): void {
+  if (!facts.legacy) chooseDeclarations(true, storage);
+}
+
 export function persist(write: () => void): boolean {
   try {
     write();

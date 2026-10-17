@@ -93,3 +93,18 @@ export function cardNames(browser: Browser): Promise<string[]> {
     title.getText()
   );
 }
+
+/** As if the file were picked with Load on the Tool page. */
+export async function loadFile(browser: Browser, name: string, text: string) {
+  await browser.execute(
+    (name, text) => {
+      const input = document.getElementById("fileupload") as HTMLInputElement;
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([text], name));
+      input.files = transfer.files;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    },
+    name,
+    text,
+  );
+}

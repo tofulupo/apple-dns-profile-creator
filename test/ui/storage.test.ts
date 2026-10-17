@@ -7,6 +7,7 @@ import {
   createConfigStore,
   declarationsChosen,
   KEEP_KEY,
+  keepFormatOf,
   keepsData,
   pickStorage,
   setKeepData,
@@ -456,6 +457,19 @@ describe("the Declaration format switch", () => {
     chooseDeclarations(false, storage);
     expect(declarationsChosen(storage)).toBe(false);
     expect(storage.length).toBe(0);
+  });
+
+  it("turns on for a loaded file in the declaration format", () => {
+    keepFormatOf({ legacy: false }, storage);
+    expect(declarationsChosen(storage)).toBe(true);
+  });
+
+  it("keeps the user's choice for a loaded legacy file", () => {
+    keepFormatOf({ legacy: true }, storage);
+    expect(declarationsChosen(storage)).toBe(false);
+    chooseDeclarations(true, storage);
+    keepFormatOf({ legacy: true }, storage);
+    expect(declarationsChosen(storage)).toBe(true);
   });
 
   it("stays off and quiet when the browser refuses storage", () => {
