@@ -4,7 +4,6 @@
   "tasks": {
     "dev": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts --watch",
     "build": "deno run --env-file=.env --allow-read --allow-write --allow-run --allow-env=TAURI_ENV_PLATFORM,WEB_FONTS_DIR scripts/build.ts",
-    "build:deno-deploy": "deno run --allow-read --allow-write --allow-run --allow-env=INDEXNOW_KEY,TAURI_ENV_PLATFORM,R2_ENDPOINT,R2_ACCOUNT_ID,R2_BUCKET,R2_ACCESS_KEY_ID,R2_SECRET_ACCESS_KEY --allow-net=*.r2.cloudflarestorage.com scripts/build.ts --deno-deploy",
     "fonts": "deno run --allow-read --allow-write --allow-run scripts/fonts.ts",
     "profiles": "TAURI_ENV_PLATFORM=darwin deno task build && deno run --allow-read --allow-write --allow-run=cargo scripts/preset_profiles.ts",
     "preview": "deno run --allow-read --allow-write --allow-run --allow-net --allow-env scripts/serve.ts",
@@ -22,7 +21,6 @@
     "lint:md": "deno run -A npm:rumdl@^0.2 check .",
     "check": "deno check src pages 'test/**/*.test.ts' test/helpers scripts && deno check 'test/e2e/*.e2e.ts' 'test/browser/*.ts' && deno check --config src/lib/pure.deno.jsonc src/lib && deno lint && deno fmt --check && deno task lint:md && deno task lint:desktop && deno task test",
     "check:live": "deno run --allow-run=curl scripts/check_live.ts",
-    "indexnow": "deno run --env-file=.env --allow-env=INDEXNOW_KEY --allow-net=mobileconfig.io,api.indexnow.org scripts/indexnow.ts",
     "fixtures:fetch": "deno run --allow-net --allow-read --allow-write --allow-run scripts/fetch_fixtures.ts",
     "fixtures:lint": "deno run --allow-read --allow-run scripts/lint_fixtures.ts",
     "deps:update": "deno run --allow-read --allow-write --allow-run=deno,cargo --allow-net=index.crates.io scripts/deps_update.ts"
@@ -35,7 +33,6 @@
     "@std/http": "jsr:@std/http@^1.1.4",
     "@std/path": "jsr:@std/path@^1.1.6",
     "@std/testing": "jsr:@std/testing@^1.0.21",
-    "aws4fetch": "npm:aws4fetch@^1.0.20",
     "webdriverio": "npm:webdriverio@^10.0.2"
   },
   "compilerOptions": {

@@ -1,8 +1,7 @@
 #!/usr/bin/env -S deno run --allow-read --allow-net
 /**
- * The website from dist/ with the server's headers (scripts/headers.ts):
- * Deno Deploy's entrypoint (`deploy` in deno.json), and locally for the
- * browser tests, Lighthouse and screenshots.
+ * The website from dist/ with the server's headers (scripts/headers.ts), on
+ * this machine only: for the browser tests, Lighthouse and screenshots.
  */
 import { serveDir } from "@std/http/file-server";
 import { dirname, fromFileUrl, join, resolve } from "@std/path";
@@ -75,5 +74,8 @@ export function createHandler(
 }
 
 if (import.meta.main) {
-  Deno.serve({ automaticCompression: true }, createHandler(DIST));
+  Deno.serve(
+    { hostname: "127.0.0.1", automaticCompression: true },
+    createHandler(DIST),
+  );
 }

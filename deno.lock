@@ -21,7 +21,6 @@
     "jsr:@std/streams@^1.2.0": "1.2.0",
     "jsr:@std/testing@^1.0.21": "1.0.21",
     "npm:@tauri-apps/cli@^2.12.3": "2.12.3",
-    "npm:aws4fetch@^1.0.20": "1.0.20",
     "npm:rumdl@0.2": "0.2.78",
     "npm:webdriverio@^10.0.2": "10.0.2"
   },
@@ -387,9 +386,6 @@
     },
     "async@3.2.6": {
       "integrity": "sha512-htCUDlxyyCLMgaM3xXg0C0LW2xqfuQ6p05pCEIsXuyQ+a1koYKTuBMzRNwmybfLgvJDMd0r1LTn4+E0Ti6C2AA=="
-    },
-    "aws4fetch@1.0.20": {
-      "integrity": "sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g=="
     },
     "b4a@1.9.0": {
       "integrity": "sha512-dpfcF9fDNR6++cthXR67iyhgqWy9CBouAvIWhIntzBG6cvK/cnIPiZQjBwi/ZqjjBEDGfoNDtmB0kTjroOJ3pQ=="
@@ -1264,7 +1260,6 @@
       "jsr:@std/semver@^1.0.8",
       "jsr:@std/testing@^1.0.21",
       "npm:@tauri-apps/cli@^2.12.3",
-      "npm:aws4fetch@^1.0.20",
       "npm:webdriverio@^10.0.2"
     ]
   }

@@ -8,8 +8,6 @@ import { presetFile, PROFILES_DIR } from "./preset_profiles.ts";
 import {
   BERKELEY_MONO,
   copyWebFonts,
-  downloadFonts,
-  r2Config,
   WEB_FONTS,
   WEB_FONTS_DIR,
 } from "./web_fonts.ts";
@@ -644,20 +642,6 @@ export function pageHref(page: Page): string {
   return page.file === "index.html" ? "./" : page.file;
 }
 
-/** IndexNow's key format: 8 to 128 letters, digits or dashes. */
-export const INDEXNOW_KEY_PATTERN = /^[A-Za-z0-9-]{8,128}$/;
-
-export function indexNowKeyFile(
-  key: string,
-): { name: string; content: string } {
-  if (!INDEXNOW_KEY_PATTERN.test(key)) {
-    throw new Error(
-      "INDEXNOW_KEY must be 8 to 128 letters, digits or dashes.",
-    );
-  }
-  return { name: `${key}.txt`, content: key };
-}
-
 async function sitemap(): Promise<string> {
   const entries = await Promise.all(PAGES.map(async (page) => {
     const loc = pageUrl(page);
@@ -706,16 +690,8 @@ export async function build(): Promise<void> {
   const desktop = Deno.env.get("TAURI_ENV_PLATFORM") !== undefined;
   const fonts = join(DIST, "fonts");
   const shipped = desktop ? await copyFonts(FONTS, fonts) : [];
-  // Only `deno task build:deno-deploy` passes it, with the permissions for R2
-  // and INDEXNOW_KEY.
-  const denoDeploy = Deno.args.includes("--deno-deploy");
   if (desktop) {
     shipped.push(...await copyFonts(FONT_SUBSET, fonts));
-  } else if (denoDeploy) {
-    const config = r2Config((name) => Deno.env.get(name));
-    if (config !== undefined) {
-      shipped.push(...await downloadFonts(config, WEB_FONTS, fonts));
-    }
   } else {
     const dir = Deno.env.get(WEB_FONTS_DIR)?.trim();
     if (dir !== undefined && dir !== "") {
@@ -786,12 +762,6 @@ export async function build(): Promise<void> {
   await Deno.writeTextFile(join(DIST, "llms.txt"), await renderLlms());
   if (!desktop) {
     await Deno.writeTextFile(join(DIST, "build.txt"), await buildInfo());
-  }
-
-  const key = denoDeploy ? Deno.env.get("INDEXNOW_KEY") : undefined;
-  if (key !== undefined && key !== "") {
-    const file = indexNowKeyFile(key.trim());
-    await Deno.writeTextFile(join(DIST, file.name), file.content);
   }
 }
 

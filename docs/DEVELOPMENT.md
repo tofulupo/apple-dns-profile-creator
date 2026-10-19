@@ -176,10 +176,11 @@ scripts/         build, servers, checks and releases
                    src-tauri/examples/sign_profiles.rs (macOS, Keychain)
   serve.ts         static file server, --watch rebuilds
   headers.ts       the website's headers: security headers, CSP, caching
-  server.ts        dist/ with those headers and compression, for Deno
-                   Deploy, the browser tests and Lighthouse
+  server.ts        dist/ with those headers and compression, on 127.0.0.1,
+                   for the browser tests and Lighthouse
+  redirect.ts      Deno Deploy's entrypoint: a 301 to mobileconfig.io
   check_live.ts    checks the live site against headers.ts, with curl
-  web_fonts.ts     the licensed web fonts, from a local folder or R2
+  web_fonts.ts     the licensed web fonts, from the folder in WEB_FONTS_DIR
   desktop_release.ts signed and notarized app builds
   deps_update.ts   dependency updates, Deno's and Cargo's
   app_icon.ts      AppIcon.png and src-tauri/icons/ from desktop/AppIcon.icon
