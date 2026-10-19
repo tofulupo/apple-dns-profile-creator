@@ -41,10 +41,19 @@ pub fn save_without_overwrite(
     requested: &str,
     contents: &[u8],
 ) -> io::Result<PathBuf> {
+    save_within(folder, requested, contents, MAX_ATTEMPTS)
+}
+
+fn save_within(
+    folder: &Path,
+    requested: &str,
+    contents: &[u8],
+    attempts: u32,
+) -> io::Result<PathBuf> {
     fs::create_dir_all(folder)?;
     let filename = profile_filename(requested);
 
-    for n in 1..=MAX_ATTEMPTS {
+    for n in 1..=attempts {
         let path = folder.join(numbered_filename(&filename, n));
 
         match OpenOptions::new().write(true).create_new(true).open(&path) {
@@ -58,8 +67,7 @@ pub fn save_without_overwrite(
     }
 
     Err(io::Error::other(format!(
-        "No free file name left for {filename} in {}.",
-        folder.display()
+        "No free file name left for {filename} in your Downloads folder."
     )))
 }
 
@@ -153,6 +161,22 @@ mod tests {
         assert_eq!(third, folder.path().join("a-3.mobileconfig"));
         assert_eq!(fs::read_to_string(original).unwrap(), "original");
         assert_eq!(fs::read_to_string(third).unwrap(), "3");
+    }
+
+    #[test]
+    fn says_no_name_is_left_without_naming_the_folder() {
+        let folder = tempfile::tempdir().unwrap();
+        save_within(folder.path(), "a.mobileconfig", b"1", 2).unwrap();
+        save_within(folder.path(), "a.mobileconfig", b"2", 2).unwrap();
+        let error = save_within(folder.path(), "a.mobileconfig", b"3", 2)
+            .unwrap_err()
+            .to_string();
+
+        assert_eq!(
+            error,
+            "No free file name left for a.mobileconfig in your Downloads folder."
+        );
+        assert!(!error.contains(&*folder.path().to_string_lossy()));
     }
 
     #[test]

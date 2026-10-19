@@ -196,6 +196,7 @@ mod tests {
 
         let missing = read_profile(&folder.path().join("gone.mobileconfig")).unwrap_err();
         assert!(missing.starts_with("Could not open “gone.mobileconfig”.\n\n"));
+        assert!(!missing.contains(&*folder.path().to_string_lossy()));
 
         let directory = folder.path().join("folder.mobileconfig");
         fs::create_dir(&directory).unwrap();

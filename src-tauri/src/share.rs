@@ -151,6 +151,18 @@ mod tests {
     }
 
     #[test]
+    fn fails_without_naming_the_folder() {
+        let temp = tempfile::tempdir().unwrap();
+        let blocked = temp.path().join("file-not-folder");
+        fs::write(&blocked, "").unwrap();
+        let error = write(&blocked, "a.mobileconfig", b"x")
+            .unwrap_err()
+            .to_string();
+
+        assert!(!error.contains(&*temp.path().to_string_lossy()), "{error}");
+    }
+
+    #[test]
     fn writes_each_share_to_its_own_subfolder_under_a_profile_name() {
         let temp = tempfile::tempdir().unwrap();
         let first = write(temp.path(), "../a.mobileconfig", b"one").unwrap();
