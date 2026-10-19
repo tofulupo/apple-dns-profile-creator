@@ -48,10 +48,9 @@
     "noImplicitReturns": true
   },
   "deploy": {
-    "build": "deno task build:deno-deploy",
     "runtime": {
       "type": "dynamic",
-      "entrypoint": "scripts/server.ts"
+      "entrypoint": "scripts/redirect.ts"
     }
   },
 
